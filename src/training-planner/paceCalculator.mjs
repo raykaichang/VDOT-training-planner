@@ -367,21 +367,26 @@ export function generateWeeklySchedule({
   const mileage = Number(weeklyMileageKm);
   const qualitySlots = mileage >= 48 ? 3 : mileage >= 32 ? 2 : 1;
   const zoneById = Object.fromEntries(zones.map((zone) => [zone.id, zone]));
-  const longRun = formatDistanceRange(
-    Math.max(8, mileage * 0.2),
-    Math.max(10, mileage * 0.28),
+  const longRunRangeKm = {
+    min: Math.max(8, mileage * 0.2),
+    max: Math.max(10, mileage * 0.28)
+  };
+  const easyRunRangeKm = {
+    min: Math.max(5, mileage * 0.08),
+    max: Math.max(7, mileage * 0.12)
+  };
+  const recoveryRunRangeKm = {
+    min: Math.max(4, mileage * 0.06),
+    max: Math.max(6, mileage * 0.09)
+  };
+  const longRun = formatDistanceRange(longRunRangeKm.min, longRunRangeKm.max, unitSystem);
+  const reducedLongRun = formatDistanceRange(
+    longRunRangeKm.min * 0.67,
+    longRunRangeKm.max * 0.67,
     unitSystem
   );
-  const easyRun = formatDistanceRange(
-    Math.max(5, mileage * 0.08),
-    Math.max(7, mileage * 0.12),
-    unitSystem
-  );
-  const recoveryRun = formatDistanceRange(
-    Math.max(4, mileage * 0.06),
-    Math.max(6, mileage * 0.09),
-    unitSystem
-  );
+  const easyRun = formatDistanceRange(easyRunRangeKm.min, easyRunRangeKm.max, unitSystem);
+  const recoveryRun = formatDistanceRange(recoveryRunRangeKm.min, recoveryRunRangeKm.max, unitSystem);
 
   const week = buildDanielsWeek({
     race,
@@ -389,8 +394,11 @@ export function generateWeeklySchedule({
     qualitySlots,
     zoneById,
     longRun,
+    reducedLongRun,
     easyRun,
-    recoveryRun
+    recoveryRun,
+    easyRunRangeKm,
+    recoveryRunRangeKm
   }).map((day) => addZonePace(day, zoneById));
 
   if (!week.some((day) => day.zone === PaceZone.THRESHOLD)) {
@@ -409,31 +417,59 @@ function buildDanielsWeek({
   qualitySlots,
   zoneById,
   longRun,
+  reducedLongRun,
   easyRun,
-  recoveryRun
+  recoveryRun,
+  easyRunRangeKm,
+  recoveryRunRangeKm
 }) {
   const q = getDanielsQualitySequence(race, cycle, qualitySlots);
-  const q1 = q[0] ?? thresholdQuality(cycle);
-  const q2 = q[1];
-  const q3 = q[2];
+  const qWithDistances = q.map((workout) =>
+    applyQualityDistance(workout, {
+      longRun,
+      reducedLongRun
+    })
+  );
+  const q1 = qWithDistances[0] ?? thresholdQuality(cycle);
+  const q2 = qWithDistances[1];
+  const q3 = qWithDistances[2];
 
   return [
     buildQualityDay("Sun", "日", q1, zoneById),
-    scheduleDay("Mon", "一", PaceZone.EASY, `E ${recoveryRun} + 6-8 次加速跑`, `E ${recoveryRun} + 6-8 strides`),
+    scheduleDay("Mon", "一", PaceZone.EASY, `E ${recoveryRun} + 6-8 次加速跑`, `E ${recoveryRun} + 6-8 strides`, {
+      distanceRangeKm: recoveryRunRangeKm,
+      easyDistributionEligible: true
+    }),
     q2
       ? buildQualityDay("Tue", "二", q2, zoneById)
-      : scheduleDay("Tue", "二", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`),
-    scheduleDay("Wed", "三", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`),
+      : scheduleDay("Tue", "二", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`, {
+          distanceRangeKm: easyRunRangeKm,
+          easyDistributionEligible: true
+        }),
+    scheduleDay("Wed", "三", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`, {
+      distanceRangeKm: easyRunRangeKm,
+      easyDistributionEligible: true
+    }),
     q3
       ? buildQualityDay("Thu", "四", q3, zoneById)
-      : scheduleDay("Thu", "四", PaceZone.EASY, `E ${easyRun} + 4-6 次加速跑`, `E ${easyRun} + 4-6 strides`),
-    scheduleDay("Fri", "五", PaceZone.EASY, "休息或 30-40 分鐘 E", "Rest or 30-40 min E"),
+      : scheduleDay("Thu", "四", PaceZone.EASY, `E ${easyRun} + 4-6 次加速跑`, `E ${easyRun} + 4-6 strides`, {
+          distanceRangeKm: easyRunRangeKm,
+          easyDistributionEligible: true
+        }),
+    scheduleDay("Fri", "五", PaceZone.EASY, "休息或 30-40 分鐘 E", "Rest or 30-40 min E", {
+      easyDistributionEligible: true,
+      redistributeMileage: false
+    }),
     scheduleDay(
       "Sat",
       "六",
       PaceZone.EASY,
       `恢復跑 ${recoveryRun} 或休息`,
-      `Recovery ${recoveryRun} or rest`
+      `Recovery ${recoveryRun} or rest`,
+      {
+        distanceRangeKm: recoveryRunRangeKm,
+        easyDistributionEligible: true
+      }
     )
   ];
 }
@@ -449,6 +485,20 @@ function getDanielsQualitySequence(race, cycle, qualitySlots) {
     selected.splice(Math.max(0, selected.length - 1), 1, threshold);
   }
   return selected;
+}
+
+function applyQualityDistance(workout, distances) {
+  if (!workout?.distanceRole) return workout;
+
+  const distance = workout.distanceRole === "reducedLongRun"
+    ? distances.reducedLongRun
+    : distances.longRun;
+
+  return {
+    ...workout,
+    zh: workout.zh.replace("{distance}", distance),
+    en: workout.en.replace("{distance}", distance)
+  };
 }
 
 function ensureThresholdQuality(sequence, cycle) {
@@ -619,14 +669,14 @@ function marathonQuality(cycle) {
 function longRunQuality(cycle, variant = "default") {
   if (variant === "reduced") {
     return quality(PaceZone.EASY, [
-      "Q1：正常長跑的 2/3，以 E 配速完成",
-      "Q1: 2/3 normal long run at E pace"
-    ]);
+      "Q1：賽前長跑 {distance}，約正常長跑 2/3，以 E 配速完成",
+      "Q1: pre-race long run {distance}, about 2/3 normal long run at E pace"
+    ], { distanceRole: "reducedLongRun" });
   }
   return quality(PaceZone.EASY, [
-    "Q1 長跑：週跑量 25-30%，以 E 配速完成",
-    "Q1 long run: 25-30% of weekly mileage at E pace"
-  ]);
+    "Q1 長跑 {distance}：週跑量 25-30%，以 E 配速完成",
+    "Q1 long run {distance}: 25-30% of weekly mileage at E pace"
+  ], { distanceRole: "longRun" });
 }
 
 function thresholdRepetitionQuality(cycle) {
@@ -656,8 +706,8 @@ function raceOrSharpenQuality(cycle) {
   ]);
 }
 
-function quality(zone, content) {
-  return { zone, zh: content[0], en: content[1] };
+function quality(zone, content, metadata = {}) {
+  return { zone, zh: content[0], en: content[1], ...metadata };
 }
 
 function buildQualityDay(enDay, zhDay, workout, zoneById) {
@@ -677,8 +727,8 @@ function buildQualityDay(enDay, zhDay, workout, zoneById) {
   };
 }
 
-function scheduleDay(enDay, zhDay, zone, zh, en) {
-  return { enDay, zhDay, zone, zh, en, pace: "", base: "" };
+function scheduleDay(enDay, zhDay, zone, zh, en, metadata = {}) {
+  return { enDay, zhDay, zone, zh, en, pace: "", base: "", ...metadata };
 }
 
 function addZonePace(day, zoneById) {

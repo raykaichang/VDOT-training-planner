@@ -96,6 +96,31 @@ assert.equal(
   true
 );
 
+const redistributableEasyDays = model.weeklySchedule.filter(
+  (day) => day.easyDistributionEligible
+);
+assert.ok(redistributableEasyDays.length > 0);
+assert.ok(
+  redistributableEasyDays.some(
+    (day) => day.zh.includes("休息或 30-40") && !day.distanceRangeKm
+  )
+);
+assert.ok(
+  redistributableEasyDays
+    .filter((day) => !day.zh.includes("休息或 30-40"))
+    .every((day) => day.distanceRangeKm?.min > 0)
+);
+assert.equal(
+  model.weeklySchedule.some(
+    (day) => day.zh.includes("長跑") && day.easyDistributionEligible
+  ),
+  false
+);
+assert.match(
+  model.weeklySchedule.find((day) => day.zh.includes("Q1 長跑"))?.zh ?? "",
+  /\d+-\d+ km/
+);
+
 const coolWeather = calculateHeatAdjustment(10, 40);
 assert.equal(coolWeather.percentage, 0);
 

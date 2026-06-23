@@ -51,6 +51,8 @@ const copy = {
     weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；T 閾值訓練固定保留。",
     switchWorkout: "換堂課",
     coachPick: "教練建議",
+    skipEasyRun: "今天不跑",
+    restoreEasyRun: "恢復跑步",
     workoutExamples: "跑量可用課表",
     recovery: "恢復",
     recoveryHot: "熱天恢復",
@@ -59,10 +61,10 @@ const copy = {
     split200: "200m",
     noteTitle: "使用提醒",
     note:
-      "配速為依 Daniels VDOT 概念估算的訓練區間。炎熱或高濕環境下，請以調整後配速與體感為主。",
+      "Daniels 書中提供 VDOT 與 E/M/T/I/R 強度概念，但沒有定義「某 VDOT 的配速範圍」。本工具顯示的是依公式換算出的訓練區間；炎熱或高濕環境下，請以調整後配速與體感為主。",
     sourceTitle: "資料來源與計算方式",
     sourceNote:
-      "資料來源：Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT、E/M/T/I/R 訓練強度、Chapter 10 四期週期，以及 Chapter 11-16 的賽事分法。頁面並非直接抄表，而是以 VDOT、跑步經濟性氧耗方程與比賽持續時間校正估算配速；課表依書中原則與 class 資料夾課表動態組合。",
+      "資料來源：Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 系統、E/M/T/I/R 訓練強度與四期週期概念。配速區間的算法：先把 E/M/T/I/R 設為 VDOT 的強度帶（E 59-74%、M 75-84%、T 83-88%、I 95-100%、R 105-110%），再用跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度 v，換算成配速，最後套用溫濕度調整係數。課量原則：T 單課不超過週跑量 10% 或 24K/15mi 較小者（通常至少 4.8K/3mi）；I 不超過 8% 或 10K 較小者；R 不超過 5% 或 8K/5mi 較小者。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -135,6 +137,8 @@ const copy = {
     weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Threshold stays in every plan.",
     switchWorkout: "Swap Workout",
     coachPick: "Coach Pick",
+    skipEasyRun: "Skip Run",
+    restoreEasyRun: "Restore Run",
     workoutExamples: "Mileage-Based Workouts",
     recovery: "Recovery",
     recoveryHot: "Hot Recovery",
@@ -143,10 +147,10 @@ const copy = {
     split200: "200m",
     noteTitle: "Reminder",
     note:
-      "Paces are estimated from Daniels-style VDOT concepts. In hot or humid conditions, prioritize adjusted pace and perceived effort.",
+      "Daniels provides VDOT and E/M/T/I/R intensity concepts, but not pace ranges for each VDOT. The displayed ranges are formula-derived training bands. In hot or humid conditions, prioritize adjusted pace and perceived effort.",
     sourceTitle: "Source & Calculation",
     sourceNote:
-      "Source: Jack Daniels' Daniels' Running Formula, 4th ed., VDOT system, E/M/T/I/R intensity concepts, Chapter 10 phase model, and Chapters 11-16 event groupings. This app does not copy fixed table rows; it estimates paces from VDOT equations and dynamically combines workouts from the class folder.",
+      "Source: Jack Daniels' Daniels' Running Formula, 4th ed., VDOT system, E/M/T/I/R intensity concepts, and phase model. Pace ranges are calculated by assigning intensity bands to VDOT (E 59-74%, M 75-84%, T 83-88%, I 95-100%, R 105-110%), solving the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² for velocity v, converting velocity to pace, then applying the heat/humidity adjustment. Volume guardrails: T per session should not exceed the lesser of 10% weekly mileage or 24K/15mi, with about 4.8K/3mi as a practical minimum; I should not exceed 8% or 10K; R should not exceed 5% or 8K/5mi.",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -227,7 +231,8 @@ const state = {
   humidity: 70,
   planOrder: null,
   draggedPlanIndex: null,
-  planWorkoutOverrides: {}
+  planWorkoutOverrides: {},
+  skippedEasyDays: {}
 };
 
 const app = document.querySelector("#app");
@@ -504,8 +509,9 @@ function renderPaceZonePanel(model, t) {
 }
 
 function renderWeeklySchedule(model, t) {
-  const orderedSchedule = getOrderedSchedule(model.weeklySchedule);
-  const fixedDayLabels = model.weeklySchedule.map((day) =>
+  const schedule = applyEasyRunRedistribution(model.weeklySchedule);
+  const orderedSchedule = getOrderedSchedule(schedule);
+  const fixedDayLabels = schedule.map((day) =>
     state.locale === "en" ? day.enDay : day.zhDay
   );
   const hasOpenSwapMenu = typeof state.openMenu === "string" &&
@@ -550,22 +556,41 @@ function renderPlanDay(day, t, index, model) {
         <em><small>${t.basePaceShort}</small>${day.base}</em>
       </div>`
     : "";
+  const easyRestControl = renderEasyRestControl(day, index, t);
 
   return `
     <article
-      class="plan-day ${zoneTone[day.zone]}"
+      class="plan-day ${zoneTone[day.zone]} ${day.isSkippedEasyRun ? "is-rest" : ""}"
       draggable="true"
       data-plan-card
       data-plan-index="${index}"
       aria-label="${title}"
     >
       ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t)}
+      ${easyRestControl}
       <div>
         <b>${day.zone}</b>
         <p>${title}</p>
         ${paceBlock}
       </div>
     </article>
+  `;
+}
+
+function renderEasyRestControl(day, index, t) {
+  if (!day.easyDistributionEligible) return "";
+
+  return `
+    <button
+      type="button"
+      class="easy-rest-toggle ${day.isSkippedEasyRun ? "active" : ""}"
+      data-action="toggle-easy-rest"
+      data-plan-index="${index}"
+      draggable="false"
+      aria-pressed="${day.isSkippedEasyRun ? "true" : "false"}"
+    >
+      ${day.isSkippedEasyRun ? t.restoreEasyRun : t.skipEasyRun}
+    </button>
   `;
 }
 
@@ -914,6 +939,16 @@ function handleAction(event) {
     state.openMenu = null;
   }
 
+  if (action === "toggle-easy-rest") {
+    const index = event.currentTarget.dataset.planIndex;
+    if (state.skippedEasyDays[index]) {
+      delete state.skippedEasyDays[index];
+    } else {
+      state.skippedEasyDays[index] = true;
+    }
+    state.openMenu = null;
+  }
+
   render();
 }
 
@@ -1045,6 +1080,105 @@ function getOrderedSchedule(schedule) {
     index,
     day: schedule[index]
   }));
+}
+
+function applyEasyRunRedistribution(schedule) {
+  const distanceEligible = schedule
+    .map((day, index) => ({ day, index }))
+    .filter(({ day }) => day.easyDistributionEligible && day.distanceRangeKm);
+  const skipped = distanceEligible.filter(({ index }) => state.skippedEasyDays[index]);
+  const receivers = distanceEligible.filter(({ index }) => !state.skippedEasyDays[index]);
+
+  if (
+    skipped.length === 0 &&
+    !schedule.some((day, index) => day.easyDistributionEligible && state.skippedEasyDays[index])
+  ) {
+    return schedule;
+  }
+
+  const skippedTotal = skipped.reduce(
+    (total, { day }) => ({
+      min: total.min + Number(day.distanceRangeKm.min ?? 0),
+      max: total.max + Number(day.distanceRangeKm.max ?? 0)
+    }),
+    { min: 0, max: 0 }
+  );
+  const addRange =
+    receivers.length > 0
+      ? {
+          min: skippedTotal.min / receivers.length,
+          max: skippedTotal.max / receivers.length
+        }
+      : { min: 0, max: 0 };
+  const receiverIndexes = new Set(receivers.map(({ index }) => index));
+
+  return schedule.map((day, index) => {
+    if (!day.easyDistributionEligible) return day;
+
+    if (state.skippedEasyDays[index]) {
+      const hasRedistributedMileage = Boolean(day.distanceRangeKm);
+      return {
+        ...day,
+        zh: hasRedistributedMileage
+          ? "休息（跑量平均分配到其他 E 課）"
+          : "休息",
+        en: hasRedistributedMileage
+          ? "Rest (mileage redistributed to other E runs)"
+          : "Rest",
+        pace: "",
+        base: "",
+        isSkippedEasyRun: true
+      };
+    }
+
+    if (!day.distanceRangeKm) return day;
+
+    if (!receiverIndexes.has(index) || skippedTotal.min <= 0) return day;
+
+    const nextRangeKm = {
+      min: day.distanceRangeKm.min + addRange.min,
+      max: day.distanceRangeKm.max + addRange.max
+    };
+
+    return {
+      ...day,
+      distanceRangeKm: nextRangeKm,
+      zh: buildRedistributedEasyTitle(day, nextRangeKm, "zh"),
+      en: buildRedistributedEasyTitle(day, nextRangeKm, "en")
+    };
+  });
+}
+
+function buildRedistributedEasyTitle(day, rangeKm, locale) {
+  const range = formatPlanDistanceRange(rangeKm);
+  const zh = day.zh;
+  const en = day.en;
+
+  if (locale === "en") {
+    if (en.includes("strides")) return `E ${range} + 6-8 strides`;
+    if (en.startsWith("Recovery")) return `Recovery ${range}`;
+    return `E ${range}`;
+  }
+
+  if (zh.includes("加速跑")) return `E ${range} + 6-8 次加速跑`;
+  if (zh.startsWith("恢復跑")) return `恢復跑 ${range}`;
+  return `E ${range}`;
+}
+
+function formatPlanDistanceRange(rangeKm) {
+  const min = state.unitSystem === UnitSystem.IMPERIAL
+    ? rangeKm.min / KM_PER_MILE
+    : rangeKm.min;
+  const max = state.unitSystem === UnitSystem.IMPERIAL
+    ? rangeKm.max / KM_PER_MILE
+    : rangeKm.max;
+  const suffix = state.unitSystem === UnitSystem.IMPERIAL ? "mi" : "km";
+  return `${formatPlanDistance(min)}-${formatPlanDistance(max)} ${suffix}`;
+}
+
+function formatPlanDistance(value) {
+  const rounded = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded.toFixed(1));
 }
 
 function getPlanWorkoutCandidates(day, model) {

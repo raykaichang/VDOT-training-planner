@@ -569,6 +569,35 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 16px 36px rgba(23, 33, 43, 0.16);
 }
 
+.plan-day.is-rest {
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.92), var(--surface));
+  opacity: 0.86;
+}
+
+.easy-rest-toggle {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid rgba(13, 148, 136, 0.24);
+  border-radius: 8px;
+  background: rgba(13, 148, 136, 0.08);
+  color: var(--teal);
+  cursor: pointer;
+  padding: 0 9px;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.easy-rest-toggle:hover,
+.easy-rest-toggle.active {
+  border-color: rgba(13, 148, 136, 0.46);
+  background: rgba(13, 148, 136, 0.14);
+  color: var(--text);
+}
+
 .plan-swap {
   position: relative;
   z-index: 5;
