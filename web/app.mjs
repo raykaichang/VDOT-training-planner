@@ -373,15 +373,15 @@ function renderRaceResultInput(t, estimate) {
       <legend>${t.raceTime}</legend>
       <label>
         <span>${t.hours}</span>
-        <input data-field="raceHours" type="number" min="0" max="9" step="1" value="${state.raceHours}" />
+        <input data-field="raceHours" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="9" step="1" value="${state.raceHours}" />
       </label>
       <label>
         <span>${t.minutes}</span>
-        <input data-field="raceMinutes" type="number" min="0" max="59" step="1" value="${state.raceMinutes}" />
+        <input data-field="raceMinutes" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.raceMinutes}" />
       </label>
       <label>
         <span>${t.seconds}</span>
-        <input data-field="raceSeconds" type="number" min="0" max="59" step="1" value="${state.raceSeconds}" />
+        <input data-field="raceSeconds" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.raceSeconds}" />
       </label>
     </fieldset>
     <div class="vdot-estimate ${estimate.valid ? "" : "invalid"}">
@@ -397,7 +397,7 @@ function renderRangeField(label, field, value, min, max, step, unit) {
       <span>${label}</span>
       <div class="range-row">
         <input data-field="${field}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" />
-        <input data-field="${field}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" />
+        <input data-field="${field}" type="number" inputmode="decimal" min="${min}" max="${max}" step="${step}" value="${value}" />
         <b>${unit}</b>
       </div>
     </label>
@@ -823,6 +823,12 @@ function handleFieldChange(event) {
     return;
   }
 
+  if (event.currentTarget.type === "number" && event.type === "input") {
+    updateFieldValue(field, value);
+    syncRangeSlider(field, value);
+    return;
+  }
+
   updateFieldValue(field, value);
   render();
 }
@@ -830,6 +836,12 @@ function handleFieldChange(event) {
 function syncRangeNumber(field, value) {
   app.querySelectorAll(`input[data-field="${field}"]`).forEach((input) => {
     if (input.type === "number") input.value = value;
+  });
+}
+
+function syncRangeSlider(field, value) {
+  app.querySelectorAll(`input[data-field="${field}"]`).forEach((input) => {
+    if (input.type === "range") input.value = value;
   });
 }
 
