@@ -1,0 +1,11 @@
+﻿node_modules/
+dist/
+.vite/
+.env
+.env.*
+server.log
+server.err.log
+.DS_Store
+Thumbs.db
+
+class/*.pdf
