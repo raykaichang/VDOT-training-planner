@@ -9,3 +9,5 @@ server.err.log
 Thumbs.db
 
 class/*.pdf
+
+class/
