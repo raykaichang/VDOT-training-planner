@@ -445,6 +445,47 @@ input[type="range"]::-moz-range-thumb {
   white-space: nowrap;
 }
 
+.heat-formula {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(100, 116, 139, 0.18);
+}
+
+.heat-formula h3 {
+  margin: 0 0 6px;
+  color: var(--blue);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heat-formula p,
+.heat-formula li {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.heat-formula p {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+}
+
+.heat-formula li,
+.pace-card-note li {
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.heat-formula ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .simple-list {
   margin: 14px 0 0;
 }
@@ -480,6 +521,18 @@ input[type="range"]::-moz-range-thumb {
 .example-list {
   display: grid;
   gap: 14px;
+}
+
+.drag-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .weekly-plan {
@@ -844,6 +897,19 @@ input[type="range"]::-moz-range-thumb {
   background: #fbfdff;
   padding: 14px;
   min-width: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.example-card:active {
+  cursor: grabbing;
+}
+
+.example-card.is-dragging {
+  opacity: 0.62;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
 }
 
 .example-card.interval {
@@ -1037,6 +1103,10 @@ input[type="range"]::-moz-range-thumb {
   min-width: 0;
 }
 
+.pace-values.single {
+  grid-template-columns: 1fr;
+}
+
 .pace-zone-panel.english .pace-values {
   grid-template-columns: 1fr;
 }
@@ -1123,6 +1193,36 @@ dd {
 .split-comparison small {
   color: var(--muted);
   font-size: 0.78em;
+}
+
+.pace-card-note {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: var(--muted);
+  font-size: 0.82em;
+  font-weight: 700;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.pace-card-note p {
+  margin: 0;
+}
+
+.pace-card-note ul {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pace-card-note li {
+  display: block;
+  min-width: 0;
 }
 
 .note-panel {

@@ -42,9 +42,27 @@ const copy = {
     adjustedPace: "調整後配速",
     basePaceShort: "未調整",
     adjustedPaceShort: "調整後",
+    rTargetPaceShort: "R 不降速",
+    rTargetPace: "R 不降速目標",
+    rHeatGuidance:
+      "R 是短距離、以順暢快速與技術品質為主，熱天不降目標配速，改延長恢復、降低組數或改到較涼時段。",
+    rReferences: [
+      "Daniels 第 4 版：R 訓練原則",
+      "Racinais et al. 2015, BJSM, DOI: 10.1136/bjsports-2015-094915",
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
+    ],
     heatAdjustment: "溫濕度調整",
     slowerBy: "建議放慢",
     dewPoint: "露點",
+    heatFormulaTitle: "熱環境估算式",
+    heatFormula:
+      "露點 Td 以 Magnus 公式估算。降速比例 = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%)；調整後配速 = 原始配速 × (1 + 降速比例)。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。",
+    heatReferencesTitle: "熱環境參考文獻",
+    heatReferences: [
+      "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
+      "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"
+    ],
     mileageClass: "跑量課表級距",
     availableQuality: "可開品質課",
     weeklyPlan: "本週建議安排",
@@ -54,6 +72,7 @@ const copy = {
     skipEasyRun: "今天不跑",
     restoreEasyRun: "恢復跑步",
     workoutExamples: "跑量可用課表",
+    draggableWorkoutHint: "提示：課表卡片可左右拖曳交換順序。",
     recovery: "恢復",
     recoveryHot: "熱天恢復",
     totalTime: "總時間",
@@ -61,10 +80,10 @@ const copy = {
     split200: "200m",
     noteTitle: "使用提醒",
     note:
-      "Daniels 書中提供 VDOT 與 E/M/T/I/R 強度概念，但沒有定義「某 VDOT 的配速範圍」。本工具顯示的是依公式換算出的訓練區間；炎熱或高濕環境下，請以調整後配速與體感為主。",
+      "Daniels 書中有 VDOT、E/M/T/I/R 訓練強度與週期安排的概念，但沒有直接列出「每個 VDOT 對應一段配速範圍」。因此，本工具以公式推估區間，並依台灣常見的高溫高濕環境做調整。",
     sourceTitle: "資料來源與計算方式",
     sourceNote:
-      "資料來源：Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 系統、E/M/T/I/R 訓練強度與四期週期概念。配速區間的算法：先把 E/M/T/I/R 設為 VDOT 的強度帶（E 59-74%、M 75-84%、T 83-88%、I 95-100%、R 105-110%），再用跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度 v，換算成配速，最後套用溫濕度調整係數。課量原則：T 單課不超過週跑量 10% 或 24K/15mi 較小者（通常至少 4.8K/3mi）；I 不超過 8% 或 10K 較小者；R 不超過 5% 或 8K/5mi 較小者。",
+      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構與 E/M/T/I/R 訓練強度概念。計算時，先把各強度設定為 VDOT 的比例區間（E 59-74%、M 75-84%、T 83-88%、I 95-100%、R 105-110%），再用跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度，換算成配速。熱天配速調整只套用在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。課量上限以 Daniels 原則估算：T 以週跑量 10% 與 24 km（15 mi）相比，取較低值為上限；I 以週跑量 8% 與 10 km 相比，取較低值為上限；R 以週跑量 5% 與 8 km（5 mi）相比，取較低值為上限。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -128,9 +147,27 @@ const copy = {
     adjustedPace: "Adjusted Pace",
     basePaceShort: "Base",
     adjustedPaceShort: "Adjusted",
+    rTargetPaceShort: "R target",
+    rTargetPace: "R target pace",
+    rHeatGuidance:
+      "R is short, smooth-fast mechanics work. Hot days do not slow the R target pace; extend recovery, reduce reps, or move the session cooler instead.",
+    rReferences: [
+      "Daniels 4th ed.: R-training principles",
+      "Racinais et al. 2015, BJSM, DOI: 10.1136/bjsports-2015-094915",
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
+    ],
     heatAdjustment: "Heat/Humidity Adjustment",
     slowerBy: "Slow by",
     dewPoint: "Dew Point",
+    heatFormulaTitle: "Heat Adjustment Formula",
+    heatFormula:
+      "Dew point Td is estimated with the Magnus formula. Slowdown = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%); adjusted pace = base pace × (1 + slowdown). Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead.",
+    heatReferencesTitle: "Heat References",
+    heatReferences: [
+      "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
+      "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"
+    ],
     mileageClass: "Mileage Class",
     availableQuality: "Available Quality Work",
     weeklyPlan: "Suggested Week",
@@ -140,6 +177,7 @@ const copy = {
     skipEasyRun: "Skip Run",
     restoreEasyRun: "Restore Run",
     workoutExamples: "Mileage-Based Workouts",
+    draggableWorkoutHint: "Tip: drag workout cards sideways to swap their order.",
     recovery: "Recovery",
     recoveryHot: "Hot Recovery",
     totalTime: "Total Time",
@@ -147,10 +185,10 @@ const copy = {
     split200: "200m",
     noteTitle: "Reminder",
     note:
-      "Daniels provides VDOT and E/M/T/I/R intensity concepts, but not pace ranges for each VDOT. The displayed ranges are formula-derived training bands. In hot or humid conditions, prioritize adjusted pace and perceived effort.",
+      "Daniels defines the VDOT framework, E/M/T/I/R training intensities, and phase planning concepts, but does not directly provide a pace range for every VDOT. This tool estimates ranges from formulas and adjusts E/M/T/I for hot, humid conditions.",
     sourceTitle: "Source & Calculation",
     sourceNote:
-      "Source: Jack Daniels' Daniels' Running Formula, 4th ed., VDOT system, E/M/T/I/R intensity concepts, and phase model. Pace ranges are calculated by assigning intensity bands to VDOT (E 59-74%, M 75-84%, T 83-88%, I 95-100%, R 105-110%), solving the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² for velocity v, converting velocity to pace, then applying the heat/humidity adjustment. Volume guardrails: T per session should not exceed the lesser of 10% weekly mileage or 24K/15mi, with about 4.8K/3mi as a practical minimum; I should not exceed 8% or 10K; R should not exceed 5% or 8K/5mi.",
+      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework and E/M/T/I/R intensity concepts. It assigns each intensity to a VDOT percentage band (E 59-74%, M 75-84%, T 83-88%, I 95-100%, R 105-110%), solves the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² for velocity, then converts that velocity to pace. Heat/humidity pace adjustment is applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Daniels-style volume guardrails: T is capped at the lower value between 10% weekly mileage and 24 km (15 mi); I is capped at the lower value between 8% weekly mileage and 10 km; R is capped at the lower value between 5% weekly mileage and 8 km (5 mi).",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -231,6 +269,8 @@ const state = {
   humidity: 70,
   planOrder: null,
   draggedPlanIndex: null,
+  exampleOrder: {},
+  draggedExample: null,
   planWorkoutOverrides: {},
   skippedEasyDays: {}
 };
@@ -473,6 +513,14 @@ function renderEnvironmentSummary(model, t) {
           <strong>${model.heatAdjustment.dewPoint}${t.celsius}</strong>
         </div>
       </div>
+      <div class="heat-formula">
+        <h3>${t.heatFormulaTitle}</h3>
+        <p>${t.heatFormula}</p>
+        <h3>${t.heatReferencesTitle}</h3>
+        <ul>
+          ${t.heatReferences.map((reference) => `<li>${reference}</li>`).join("")}
+        </ul>
+      </div>
     </section>
   `;
 }
@@ -552,7 +600,7 @@ function renderPlanDay(day, t, index, model) {
       : day.zh;
   const paceBlock = day.pace
     ? `<div class="plan-pace">
-        <strong><small>${t.adjustedPaceShort}</small>${day.pace}</strong>
+        <strong><small>${day.zone === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</small>${day.pace}</strong>
         <em><small>${t.basePaceShort}</small>${day.base}</em>
       </div>`
     : "";
@@ -660,6 +708,7 @@ function renderWorkoutExamples(model, t) {
 
   return `
     <div class="example-list">
+      <p class="drag-hint">${t.draggableWorkoutHint}</p>
       ${groupedExamples.map((group) => renderWorkoutGroup(group, t)).join("")}
     </div>
   `;
@@ -672,6 +721,8 @@ const WorkoutGroup = {
 };
 
 function renderWorkoutGroup(group, t) {
+  const examples = getOrderedWorkoutExamples(group.zoneId, group.examples);
+
   return `
     <section class="example-group ${zoneTone[group.zoneId]}">
       <div class="example-group-heading">
@@ -682,7 +733,7 @@ function renderWorkoutGroup(group, t) {
         </div>
       </div>
       <div class="example-row">
-        ${group.examples
+        ${examples
           .map((example) => renderWorkoutExample(example, t, group.zone))
           .join("")}
       </div>
@@ -694,18 +745,26 @@ function renderWorkoutExample(example, t, zone) {
   const title = state.locale === "en" ? example.en : example.zh;
   const adjustedPace = zone?.adjusted.label ?? "";
   const basePace = zone?.base.label ?? "";
+  const primaryPaceLabel =
+    zone?.id === "R" ? t.rTargetPaceShort : t.adjustedPaceShort;
   const recoveryLabel =
     state.locale === "en" ? example.enRecoveryLabel : example.recoveryLabel;
   const heatRecoveryLabel =
     state.locale === "en" ? example.enHeatRecoveryLabel : example.heatRecoveryLabel;
 
   return `
-    <article class="example-card ${zoneTone[example.zone]}">
+    <article
+      class="example-card ${zoneTone[example.zone]}"
+      data-example-card
+      data-example-zone="${example.zone}"
+      data-example-id="${example.id}"
+      draggable="false"
+    >
       <div class="example-header">
         <div class="example-zone">
           <span>${example.zone}</span>
           <div class="example-pace-pair">
-            <strong><small>${t.adjustedPaceShort}</small>${adjustedPace}</strong>
+            <strong><small>${primaryPaceLabel}</small>${adjustedPace}</strong>
             <em><small>${t.basePaceShort}</small>${basePace}</em>
           </div>
         </div>
@@ -732,40 +791,78 @@ function renderWorkoutExample(example, t, zone) {
   `;
 }
 
+function getOrderedWorkoutExamples(zoneId, examples) {
+  const ids = examples.map((example) => example.id);
+  const current = state.exampleOrder[zoneId];
+
+  if (
+    !Array.isArray(current) ||
+    current.length !== ids.length ||
+    current.some((id) => !ids.includes(id))
+  ) {
+    state.exampleOrder[zoneId] = ids;
+  }
+
+  return state.exampleOrder[zoneId]
+    .map((id) => examples.find((example) => example.id === id))
+    .filter(Boolean);
+}
+
 function renderPaceZone(zone, t) {
+  const adjustedLabel = zone.id === "R" ? t.rTargetPace : t.adjustedPace;
+  const paceValuesClass = zone.id === "R" ? "pace-values single" : "pace-values";
+
   return `
     <article class="pace-card ${zoneTone[zone.id]}">
       <div class="pace-card-header">
         <span>${zone.id}</span>
         <h3>${t.zoneNames[zone.id]}</h3>
       </div>
-      <div class="pace-values">
+      <div class="${paceValuesClass}">
         <div>
           <dt>${t.basePace}</dt>
           <dd>${zone.base.label}</dd>
         </div>
-        <div class="adjusted">
-          <dt>${t.adjustedPace}</dt>
-          <dd>${zone.adjusted.label}</dd>
-        </div>
+        ${
+          zone.id === "R"
+            ? ""
+            : `<div class="adjusted">
+                <dt>${adjustedLabel}</dt>
+                <dd>${zone.adjusted.label}</dd>
+              </div>`
+        }
       </div>
       ${
-        zone.id === "I" || zone.id === "R"
+        zone.id === "I"
           ? `<div class="split-row">
-              ${renderSplitComparison(t.split400, zone.adjustedSplit400m, zone.baseSplit400m, t)}
-              ${renderSplitComparison(t.split200, zone.adjustedSplit200m, zone.baseSplit200m, t)}
+              ${renderSplitComparison(t.split400, zone.adjustedSplit400m, zone.baseSplit400m, t, zone.id)}
+              ${renderSplitComparison(t.split200, zone.adjustedSplit200m, zone.baseSplit200m, t, zone.id)}
             </div>`
           : ""
       }
+      ${zone.id === "R" ? renderRepetitionHeatNote(t) : ""}
     </article>
   `;
 }
 
-function renderSplitComparison(label, adjusted, base, t) {
+function renderRepetitionHeatNote(t) {
+  return `
+    <div class="pace-card-note">
+      <p>${t.rHeatGuidance}</p>
+      <ul>
+        ${t.rReferences.map((reference) => `<li>${reference}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderSplitComparison(label, adjusted, base, t, zoneId) {
+  const primaryPaceLabel = zoneId === "R" ? t.rTargetPaceShort : t.adjustedPaceShort;
+
   return `
     <span class="split-comparison">
       <b>${label}</b>
-      <strong><small>${t.adjustedPaceShort}</small>${adjusted}</strong>
+      <strong><small>${primaryPaceLabel}</small>${adjusted}</strong>
       <em><small>${t.basePaceShort}</small>${base}</em>
     </span>
   `;
@@ -802,14 +899,31 @@ function bindEvents() {
     card.addEventListener("drop", handlePlanDrop);
   });
 
+  app.querySelectorAll("[data-example-card]").forEach((card) => {
+    card.addEventListener("pointerdown", handleExamplePointerDown);
+    card.addEventListener("pointermove", handleExamplePointerMove);
+    card.addEventListener("pointerup", handleExamplePointerEnd);
+    card.addEventListener("pointercancel", handleExamplePointerEnd);
+    card.addEventListener("lostpointercapture", handleExamplePointerEnd);
+    card.addEventListener("mousedown", handleExampleMouseDown);
+    card.addEventListener("dragstart", handleExampleDragStart);
+    card.addEventListener("dragover", handleExampleDragOver);
+    card.addEventListener("dragend", handleExampleDragEnd);
+    card.addEventListener("drop", handleExampleDrop);
+  });
+
   app.querySelectorAll(".week-scroll").forEach((scroller) => {
     scroller.addEventListener("scroll", positionOpenPlanSwapMenu, { passive: true });
   });
 
   window.removeEventListener("scroll", positionOpenPlanSwapMenu);
   window.removeEventListener("resize", positionOpenPlanSwapMenu);
+  window.removeEventListener("mousemove", handleExampleMouseMove);
+  window.removeEventListener("mouseup", handleExampleMouseEnd);
   window.addEventListener("scroll", positionOpenPlanSwapMenu, { passive: true });
   window.addEventListener("resize", positionOpenPlanSwapMenu);
+  window.addEventListener("mousemove", handleExampleMouseMove);
+  window.addEventListener("mouseup", handleExampleMouseEnd);
 
   positionOpenPlanSwapMenu();
 }
@@ -957,6 +1071,7 @@ function handlePlanDragStart(event) {
   state.draggedPlanIndex = Number(card.dataset.planIndex);
   event.dataTransfer.effectAllowed = "move";
   event.dataTransfer.setData("text/plain", card.dataset.planIndex);
+  setTransparentDragImage(event);
   requestAnimationFrame(() => {
     card.classList.add("is-dragging");
   });
@@ -979,12 +1094,14 @@ function handlePlanDragOver(event) {
   const targetRect = target.getBoundingClientRect();
   const pointerRatio = (event.clientX - targetRect.left) / targetRect.width;
   const movingRight = from < to;
-  const crossedThreshold = movingRight ? pointerRatio > 0.65 : pointerRatio < 0.35;
+  const crossedThreshold = movingRight ? pointerRatio > 0.5 : pointerRatio < 0.5;
   if (!crossedThreshold) return;
 
   animatePlanReorder(grid, () => {
-    const [moved] = state.planOrder.splice(from, 1);
-    state.planOrder.splice(to, 0, moved);
+    [state.planOrder[from], state.planOrder[to]] = [
+      state.planOrder[to],
+      state.planOrder[from]
+    ];
     reorderPlanCards(grid);
   });
 }
@@ -998,6 +1115,170 @@ function handlePlanDragEnd() {
     card.classList.remove("is-dragging");
   });
   state.draggedPlanIndex = null;
+}
+
+function handleExampleDragStart(event) {
+  event.preventDefault();
+}
+
+function handleExampleDragOver(event) {
+  event.preventDefault();
+  swapExampleWithTarget(event.currentTarget, event.clientX);
+}
+
+function handleExamplePointerDown(event) {
+  if (event.button !== 0 && event.pointerType !== "touch") return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
+  const card = event.currentTarget;
+  startExampleCardDrag(card, event.clientX, event.clientY, {
+    pointerId: event.pointerId,
+    mode: "pointer"
+  });
+
+  card.setPointerCapture?.(event.pointerId);
+}
+
+function handleExamplePointerMove(event) {
+  const dragged = state.draggedExample;
+  if (!dragged || dragged.pointerId !== event.pointerId) return;
+
+  const distance = Math.hypot(event.clientX - dragged.startX, event.clientY - dragged.startY);
+  if (!dragged.active) {
+    if (distance < 8) return;
+    dragged.active = true;
+    event.currentTarget.classList.add("is-dragging");
+  }
+
+  event.preventDefault();
+
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest("[data-example-card]");
+  if (!target || target === event.currentTarget) return;
+
+  swapExampleWithTarget(target, event.clientX);
+}
+
+function handleExamplePointerEnd(event) {
+  const dragged = state.draggedExample;
+  if (!dragged || dragged.pointerId !== event.pointerId) return;
+
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
+  clearExampleDragState();
+}
+
+function handleExampleMouseDown(event) {
+  if (event.button !== 0) return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
+  startExampleCardDrag(event.currentTarget, event.clientX, event.clientY, {
+    mode: "mouse"
+  });
+  event.preventDefault();
+}
+
+function handleExampleMouseMove(event) {
+  const dragged = state.draggedExample;
+  if (!dragged || dragged.mode !== "mouse") return;
+
+  const distance = Math.hypot(event.clientX - dragged.startX, event.clientY - dragged.startY);
+  const card = getDraggedExampleCard();
+  if (!dragged.active) {
+    if (distance < 8) return;
+    dragged.active = true;
+    card?.classList.add("is-dragging");
+  }
+
+  event.preventDefault();
+
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest("[data-example-card]");
+  if (!target || target === card) return;
+
+  swapExampleWithTarget(target, event.clientX);
+}
+
+function handleExampleMouseEnd() {
+  const dragged = state.draggedExample;
+  if (!dragged || dragged.mode !== "mouse") return;
+  clearExampleDragState();
+}
+
+function startExampleCardDrag(card, startX, startY, details) {
+  state.draggedExample = {
+    zone: card.dataset.exampleZone,
+    id: card.dataset.exampleId,
+    startX,
+    startY,
+    active: false,
+    ...details
+  };
+}
+
+function getDraggedExampleCard() {
+  const dragged = state.draggedExample;
+  if (!dragged) return null;
+
+  return (
+    [...app.querySelectorAll("[data-example-card]")].find(
+      (card) =>
+        card.dataset.exampleZone === dragged.zone &&
+        card.dataset.exampleId === dragged.id
+    ) ?? null
+  );
+}
+
+function swapExampleWithTarget(target, clientX) {
+  const row = target.closest(".example-row");
+  const dragged = state.draggedExample;
+  const zone = target.dataset.exampleZone;
+  const targetId = target.dataset.exampleId;
+
+  if (!row || !dragged || dragged.zone !== zone || dragged.id === targetId) return;
+
+  const order = state.exampleOrder[zone];
+  if (!Array.isArray(order)) return;
+
+  const from = order.indexOf(dragged.id);
+  const to = order.indexOf(targetId);
+  if (from < 0 || to < 0 || from === to) return;
+
+  const targetRect = target.getBoundingClientRect();
+  const pointerRatio = (clientX - targetRect.left) / targetRect.width;
+  const movingRight = from < to;
+  const crossedThreshold = movingRight ? pointerRatio > 0.5 : pointerRatio < 0.5;
+  if (!crossedThreshold) return;
+
+  animatePlanReorder(row, () => {
+    [order[from], order[to]] = [order[to], order[from]];
+    reorderExampleCards(row, zone);
+  });
+}
+
+function handleExampleDrop(event) {
+  event.preventDefault();
+}
+
+function handleExampleDragEnd() {
+  clearExampleDragState();
+}
+
+function clearExampleDragState() {
+  app.querySelectorAll("[data-example-card]").forEach((card) => {
+    card.classList.remove("is-dragging");
+  });
+  state.draggedExample = null;
+}
+
+function setTransparentDragImage(event) {
+  if (!event.dataTransfer?.setDragImage) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  event.dataTransfer.setDragImage(canvas, 0, 0);
 }
 
 function positionOpenPlanSwapMenu() {
@@ -1026,17 +1307,19 @@ function positionOpenPlanSwapMenu() {
 }
 
 function animatePlanReorder(grid, mutate) {
+  const selector = "[data-plan-card], [data-example-card]";
+  const getCardKey = (card) => card.dataset.planIndex ?? card.dataset.exampleId;
   const firstRects = new Map(
-    [...grid.querySelectorAll("[data-plan-card]")].map((card) => [
-      card.dataset.planIndex,
+    [...grid.querySelectorAll(selector)].map((card) => [
+      getCardKey(card),
       card.getBoundingClientRect()
     ])
   );
 
   mutate();
 
-  grid.querySelectorAll("[data-plan-card]").forEach((card) => {
-    const first = firstRects.get(card.dataset.planIndex);
+  grid.querySelectorAll(selector).forEach((card) => {
+    const first = firstRects.get(getCardKey(card));
     if (!first) return;
 
     const last = card.getBoundingClientRect();
@@ -1064,6 +1347,20 @@ function reorderPlanCards(grid) {
   state.planOrder.forEach((index) => {
     const card = cards.get(index);
     if (card) grid.append(card);
+  });
+}
+
+function reorderExampleCards(row, zone) {
+  const cards = new Map(
+    [...row.querySelectorAll("[data-example-card]")].map((card) => [
+      card.dataset.exampleId,
+      card
+    ])
+  );
+
+  state.exampleOrder[zone].forEach((id) => {
+    const card = cards.get(id);
+    if (card) row.append(card);
   });
 }
 

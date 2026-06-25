@@ -229,9 +229,11 @@ export function calculatePaceModel(input = {}) {
   const humidity = clamp(Number(input.humidity ?? 60), 0, 100);
   const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity);
   const mileageClass = getMileageClass(weeklyMileageKm);
-  const zones = zoneDefinitions.map((zone) =>
-    buildZonePace(zone, vdot, heatAdjustment.multiplier, unitSystem)
-  );
+  const zones = zoneDefinitions.map((zone) => {
+    const heatMultiplier =
+      zone.id === PaceZone.REPETITION ? 1 : heatAdjustment.multiplier;
+    return buildZonePace(zone, vdot, heatMultiplier, unitSystem);
+  });
 
   return {
     vdot,
@@ -757,6 +759,7 @@ function buildZonePace(zone, vdot, heatMultiplier, unitSystem) {
   const slowerPace = secondsPerKmForIntensity(vdot, zone.intensityRange[0]);
   const adjustedFaster = fasterPace * heatMultiplier;
   const adjustedSlower = slowerPace * heatMultiplier;
+  const heatAdjusted = heatMultiplier > 1.001;
 
   return {
     id: zone.id,
@@ -778,6 +781,7 @@ function buildZonePace(zone, vdot, heatMultiplier, unitSystem) {
     adjustedSplit200m: formatSplitRange(adjustedFaster, adjustedSlower, 200),
     split400m: formatSplitRange(adjustedFaster, adjustedSlower, 400),
     split200m: formatSplitRange(adjustedFaster, adjustedSlower, 200),
+    heatAdjusted,
     displayUnit: zone.displayUnit
   };
 }

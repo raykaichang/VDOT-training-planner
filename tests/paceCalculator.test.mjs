@@ -46,6 +46,12 @@ const interval = model.zones.find((zone) => zone.id === PaceZone.INTERVAL);
 assert.notEqual(interval.baseSplit400m, interval.adjustedSplit400m);
 assert.notEqual(interval.baseSplit200m, interval.adjustedSplit200m);
 
+const repetition = model.zones.find((zone) => zone.id === PaceZone.REPETITION);
+assert.equal(repetition.base.label, repetition.adjusted.label);
+assert.equal(repetition.baseSplit400m, repetition.adjustedSplit400m);
+assert.equal(repetition.baseSplit200m, repetition.adjustedSplit200m);
+assert.equal(repetition.heatAdjusted, false);
+
 const imperialModel = calculatePaceModel({
   vdot: 50,
   unitSystem: UnitSystem.IMPERIAL,
