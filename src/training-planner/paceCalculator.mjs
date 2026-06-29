@@ -41,28 +41,28 @@ const zoneDefinitions = Object.freeze([
     id: PaceZone.MARATHON,
     zhName: "馬拉松配速",
     enName: "Marathon",
-    intensityRange: [0.75, 0.84],
+    targetIntensity: 0.84,
     displayUnit: "pace"
   },
   {
     id: PaceZone.THRESHOLD,
     zhName: "乳酸閾值",
     enName: "Threshold",
-    intensityRange: [0.83, 0.88],
+    targetIntensity: 0.88,
     displayUnit: "pace"
   },
   {
     id: PaceZone.INTERVAL,
     zhName: "間歇",
     enName: "Interval",
-    intensityRange: [0.95, 1],
+    targetIntensity: 1,
     displayUnit: "pace"
   },
   {
     id: PaceZone.REPETITION,
     zhName: "反覆跑",
     enName: "Repetition",
-    intensityRange: [1.05, 1.1],
+    targetIntensity: 1.1,
     displayUnit: "split"
   }
 ]);
@@ -755,8 +755,15 @@ function roundDistance(value) {
 }
 
 function buildZonePace(zone, vdot, heatMultiplier, unitSystem) {
-  const fasterPace = secondsPerKmForIntensity(vdot, zone.intensityRange[1]);
-  const slowerPace = secondsPerKmForIntensity(vdot, zone.intensityRange[0]);
+  const isRange = Array.isArray(zone.intensityRange);
+  const fasterPace = secondsPerKmForIntensity(
+    vdot,
+    isRange ? zone.intensityRange[1] : zone.targetIntensity
+  );
+  const slowerPace = secondsPerKmForIntensity(
+    vdot,
+    isRange ? zone.intensityRange[0] : zone.targetIntensity
+  );
   const adjustedFaster = fasterPace * heatMultiplier;
   const adjustedSlower = slowerPace * heatMultiplier;
   const heatAdjusted = heatMultiplier > 1.001;
@@ -809,15 +816,15 @@ function formatPaceRange(fasterSeconds, slowerSeconds, unitSystem = UnitSystem.M
     normalizeUnitSystem(unitSystem) === UnitSystem.IMPERIAL ? KM_PER_MILE : 1;
   const suffix =
     normalizeUnitSystem(unitSystem) === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
-  return `${formatPace(fasterSeconds * multiplier)} - ${formatPace(
-    slowerSeconds * multiplier
-  )} ${suffix}`;
+  const faster = formatPace(fasterSeconds * multiplier);
+  const slower = formatPace(slowerSeconds * multiplier);
+  return faster === slower ? `${faster} ${suffix}` : `${faster} - ${slower} ${suffix}`;
 }
 
 function formatSplitRange(fasterSecondsPerKm, slowerSecondsPerKm, meters) {
-  return `${formatDuration((fasterSecondsPerKm * meters) / 1000)} - ${formatDuration(
-    (slowerSecondsPerKm * meters) / 1000
-  )}`;
+  const faster = formatDuration((fasterSecondsPerKm * meters) / 1000);
+  const slower = formatDuration((slowerSecondsPerKm * meters) / 1000);
+  return faster === slower ? faster : `${faster} - ${slower}`;
 }
 
 function formatPace(seconds) {

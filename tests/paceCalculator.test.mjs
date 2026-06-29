@@ -37,8 +37,22 @@ assert.equal(
 assert.ok(model.heatAdjustment.percentage > 0);
 assert.ok(model.heatAdjustment.recoveryPercentage > model.heatAdjustment.percentage);
 
+const easy = model.zones.find((zone) => zone.id === PaceZone.EASY);
+assert.match(easy.base.label, / - /);
+assert.match(easy.adjusted.label, / - /);
+
+for (const zoneId of [
+  PaceZone.MARATHON,
+  PaceZone.THRESHOLD,
+  PaceZone.INTERVAL,
+  PaceZone.REPETITION
+]) {
+  const zone = model.zones.find((item) => item.id === zoneId);
+  assert.doesNotMatch(zone.base.label, / - /);
+  assert.doesNotMatch(zone.adjusted.label, / - /);
+}
+
 const threshold = model.zones.find((zone) => zone.id === PaceZone.THRESHOLD);
-assert.ok(threshold.base.faster < threshold.base.slower);
 assert.ok(threshold.adjusted.faster > threshold.base.faster);
 assert.ok(threshold.adjusted.slower > threshold.base.slower);
 

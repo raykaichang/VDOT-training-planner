@@ -223,6 +223,13 @@ input[type="range"]::-moz-range-thumb {
   gap: 12px;
 }
 
+.field-note {
+  margin: -6px 2px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .ability-select {
   position: relative;
 }

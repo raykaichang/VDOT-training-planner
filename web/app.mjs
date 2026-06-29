@@ -9,9 +9,9 @@ import {
 
 const copy = {
   "zh-TW": {
-    appTitle: "VDOT 配速區間工具",
+    appTitle: "VDOT 配速工具",
     subtitle:
-      "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速區間與熱環境調整。",
+      "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速與熱環境調整。",
     language: "語言",
     inputs: "跑者資料",
     vdot: "VDOT",
@@ -31,13 +31,15 @@ const copy = {
     imperialUnit: "英制 mile",
     targetRace: "目前專項",
     trainingCycle: "訓練週期",
+    trainingCycleHelp:
+      "四期週期用來決定本週品質課重點。以 24 週備賽為例，各期約 6 週；若只有 16-18 週，常壓縮為各 4-5 週。Phase I 基礎與防傷；Phase II 初始品質；Phase III 專項品質；Phase IV 保留關鍵刺激並降低疲勞。",
     temperature: "溫度",
     humidity: "濕度",
     kmPerWeek: "km / 週",
     miPerWeek: "mi / 週",
     celsius: "°C",
     percent: "%",
-    paceZones: "能力配速區間",
+    paceZones: "能力配速",
     basePace: "原始配速",
     adjustedPace: "調整後配速",
     basePaceShort: "未調整",
@@ -80,10 +82,10 @@ const copy = {
     split200: "200m",
     noteTitle: "使用提醒",
     note:
-      "Daniels 書中有 VDOT、E/M/T/I/R 訓練強度與週期安排的概念，但沒有直接列出「每個 VDOT 對應一段配速範圍」。因此，本工具以公式推估區間，並依台灣常見的高溫高濕環境做調整。",
+      "Daniels VDOT 表通常把 M/T/I/R 顯示為單一目標配速；本分支也改用單點配速。E 保留範圍，因為 E 跑的目的在於用可恢復、可交談的強度累積有氧跑量，而不是精準刺激單一生理門檻，所以能依疲勞、天氣與地形在一段配速範圍內調整。",
     sourceTitle: "資料來源與計算方式",
     sourceNote:
-      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構與 E/M/T/I/R 訓練強度概念。計算時，先把各強度設定為 VDOT 的比例區間（E 59-74%、M 75-84%、T 83-88%、I 95-100%、R 105-110%），再用跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度，換算成配速。熱天配速調整只套用在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。課量上限以 Daniels 原則估算：T 以週跑量 10% 與 24 km（15 mi）相比，取較低值為上限；I 以週跑量 8% 與 10 km 相比，取較低值為上限；R 以週跑量 5% 與 8 km（5 mi）相比，取較低值為上限。",
+      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構、E/M/T/I/R 訓練強度概念與四期週期。先前用強度比例帶呈現 E/M/T/I/R 區間時，相鄰區間可能因比例帶接近、四捨五入與熱天降速後看起來重合；這不是 Daniels VDOT 表本身有多個 T/I/R 配速，而是區間呈現造成的視覺結果。現在 E 仍以 59-74% VDOT 的範圍估算；M/T/I/R 改用單點目標強度，並以跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度後換算成配速。熱天配速調整保留在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。課量上限以 Daniels 原則估算：T 上限為週跑量 10%，但不超過 24 km（15 mi）；I 上限為週跑量 8%，但不超過 10 km；R 上限為週跑量 5%，但不超過 8 km（5 mi）。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -116,7 +118,7 @@ const copy = {
   en: {
     appTitle: "VDOT Pace Zone Tool",
     subtitle:
-      "Enter VDOT, mileage, temperature, and humidity to estimate training pace ranges with heat adjustment.",
+      "Enter VDOT, mileage, temperature, and humidity to estimate training paces with heat adjustment.",
     language: "Language",
     inputs: "Runner Inputs",
     vdot: "VDOT",
@@ -136,13 +138,15 @@ const copy = {
     imperialUnit: "Imperial mile",
     targetRace: "Target Event",
     trainingCycle: "Training Cycle",
+    trainingCycleHelp:
+      "The four-phase cycle changes the weekly quality emphasis. In a 24-week build, each phase is roughly 6 weeks; a 16-18 week build often compresses phases to about 4-5 weeks. Phase I builds durability, Phase II adds initial quality, Phase III shifts event-specific, and Phase IV keeps key stimulus while reducing fatigue.",
     temperature: "Temperature",
     humidity: "Humidity",
     kmPerWeek: "km / week",
     miPerWeek: "mi / week",
     celsius: "°C",
     percent: "%",
-    paceZones: "Ability-Based Pace Zones",
+    paceZones: "Ability-Based Paces",
     basePace: "Base Pace",
     adjustedPace: "Adjusted Pace",
     basePaceShort: "Base",
@@ -185,10 +189,10 @@ const copy = {
     split200: "200m",
     noteTitle: "Reminder",
     note:
-      "Daniels defines the VDOT framework, E/M/T/I/R training intensities, and phase planning concepts, but does not directly provide a pace range for every VDOT. This tool estimates ranges from formulas and adjusts E/M/T/I for hot, humid conditions.",
+      "Daniels VDOT tables generally present M/T/I/R as point target paces, so this branch now displays them as point targets. E remains a range because easy running is meant to accumulate aerobic volume at a recoverable, conversational effort rather than hit one precise physiological threshold; it can flex with fatigue, weather, and terrain.",
     sourceTitle: "Source & Calculation",
     sourceNote:
-      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework and E/M/T/I/R intensity concepts. It assigns each intensity to a VDOT percentage band (E 59-74%, M 75-84%, T 83-88%, I 95-100%, R 105-110%), solves the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² for velocity, then converts that velocity to pace. Heat/humidity pace adjustment is applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Daniels-style volume guardrails: T is capped at the lower value between 10% weekly mileage and 24 km (15 mi); I is capped at the lower value between 8% weekly mileage and 10 km; R is capped at the lower value between 5% weekly mileage and 8 km (5 mi).",
+      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework, E/M/T/I/R intensity concepts, and four-phase planning. The earlier range-based display could make adjacent zones appear to overlap because intensity bands were close, values were rounded, and heat adjustment slowed E/M/T/I paces. That overlap was a display choice, not a claim that the VDOT table has multiple T/I/R paces for one VDOT. E is still estimated as a 59-74% VDOT range; M/T/I/R now use point target intensities and the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² to solve velocity and convert it to pace. Heat/humidity pace adjustment is still applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Daniels-style volume guardrails: T is capped at 10% of weekly mileage and not more than 24 km (15 mi); I is capped at 8% and not more than 10 km; R is capped at 5% and not more than 8 km (5 mi).",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -361,6 +365,7 @@ function renderInputs(t) {
           label: t.cycleNames[value]
         }))
       )}
+      <p class="field-note">${t.trainingCycleHelp}</p>
       ${renderRangeField(
         t.weeklyMileage,
         "weeklyMileage",
