@@ -14,12 +14,33 @@ const copy = {
       "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速與熱環境調整。",
     language: "語言",
     inputs: "跑者資料",
+    toolMode: "功能模式",
+    plannerMode: "訓練配速與課表",
+    heatEquivalentMode: "熱環境等效換算",
+    toolSection: "工具",
+    collapseSidebar: "收合側邊欄",
+    expandSidebar: "展開側邊欄",
+    themeMode: "外觀",
+    darkTheme: "深色",
+    lightTheme: "淺色",
     vdot: "VDOT",
     vdotSource: "能力來源",
     directVdot: "直接輸入 VDOT",
     raceResult: "近期成績換算",
     raceDistance: "比賽距離",
     raceTime: "最佳成績",
+    converterType: "換算類型",
+    paceConverter: "配速換算",
+    raceConverter: "成績換算",
+    baselinePace: "基準配速",
+    equivalentRace: "理想成績",
+    equivalentResult: "等效換算結果",
+    equivalentPace: "熱環境等強配速",
+    heatEquivalentTime: "熱環境等效成績",
+    baselineTime: "基準成績",
+    averagePace: "平均配速",
+    converterAssumption:
+      "假設輸入值是在涼爽或基準條件下的目標；下方用目前溫濕度估算相同主觀強度在熱環境下的大約配速或成績。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
     hours: "時",
     minutes: "分",
     seconds: "秒",
@@ -58,7 +79,7 @@ const copy = {
     dewPoint: "露點",
     heatFormulaTitle: "熱環境估算式",
     heatFormula:
-      "露點 Td 以 Magnus 公式估算。降速比例 = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%)；調整後配速 = 原始配速 × (1 + 降速比例)。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。",
+      "露點 Td 以 Magnus 公式估算。降速比例 = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%)；調整後配速 = 原始配速 × (1 + 降速比例)。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
     heatReferencesTitle: "熱環境參考文獻",
     heatReferences: [
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
@@ -121,12 +142,33 @@ const copy = {
       "Enter VDOT, mileage, temperature, and humidity to estimate training paces with heat adjustment.",
     language: "Language",
     inputs: "Runner Inputs",
+    toolMode: "Tool Mode",
+    plannerMode: "Training Paces & Plan",
+    heatEquivalentMode: "Heat Equivalent Converter",
+    toolSection: "Tools",
+    collapseSidebar: "Collapse sidebar",
+    expandSidebar: "Expand sidebar",
+    themeMode: "Theme",
+    darkTheme: "Dark",
+    lightTheme: "Light",
     vdot: "VDOT",
     vdotSource: "Ability Source",
     directVdot: "Enter VDOT",
     raceResult: "Convert Race Result",
     raceDistance: "Race Distance",
     raceTime: "Best Time",
+    converterType: "Converter Type",
+    paceConverter: "Pace Converter",
+    raceConverter: "Race Result Converter",
+    baselinePace: "Baseline Pace",
+    equivalentRace: "Goal Result",
+    equivalentResult: "Equivalent Result",
+    equivalentPace: "Heat-Equivalent Pace",
+    heatEquivalentTime: "Heat-Equivalent Result",
+    baselineTime: "Baseline Result",
+    averagePace: "Average Pace",
+    converterAssumption:
+      "Assumption: the input is a cool-condition or baseline target. The result estimates the pace or finish time for roughly the same effort under the selected temperature and humidity. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
     hours: "Hr",
     minutes: "Min",
     seconds: "Sec",
@@ -165,7 +207,7 @@ const copy = {
     dewPoint: "Dew Point",
     heatFormulaTitle: "Heat Adjustment Formula",
     heatFormula:
-      "Dew point Td is estimated with the Magnus formula. Slowdown = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%); adjusted pace = base pace × (1 + slowdown). Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead.",
+      "Dew point Td is estimated with the Magnus formula. Slowdown = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%); adjusted pace = base pace × (1 + slowdown). Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
     heatReferencesTitle: "Heat References",
     heatReferences: [
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
@@ -240,6 +282,10 @@ const raceDistanceOptions = [
   { meters: 42195, zh: "馬拉松", en: "Marathon" }
 ];
 
+const equivalentRaceOptions = raceDistanceOptions.filter(
+  (optionItem) => optionItem.meters >= 5000
+);
+
 const targetRaceOptions = [
   TargetRace.EIGHT_HUNDRED,
   TargetRace.MILE_TO_TWO_MILE,
@@ -258,7 +304,11 @@ const trainingCycleOptions = [
 
 const state = {
   locale: "zh-TW",
+  toolMode: "planner",
+  sidebarOpen: true,
+  theme: "light",
   abilityMode: "vdot",
+  converterType: "pace",
   openMenu: null,
   unitSystem: UnitSystem.METRIC,
   targetRace: TargetRace.FIVE_TEN_K,
@@ -268,6 +318,12 @@ const state = {
   raceHours: 0,
   raceMinutes: 20,
   raceSeconds: 0,
+  equivalentRaceDistanceMeters: 5000,
+  equivalentRaceHours: 0,
+  equivalentRaceMinutes: 20,
+  equivalentRaceSeconds: 0,
+  paceMinutes: 5,
+  paceSeconds: 0,
   weeklyMileage: 58,
   temperatureC: 26,
   humidity: 70,
@@ -286,95 +342,116 @@ function render() {
   const t = copy[state.locale];
   const activeVdot = getActiveVdot();
   const model = calculatePaceModel({ ...state, vdot: activeVdot });
+  const isConverter = state.toolMode === "equivalent";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
+  document.documentElement.dataset.theme = state.theme;
   app.innerHTML = `
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">VDOT Pace Lab</p>
-        <h1>${t.appTitle}</h1>
-        <p class="subtitle">${t.subtitle}</p>
+    <div class="app-workspace ${state.sidebarOpen ? "" : "sidebar-collapsed"}">
+      ${renderToolSidebar(t)}
+      <div class="content-shell">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">VDOT Pace Lab</p>
+            <h1>${t.appTitle}</h1>
+            <p class="subtitle">${t.subtitle}</p>
+          </div>
+          <div class="topbar-controls">
+            ${renderThemeSwitch(t)}
+            ${renderMenuField(t.language, "locale", state.locale, [
+              { value: "zh-TW", label: "中文" },
+              { value: "en", label: "EN" }
+            ], "language-toggle")}
+          </div>
+        </header>
+
+        <main class="pace-layout">
+          <section class="control-panel" aria-labelledby="inputs-title">
+            <div class="section-heading">
+              <p class="eyebrow">Runner</p>
+              <h2 id="inputs-title">${t.inputs}</h2>
+            </div>
+            ${renderInputs(t, isConverter)}
+            ${renderEnvironmentSummary(model, t)}
+            ${isConverter ? "" : renderMileageClass(model, t)}
+          </section>
+
+          <section class="results-panel" aria-live="polite">
+            ${
+              isConverter
+                ? renderEquivalentResults(model, t)
+                : `
+                  <div class="section-heading">
+                    <p class="eyebrow">VDOT ${model.vdot}</p>
+                    <h2>${t.workoutExamples}</h2>
+                  </div>
+                  ${renderWeeklySchedule(model, t)}
+                  ${renderWorkoutExamples(model, t)}
+                  <aside class="note-panel">
+                    <h2>${t.noteTitle}</h2>
+                    <p>${t.note}</p>
+                    <h3>${t.sourceTitle}</h3>
+                    <p>${t.sourceNote}</p>
+                  </aside>
+                `
+            }
+          </section>
+        </main>
+        ${isConverter ? "" : renderPaceZonePanel(model, t)}
       </div>
-      ${renderMenuField(t.language, "locale", state.locale, [
-        { value: "zh-TW", label: "中文" },
-        { value: "en", label: "EN" }
-      ], "language-toggle")}
-    </header>
-
-    <main class="pace-layout">
-      <section class="control-panel" aria-labelledby="inputs-title">
-        <div class="section-heading">
-          <p class="eyebrow">Runner</p>
-          <h2 id="inputs-title">${t.inputs}</h2>
-        </div>
-        ${renderInputs(t)}
-        ${renderEnvironmentSummary(model, t)}
-        ${renderMileageClass(model, t)}
-      </section>
-
-      <section class="results-panel" aria-live="polite">
-        <div class="section-heading">
-          <p class="eyebrow">VDOT ${model.vdot}</p>
-          <h2>${t.workoutExamples}</h2>
-        </div>
-        ${renderWeeklySchedule(model, t)}
-        ${renderWorkoutExamples(model, t)}
-        <aside class="note-panel">
-          <h2>${t.noteTitle}</h2>
-          <p>${t.note}</p>
-          <h3>${t.sourceTitle}</h3>
-          <p>${t.sourceNote}</p>
-        </aside>
-      </section>
-    </main>
-
-    ${renderPaceZonePanel(model, t)}
+    </div>
   `;
 
   bindEvents();
-  fitPaceZonePanel();
+  if (!isConverter) fitPaceZonePanel();
 }
 
-function renderInputs(t) {
+function renderInputs(t, isConverter) {
   const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   const mileageUnit =
     state.unitSystem === UnitSystem.IMPERIAL ? t.miPerWeek : t.kmPerWeek;
 
   return `
     <div class="field-grid">
-      ${renderAbilityInput(t)}
       ${renderMenuField(t.unitSystem, "unitSystem", state.unitSystem, [
         { value: UnitSystem.METRIC, label: t.metricUnit },
         { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
       ])}
-      ${renderMenuField(
-        t.targetRace,
-        "targetRace",
-        state.targetRace,
-        targetRaceOptions.map((value) => ({
-          value,
-          label: t.targetRaceNames[value]
-        }))
-      )}
-      ${renderMenuField(
-        t.trainingCycle,
-        "trainingCycle",
-        state.trainingCycle,
-        trainingCycleOptions.map((value) => ({
-          value,
-          label: t.cycleNames[value]
-        }))
-      )}
-      <p class="field-note">${t.trainingCycleHelp}</p>
-      ${renderRangeField(
-        t.weeklyMileage,
-        "weeklyMileage",
-        state.weeklyMileage,
-        0,
-        mileageMax,
-        1,
-        mileageUnit
-      )}
+      ${
+        isConverter
+          ? renderEquivalentInputs(t)
+          : `
+            ${renderAbilityInput(t)}
+            ${renderMenuField(
+              t.targetRace,
+              "targetRace",
+              state.targetRace,
+              targetRaceOptions.map((value) => ({
+                value,
+                label: t.targetRaceNames[value]
+              }))
+            )}
+            ${renderMenuField(
+              t.trainingCycle,
+              "trainingCycle",
+              state.trainingCycle,
+              trainingCycleOptions.map((value) => ({
+                value,
+                label: t.cycleNames[value]
+              }))
+            )}
+            <p class="field-note">${t.trainingCycleHelp}</p>
+            ${renderRangeField(
+              t.weeklyMileage,
+              "weeklyMileage",
+              state.weeklyMileage,
+              0,
+              mileageMax,
+              1,
+              mileageUnit
+            )}
+          `
+      }
       ${renderRangeField(
         t.temperature,
         "temperatureC",
@@ -386,6 +463,115 @@ function renderInputs(t) {
       )}
       ${renderRangeField(t.humidity, "humidity", state.humidity, 0, 100, 1, t.percent)}
     </div>
+  `;
+}
+
+function renderToolSidebar(t) {
+  const items = [
+    {
+      value: "planner",
+      label: t.plannerMode,
+      icon: renderSidebarIcon("plan")
+    },
+    {
+      value: "equivalent",
+      label: t.heatEquivalentMode,
+      icon: renderSidebarIcon("heat")
+    }
+  ];
+
+  return `
+    <aside class="tool-sidebar" aria-label="${t.toolMode}">
+      <div class="tool-sidebar-head">
+        <div>
+          <span>${t.toolSection}</span>
+          <strong>VDOT</strong>
+        </div>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          data-action="toggle-sidebar"
+          aria-label="${state.sidebarOpen ? t.collapseSidebar : t.expandSidebar}"
+          aria-expanded="${state.sidebarOpen}"
+        >
+          ${state.sidebarOpen ? "‹" : "›"}
+        </button>
+      </div>
+      <nav class="tool-sidebar-nav">
+        ${items
+          .map(
+            (item) => `
+              <button
+                type="button"
+                class="${state.toolMode === item.value ? "active" : ""}"
+                data-action="select-menu-option"
+                data-field="toolMode"
+                data-value="${item.value}"
+                aria-current="${state.toolMode === item.value ? "page" : "false"}"
+                title="${item.label}"
+              >
+                <span class="tool-icon" aria-hidden="true">${item.icon}</span>
+                <span class="tool-label">${item.label}</span>
+              </button>
+            `
+          )
+          .join("")}
+      </nav>
+    </aside>
+  `;
+}
+
+function renderThemeSwitch(t) {
+  return `
+    <div class="theme-switch" aria-label="${t.themeMode}">
+      <span>${t.themeMode}</span>
+      <div>
+        <button
+          type="button"
+          class="${state.theme === "dark" ? "active" : ""}"
+          data-action="set-theme"
+          data-theme="dark"
+          aria-pressed="${state.theme === "dark"}"
+          title="${t.darkTheme}"
+        >
+          <span aria-hidden="true">☾</span>
+          <b>${t.darkTheme}</b>
+        </button>
+        <button
+          type="button"
+          class="${state.theme === "light" ? "active" : ""}"
+          data-action="set-theme"
+          data-theme="light"
+          aria-pressed="${state.theme === "light"}"
+          title="${t.lightTheme}"
+        >
+          <span aria-hidden="true">☼</span>
+          <b>${t.lightTheme}</b>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderSidebarIcon(type) {
+  if (type === "heat") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M14 14.8V5.5a3 3 0 0 0-6 0v9.3a5 5 0 1 0 6 0Z" />
+        <path d="M11 17.5v-6" />
+        <path d="M17 6h3" />
+        <path d="M17 10h3" />
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" focusable="false">
+      <path d="M6 5h12" />
+      <path d="M6 12h8" />
+      <path d="M6 19h12" />
+      <path d="M17 10l2 2-2 2" />
+    </svg>
   `;
 }
 
@@ -441,6 +627,69 @@ function renderRaceResultInput(t, estimate) {
   `;
 }
 
+function renderEquivalentInputs(t) {
+  return `
+    ${renderMenuField(t.converterType, "converterType", state.converterType, [
+      { value: "pace", label: t.paceConverter },
+      { value: "race", label: t.raceConverter }
+    ])}
+    ${
+      state.converterType === "pace"
+        ? renderPaceEquivalentInput(t)
+        : renderRaceEquivalentInput(t)
+    }
+    <p class="field-note">${t.converterAssumption}</p>
+  `;
+}
+
+function renderPaceEquivalentInput(t) {
+  const unit = state.unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
+  return `
+    <fieldset class="time-fieldset pace-time-fieldset">
+      <legend>${t.baselinePace} ${unit}</legend>
+      <label>
+        <span>${t.minutes}</span>
+        <input data-field="paceMinutes" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="30" step="1" value="${state.paceMinutes}" />
+      </label>
+      <label>
+        <span>${t.seconds}</span>
+        <input data-field="paceSeconds" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.paceSeconds}" />
+      </label>
+    </fieldset>
+  `;
+}
+
+function renderRaceEquivalentInput(t) {
+  return `
+    <div class="race-result-grid single">
+      ${renderMenuField(
+        t.raceDistance,
+        "equivalentRaceDistanceMeters",
+        String(state.equivalentRaceDistanceMeters),
+        equivalentRaceOptions.map((optionItem) => ({
+          value: String(optionItem.meters),
+          label: state.locale === "en" ? optionItem.en : optionItem.zh
+        }))
+      )}
+    </div>
+    <fieldset class="time-fieldset">
+      <legend>${t.equivalentRace}</legend>
+      <label>
+        <span>${t.hours}</span>
+        <input data-field="equivalentRaceHours" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="9" step="1" value="${state.equivalentRaceHours}" />
+      </label>
+      <label>
+        <span>${t.minutes}</span>
+        <input data-field="equivalentRaceMinutes" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.equivalentRaceMinutes}" />
+      </label>
+      <label>
+        <span>${t.seconds}</span>
+        <input data-field="equivalentRaceSeconds" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.equivalentRaceSeconds}" />
+      </label>
+    </fieldset>
+  `;
+}
+
 function renderRangeField(label, field, value, min, max, step, unit) {
   return `
     <label class="field range-field">
@@ -451,6 +700,41 @@ function renderRangeField(label, field, value, min, max, step, unit) {
         <b>${unit}</b>
       </div>
     </label>
+  `;
+}
+
+function renderEquivalentResults(model, t) {
+  const result =
+    state.converterType === "pace"
+      ? getPaceEquivalent(model.heatAdjustment.multiplier)
+      : getRaceEquivalent(model.heatAdjustment.multiplier);
+
+  return `
+    <div class="section-heading">
+      <p class="eyebrow">${t.heatEquivalentMode}</p>
+      <h2>${t.equivalentResult}</h2>
+    </div>
+    <section class="equivalent-panel">
+      <p class="equivalent-lead">${t.converterAssumption}</p>
+      <div class="equivalent-grid">
+        ${result.cards
+          .map(
+            (card) => `
+              <article class="equivalent-card ${card.highlight ? "highlight" : ""}">
+                <span>${card.label}</span>
+                <strong>${card.value}</strong>
+                ${card.meta ? `<small>${card.meta}</small>` : ""}
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+      <aside class="note-panel equivalent-note">
+        <h2>${t.heatAdjustment}</h2>
+        <p>${t.slowerBy}: ${model.heatAdjustment.percentage}% · ${t.dewPoint}: ${model.heatAdjustment.dewPoint}${t.celsius}</p>
+        <p>${state.converterType === "pace" ? t.paceConverter : t.raceConverter}</p>
+      </aside>
+    </section>
   `;
 }
 
@@ -999,6 +1283,8 @@ function updateFieldValue(field, value) {
 
   if (
     field === "locale" ||
+    field === "toolMode" ||
+    field === "converterType" ||
     field === "abilityMode" ||
     field === "targetRace" ||
     field === "trainingCycle"
@@ -1016,6 +1302,10 @@ function updateUnitSystem(nextUnitSystem) {
     state.unitSystem === UnitSystem.IMPERIAL
       ? state.weeklyMileage * KM_PER_MILE
       : state.weeklyMileage;
+  const paceSecondsPerKm =
+    state.unitSystem === UnitSystem.IMPERIAL
+      ? getPaceInputSeconds() / KM_PER_MILE
+      : getPaceInputSeconds();
 
   state.unitSystem = nextUnitSystem;
   const convertedMileage =
@@ -1024,6 +1314,17 @@ function updateUnitSystem(nextUnitSystem) {
       : Math.round(weeklyMileageKm);
   const nextMax = nextUnitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   state.weeklyMileage = Math.min(nextMax, Math.max(0, convertedMileage));
+
+  const convertedPaceSeconds =
+    nextUnitSystem === UnitSystem.IMPERIAL
+      ? paceSecondsPerKm * KM_PER_MILE
+      : paceSecondsPerKm;
+  state.paceMinutes = Math.floor(convertedPaceSeconds / 60);
+  state.paceSeconds = Math.round(convertedPaceSeconds % 60);
+  if (state.paceSeconds >= 60) {
+    state.paceMinutes += 1;
+    state.paceSeconds = 0;
+  }
 }
 
 function handleAction(event) {
@@ -1032,6 +1333,16 @@ function handleAction(event) {
   if (action === "toggle-menu") {
     const menu = event.currentTarget.dataset.menu;
     state.openMenu = state.openMenu === menu ? null : menu;
+  }
+
+  if (action === "toggle-sidebar") {
+    state.sidebarOpen = !state.sidebarOpen;
+    state.openMenu = null;
+  }
+
+  if (action === "set-theme") {
+    state.theme = event.currentTarget.dataset.theme === "light" ? "light" : "dark";
+    state.openMenu = null;
   }
 
   if (action === "select-menu-option") {
@@ -1522,6 +1833,114 @@ function getRaceTimeSeconds() {
 
   const totalSeconds = hours * 3600 + minutes * 60 + seconds;
   return totalSeconds > 0 ? totalSeconds : null;
+}
+
+function getPaceEquivalent(heatMultiplier) {
+  const inputSeconds = getPaceInputSeconds();
+  const secondsPerKm =
+    state.unitSystem === UnitSystem.IMPERIAL ? inputSeconds / KM_PER_MILE : inputSeconds;
+  const hotSecondsPerKm = secondsPerKm * heatMultiplier;
+  const t = copy[state.locale];
+
+  return {
+    cards: [
+      {
+        label: t.baselinePace,
+        value: formatPaceForUnit(secondsPerKm, state.unitSystem),
+        meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
+      },
+      {
+        label: t.equivalentPace,
+        value: formatPaceForUnit(hotSecondsPerKm, state.unitSystem),
+        meta: `+${formatPercent((heatMultiplier - 1) * 100)}`,
+        highlight: true
+      }
+    ]
+  };
+}
+
+function getRaceEquivalent(heatMultiplier) {
+  const inputSeconds = getEquivalentRaceTimeSeconds();
+  const hotSeconds = inputSeconds * heatMultiplier;
+  const distanceKm = Number(state.equivalentRaceDistanceMeters) / 1000;
+  const t = copy[state.locale];
+
+  return {
+    cards: [
+      {
+        label: t.baselineTime,
+        value: formatFinishTime(inputSeconds),
+        meta: getEquivalentRaceLabel()
+      },
+      {
+        label: t.heatEquivalentTime,
+        value: formatFinishTime(hotSeconds),
+        meta: `+${formatPercent((heatMultiplier - 1) * 100)}`,
+        highlight: true
+      },
+      {
+        label: t.averagePace,
+        value: formatPaceForUnit(hotSeconds / distanceKm, state.unitSystem),
+        meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
+      }
+    ]
+  };
+}
+
+function getPaceInputSeconds() {
+  const minutes = clampNumber(state.paceMinutes, 0, 30);
+  const seconds = clampNumber(state.paceSeconds, 0, 59);
+  return Math.max(1, minutes * 60 + seconds);
+}
+
+function getEquivalentRaceTimeSeconds() {
+  const hours = clampNumber(state.equivalentRaceHours, 0, 9);
+  const minutes = clampNumber(state.equivalentRaceMinutes, 0, 59);
+  const seconds = clampNumber(state.equivalentRaceSeconds, 0, 59);
+  return Math.max(1, hours * 3600 + minutes * 60 + seconds);
+}
+
+function getEquivalentRaceLabel() {
+  const optionItem =
+    equivalentRaceOptions.find(
+      (item) => Number(item.meters) === Number(state.equivalentRaceDistanceMeters)
+    ) ?? equivalentRaceOptions[0];
+  return state.locale === "en" ? optionItem.en : optionItem.zh;
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return min;
+  return Math.min(max, Math.max(min, number));
+}
+
+function formatPaceForUnit(secondsPerKm, unitSystem) {
+  const seconds =
+    unitSystem === UnitSystem.IMPERIAL ? secondsPerKm * KM_PER_MILE : secondsPerKm;
+  const suffix = unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
+  return `${formatClock(seconds)} ${suffix}`;
+}
+
+function formatFinishTime(seconds) {
+  const rounded = Math.round(seconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const secs = rounded % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
+
+function formatClock(seconds) {
+  const rounded = Math.round(seconds);
+  const minutes = Math.floor(rounded / 60);
+  const secs = String(rounded % 60).padStart(2, "0");
+  return `${minutes}:${secs}`;
+}
+
+function formatPercent(value) {
+  return `${Math.round(value * 10) / 10}%`;
 }
 
 render();
