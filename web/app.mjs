@@ -388,7 +388,6 @@ function render() {
             </div>
             ${renderInputs(t)}
             ${renderEnvironmentSummary(model, t)}
-            ${isConverter ? "" : renderVdotEquivalentResults(model, t)}
             ${isPlan ? renderMileageClass(model, t) : ""}
           </section>
 
@@ -404,6 +403,7 @@ function render() {
                     <h2>${t.vdotPaces}</h2>
                   </div>
                   ${renderPaceZonePanel(model, t, true)}
+                  ${renderVdotEquivalentResults(model, t)}
                 `
             }
           </section>
