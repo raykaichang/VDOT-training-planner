@@ -46,6 +46,10 @@ const copy = {
     minutes: "分",
     seconds: "秒",
     estimatedVdot: "換算 VDOT",
+    vdotEquivalentTitle: "該 VDOT 等效成績",
+    vdotEquivalentNote: "以同一套 Daniels VDOT 比賽成績公式反推，作為能力對照參考。",
+    finishTime: "完賽時間",
+    estimatedPace: "平均配速",
     invalidRaceTime: "請輸入有效的時分秒。",
     weeklyMileage: "週跑量",
     unitSystem: "單位",
@@ -176,6 +180,10 @@ const copy = {
     minutes: "Min",
     seconds: "Sec",
     estimatedVdot: "Estimated VDOT",
+    vdotEquivalentTitle: "Equivalent Race Results",
+    vdotEquivalentNote: "Estimated from the same Daniels VDOT race-performance equation for ability reference.",
+    finishTime: "Finish Time",
+    estimatedPace: "Average Pace",
     invalidRaceTime: "Enter a valid race time.",
     weeklyMileage: "Weekly Mileage",
     unitSystem: "Units",
@@ -290,6 +298,8 @@ const equivalentRaceOptions = raceDistanceOptions.filter(
   (optionItem) => optionItem.meters >= 5000
 );
 
+const vdotEquivalentRaceMeters = new Set([3000, 5000, 21097.5, 42195]);
+
 const targetRaceOptions = [
   TargetRace.EIGHT_HUNDRED,
   TargetRace.MILE_TO_TWO_MILE,
@@ -378,6 +388,7 @@ function render() {
             </div>
             ${renderInputs(t)}
             ${renderEnvironmentSummary(model, t)}
+            ${isConverter ? "" : renderVdotEquivalentResults(model, t)}
             ${isPlan ? renderMileageClass(model, t) : ""}
           </section>
 
@@ -833,6 +844,33 @@ function renderEnvironmentSummary(model, t) {
           ${t.heatReferences.map((reference) => `<li>${reference}</li>`).join("")}
         </ul>
       </div>
+    </section>
+  `;
+}
+
+function renderVdotEquivalentResults(model, t) {
+  const results = getVdotEquivalentRaceResults(model.vdot);
+
+  return `
+    <section class="summary-card vdot-equivalent-card">
+      <p class="eyebrow">${t.vdotEquivalentTitle}</p>
+      <div class="vdot-equivalent-grid">
+        ${results
+          .map(
+            (result) => `
+              <article>
+                <span>${state.locale === "en" ? result.en : result.zh}</span>
+                <strong>${formatFinishTime(result.seconds)}</strong>
+                <small>${t.estimatedPace} ${formatPaceForUnit(
+                  result.seconds / (result.meters / 1000),
+                  state.unitSystem
+                )}</small>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+      <p>${t.vdotEquivalentNote}</p>
     </section>
   `;
 }
@@ -1928,6 +1966,34 @@ function getRaceEquivalent(heatMultiplier) {
       }
     ]
   };
+}
+
+function getVdotEquivalentRaceResults(vdot) {
+  return raceDistanceOptions
+    .filter((optionItem) => vdotEquivalentRaceMeters.has(optionItem.meters))
+    .map((optionItem) => ({
+      ...optionItem,
+      seconds: estimateRaceSecondsFromVdot(vdot, optionItem.meters)
+    }));
+}
+
+function estimateRaceSecondsFromVdot(vdot, distanceMeters) {
+  let fastSeconds = distanceMeters / 700 * 60;
+  let slowSeconds = distanceMeters / 50 * 60;
+
+  for (let step = 0; step < 64; step += 1) {
+    const midpoint = (fastSeconds + slowSeconds) / 2;
+    const estimatedVdot = calculateVdotFromRaceResult(distanceMeters, midpoint);
+    if (estimatedVdot === null) break;
+
+    if (estimatedVdot > vdot) {
+      fastSeconds = midpoint;
+    } else {
+      slowSeconds = midpoint;
+    }
+  }
+
+  return (fastSeconds + slowSeconds) / 2;
 }
 
 function getPaceInputSeconds() {

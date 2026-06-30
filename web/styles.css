@@ -770,6 +770,46 @@ input[type="range"]::-moz-range-thumb {
   list-style: none;
 }
 
+.vdot-equivalent-card {
+  display: grid;
+  gap: 10px;
+}
+
+.vdot-equivalent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.vdot-equivalent-grid article {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--metric-bg);
+  padding: 10px;
+  min-width: 0;
+}
+
+.vdot-equivalent-grid span,
+.vdot-equivalent-grid small,
+.vdot-equivalent-card > p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.vdot-equivalent-grid strong {
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.vdot-equivalent-card > p:not(.eyebrow) {
+  margin: 0;
+}
+
 .simple-list {
   margin: 14px 0 0;
 }
