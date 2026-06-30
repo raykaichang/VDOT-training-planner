@@ -856,6 +856,10 @@ input[type="range"]::-moz-range-thumb {
   container-type: inline-size;
 }
 
+.pace-zone-panel.embedded {
+  margin-top: 0;
+}
+
 .pace-zone-panel * {
   text-orientation: mixed;
   writing-mode: horizontal-tb;

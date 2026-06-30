@@ -15,8 +15,9 @@ const copy = {
     language: "語言",
     inputs: "跑者資料",
     toolMode: "功能模式",
-    plannerMode: "訓練配速與課表",
-    heatEquivalentMode: "熱環境等效換算",
+    plannerMode: "VDOT 配速",
+    trainingPlanMode: "訓練課表",
+    heatEquivalentMode: "熱適應換算",
     toolSection: "工具",
     collapseSidebar: "收合側邊欄",
     expandSidebar: "展開側邊欄",
@@ -61,6 +62,7 @@ const copy = {
     celsius: "°C",
     percent: "%",
     paceZones: "能力配速",
+    vdotPaces: "VDOT 配速",
     basePace: "原始配速",
     adjustedPace: "調整後配速",
     basePaceShort: "未調整",
@@ -143,8 +145,9 @@ const copy = {
     language: "Language",
     inputs: "Runner Inputs",
     toolMode: "Tool Mode",
-    plannerMode: "Training Paces & Plan",
-    heatEquivalentMode: "Heat Equivalent Converter",
+    plannerMode: "VDOT Paces",
+    trainingPlanMode: "Training Plan",
+    heatEquivalentMode: "Heat Adaptation Converter",
     toolSection: "Tools",
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
@@ -189,6 +192,7 @@ const copy = {
     celsius: "°C",
     percent: "%",
     paceZones: "Ability-Based Paces",
+    vdotPaces: "VDOT Paces",
     basePace: "Base Pace",
     adjustedPace: "Adjusted Pace",
     basePaceShort: "Base",
@@ -304,7 +308,7 @@ const trainingCycleOptions = [
 
 const state = {
   locale: "zh-TW",
-  toolMode: "planner",
+  toolMode: "pace",
   sidebarOpen: true,
   theme: "light",
   abilityMode: "vdot",
@@ -343,6 +347,7 @@ function render() {
   const activeVdot = getActiveVdot();
   const model = calculatePaceModel({ ...state, vdot: activeVdot });
   const isConverter = state.toolMode === "equivalent";
+  const isPlan = state.toolMode === "plan";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
   document.documentElement.dataset.theme = state.theme;
@@ -371,33 +376,27 @@ function render() {
               <p class="eyebrow">Runner</p>
               <h2 id="inputs-title">${t.inputs}</h2>
             </div>
-            ${renderInputs(t, isConverter)}
+            ${renderInputs(t)}
             ${renderEnvironmentSummary(model, t)}
-            ${isConverter ? "" : renderMileageClass(model, t)}
+            ${isPlan ? renderMileageClass(model, t) : ""}
           </section>
 
           <section class="results-panel" aria-live="polite">
             ${
               isConverter
                 ? renderEquivalentResults(model, t)
-                : `
+                : isPlan
+                  ? renderTrainingPlanResults(model, t)
+                  : `
                   <div class="section-heading">
                     <p class="eyebrow">VDOT ${model.vdot}</p>
-                    <h2>${t.workoutExamples}</h2>
+                    <h2>${t.vdotPaces}</h2>
                   </div>
-                  ${renderWeeklySchedule(model, t)}
-                  ${renderWorkoutExamples(model, t)}
-                  <aside class="note-panel">
-                    <h2>${t.noteTitle}</h2>
-                    <p>${t.note}</p>
-                    <h3>${t.sourceTitle}</h3>
-                    <p>${t.sourceNote}</p>
-                  </aside>
+                  ${renderPaceZonePanel(model, t, true)}
                 `
             }
           </section>
         </main>
-        ${isConverter ? "" : renderPaceZonePanel(model, t)}
       </div>
     </div>
   `;
@@ -406,10 +405,12 @@ function render() {
   if (!isConverter) fitPaceZonePanel();
 }
 
-function renderInputs(t, isConverter) {
+function renderInputs(t) {
   const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   const mileageUnit =
     state.unitSystem === UnitSystem.IMPERIAL ? t.miPerWeek : t.kmPerWeek;
+  const isConverter = state.toolMode === "equivalent";
+  const isPlan = state.toolMode === "plan";
 
   return `
     <div class="field-grid">
@@ -422,34 +423,40 @@ function renderInputs(t, isConverter) {
           ? renderEquivalentInputs(t)
           : `
             ${renderAbilityInput(t)}
-            ${renderMenuField(
-              t.targetRace,
-              "targetRace",
-              state.targetRace,
-              targetRaceOptions.map((value) => ({
-                value,
-                label: t.targetRaceNames[value]
-              }))
-            )}
-            ${renderMenuField(
-              t.trainingCycle,
-              "trainingCycle",
-              state.trainingCycle,
-              trainingCycleOptions.map((value) => ({
-                value,
-                label: t.cycleNames[value]
-              }))
-            )}
-            <p class="field-note">${t.trainingCycleHelp}</p>
-            ${renderRangeField(
-              t.weeklyMileage,
-              "weeklyMileage",
-              state.weeklyMileage,
-              0,
-              mileageMax,
-              1,
-              mileageUnit
-            )}
+            ${
+              isPlan
+                ? `
+                  ${renderMenuField(
+                    t.targetRace,
+                    "targetRace",
+                    state.targetRace,
+                    targetRaceOptions.map((value) => ({
+                      value,
+                      label: t.targetRaceNames[value]
+                    }))
+                  )}
+                  ${renderMenuField(
+                    t.trainingCycle,
+                    "trainingCycle",
+                    state.trainingCycle,
+                    trainingCycleOptions.map((value) => ({
+                      value,
+                      label: t.cycleNames[value]
+                    }))
+                  )}
+                  <p class="field-note">${t.trainingCycleHelp}</p>
+                  ${renderRangeField(
+                    t.weeklyMileage,
+                    "weeklyMileage",
+                    state.weeklyMileage,
+                    0,
+                    mileageMax,
+                    1,
+                    mileageUnit
+                  )}
+                `
+                : ""
+            }
           `
       }
       ${renderRangeField(
@@ -469,14 +476,19 @@ function renderInputs(t, isConverter) {
 function renderToolSidebar(t) {
   const items = [
     {
-      value: "planner",
+      value: "pace",
       label: t.plannerMode,
-      icon: renderSidebarIcon("plan")
+      icon: renderSidebarIcon("pace")
     },
     {
       value: "equivalent",
       label: t.heatEquivalentMode,
       icon: renderSidebarIcon("heat")
+    },
+    {
+      value: "plan",
+      label: t.trainingPlanMode,
+      icon: renderSidebarIcon("plan")
     }
   ];
 
@@ -565,12 +577,23 @@ function renderSidebarIcon(type) {
     `;
   }
 
+  if (type === "plan") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M8 4v3" />
+        <path d="M16 4v3" />
+        <path d="M5 8h14" />
+        <path d="M6 5h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+        <path d="M8 12h3" />
+        <path d="M8 16h6" />
+      </svg>
+    `;
+  }
+
   return `
     <svg viewBox="0 0 24 24" focusable="false">
-      <path d="M6 5h12" />
-      <path d="M6 12h8" />
-      <path d="M6 19h12" />
-      <path d="M17 10l2 2-2 2" />
+      <path d="M4 17h3l2-10 3 10 2-6 2 6h4" />
+      <path d="M5 21h14" />
     </svg>
   `;
 }
@@ -834,12 +857,30 @@ function renderMileageClass(model, t) {
   `;
 }
 
-function renderPaceZonePanel(model, t) {
+function renderTrainingPlanResults(model, t) {
   return `
-    <section class="summary-card pace-zone-panel ${state.locale === "en" ? "english" : ""}">
-      <p class="eyebrow">${t.paceZones}</p>
+    <div class="section-heading">
+      <p class="eyebrow">VDOT ${model.vdot}</p>
+      <h2>${t.trainingPlanMode}</h2>
+    </div>
+    ${renderWeeklySchedule(model, t)}
+    ${renderWorkoutExamples(model, t)}
+    <aside class="note-panel">
+      <h2>${t.noteTitle}</h2>
+      <p>${t.note}</p>
+      <h3>${t.sourceTitle}</h3>
+      <p>${t.sourceNote}</p>
+    </aside>
+  `;
+}
+
+function renderPaceZonePanel(model, t, embedded = false, options = {}) {
+  const showAdjusted = options.showAdjusted ?? true;
+  return `
+    <section class="${embedded ? "" : "summary-card"} pace-zone-panel ${embedded ? "embedded" : ""} ${state.locale === "en" ? "english" : ""}">
+      ${embedded ? "" : `<p class="eyebrow">${t.paceZones}</p>`}
       <div class="pace-zone-grid">
-        ${model.zones.map((zone) => renderPaceZone(zone, t)).join("")}
+        ${model.zones.map((zone) => renderPaceZone(zone, t, { showAdjusted })).join("")}
       </div>
     </section>
   `;
@@ -1097,9 +1138,11 @@ function getOrderedWorkoutExamples(zoneId, examples) {
     .filter(Boolean);
 }
 
-function renderPaceZone(zone, t) {
+function renderPaceZone(zone, t, options = {}) {
+  const showAdjusted = options.showAdjusted ?? true;
   const adjustedLabel = zone.id === "R" ? t.rTargetPace : t.adjustedPace;
-  const paceValuesClass = zone.id === "R" ? "pace-values single" : "pace-values";
+  const paceValuesClass =
+    zone.id === "R" || !showAdjusted ? "pace-values single" : "pace-values";
 
   return `
     <article class="pace-card ${zoneTone[zone.id]}">
@@ -1113,7 +1156,7 @@ function renderPaceZone(zone, t) {
           <dd>${zone.base.label}</dd>
         </div>
         ${
-          zone.id === "R"
+          zone.id === "R" || !showAdjusted
             ? ""
             : `<div class="adjusted">
                 <dt>${adjustedLabel}</dt>
@@ -1122,14 +1165,14 @@ function renderPaceZone(zone, t) {
         }
       </div>
       ${
-        zone.id === "I"
+        zone.id === "I" && showAdjusted
           ? `<div class="split-row">
               ${renderSplitComparison(t.split400, zone.adjustedSplit400m, zone.baseSplit400m, t, zone.id)}
               ${renderSplitComparison(t.split200, zone.adjustedSplit200m, zone.baseSplit200m, t, zone.id)}
             </div>`
           : ""
       }
-      ${zone.id === "R" ? renderRepetitionHeatNote(t) : ""}
+      ${zone.id === "R" && showAdjusted ? renderRepetitionHeatNote(t) : ""}
     </article>
   `;
 }
