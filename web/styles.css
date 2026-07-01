@@ -1621,6 +1621,10 @@ dd {
   margin: 0;
 }
 
+.pace-card-note.easy-note {
+  background: rgba(57, 208, 180, 0.12);
+}
+
 .pace-card-note ul {
   display: grid;
   gap: 3px;

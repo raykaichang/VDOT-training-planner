@@ -73,6 +73,8 @@ const copy = {
     adjustedPaceShort: "調整後",
     rTargetPaceShort: "R 不降速",
     rTargetPace: "R 不降速目標",
+    easyPaceGuidance:
+      "E 跑的目的在於用可恢復、可交談的強度累積有氧跑量，而不是精準刺激單一生理門檻，所以能依疲勞、天氣與地形在一段配速範圍內調整。",
     rHeatGuidance:
       "R 是短距離、以順暢快速與技術品質為主，熱天不降目標配速，改延長恢復、降低組數或改到較涼時段。",
     rReferences: [
@@ -207,6 +209,8 @@ const copy = {
     adjustedPaceShort: "Adjusted",
     rTargetPaceShort: "R target",
     rTargetPace: "R target pace",
+    easyPaceGuidance:
+      "E running uses a recoverable, conversational effort to build aerobic volume rather than target one precise physiological threshold, so the pace can flex with fatigue, weather, and terrain.",
     rHeatGuidance:
       "R is short, smooth-fast mechanics work. Hot days do not slow the R target pace; extend recovery, reduce reps, or move the session cooler instead.",
     rReferences: [
@@ -1225,8 +1229,17 @@ function renderPaceZone(zone, t, options = {}) {
             </div>`
           : ""
       }
+      ${zone.id === "E" && showAdjusted ? renderEasyPaceNote(t) : ""}
       ${zone.id === "R" && showAdjusted ? renderRepetitionHeatNote(t) : ""}
     </article>
+  `;
+}
+
+function renderEasyPaceNote(t) {
+  return `
+    <div class="pace-card-note easy-note">
+      <p>${t.easyPaceGuidance}</p>
+    </div>
   `;
 }
 
