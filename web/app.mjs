@@ -775,10 +775,14 @@ function renderEquivalentResults(model, t) {
 function renderMenuField(label, field, value, items, className = "field") {
   const selected = items.find((item) => String(item.value) === String(value)) ?? items[0];
   const isOpen = state.openMenu === field;
+  const labelMarkup =
+    field === "locale"
+      ? `<span class="menu-label-with-icon">${renderGlobeIcon()}<span>${label}</span></span>`
+      : `<span>${label}</span>`;
 
   return `
     <div class="${className}">
-      <span>${label}</span>
+      ${labelMarkup}
       <div class="ability-select ${isOpen ? "open" : ""}">
         <button
           type="button"
@@ -798,6 +802,17 @@ function renderMenuField(label, field, value, items, className = "field") {
         </div>
       </div>
     </div>
+  `;
+}
+
+function renderGlobeIcon() {
+  return `
+    <svg class="menu-label-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a13 13 0 0 1 0 18" />
+      <path d="M12 3a13 13 0 0 0 0 18" />
+    </svg>
   `;
 }
 

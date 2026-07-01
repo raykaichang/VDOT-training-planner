@@ -133,10 +133,38 @@ h3 {
   min-width: 150px;
 }
 
+.language-toggle > span,
+.theme-switch > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.menu-label-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 .topbar-controls {
   display: flex;
   align-items: end;
   gap: 12px;
+}
+
+.topbar-controls .ability-select-trigger {
+  font-size: 0.86rem;
 }
 
 select,
@@ -320,14 +348,6 @@ input[type="range"]::-moz-range-thumb {
   min-width: 168px;
 }
 
-.theme-switch > span {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .theme-switch > div {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -351,7 +371,7 @@ input[type="range"]::-moz-range-thumb {
   color: var(--muted);
   cursor: pointer;
   padding: 0 8px;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 900;
 }
 
