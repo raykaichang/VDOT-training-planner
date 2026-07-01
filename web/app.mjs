@@ -298,7 +298,7 @@ const equivalentRaceOptions = raceDistanceOptions.filter(
   (optionItem) => optionItem.meters >= 5000
 );
 
-const vdotEquivalentRaceMeters = new Set([3000, 5000, 21097.5, 42195]);
+const vdotEquivalentRaceMeters = new Set([3000, 5000, 10000, 21097.5, 42195]);
 
 const targetRaceOptions = [
   TargetRace.EIGHT_HUNDRED,
