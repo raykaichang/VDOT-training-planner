@@ -115,19 +115,49 @@ const mileageClasses = Object.freeze([
   }
 ]);
 
-const heatSlowdownTable = Object.freeze([
-  { heatIndexC: 13, speedLoss: 0 },
-  { heatIndexC: 16, speedLoss: 0.005 },
-  { heatIndexC: 18, speedLoss: 0.01 },
-  { heatIndexC: 21, speedLoss: 0.017 },
-  { heatIndexC: 24, speedLoss: 0.023 },
-  { heatIndexC: 27, speedLoss: 0.031 },
-  { heatIndexC: 29, speedLoss: 0.038 },
-  { heatIndexC: 32, speedLoss: 0.047 },
-  { heatIndexC: 35, speedLoss: 0.055 },
-  { heatIndexC: 38, speedLoss: 0.062 },
-  { heatIndexC: 41, speedLoss: 0.07 }
-]);
+// Coarse v2025-09-04 table from John Davis / Running Writings heat-adjusted pace model.
+// Source and MIT license notice: https://github.com/johnjdavisiv/heat-adjusted-pace
+const runningWritingsHeatHumidityModel = Object.freeze({
+  airTempC: [
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45
+  ],
+  humidityPct: [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+    20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+    30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
+    40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
+    50, 50, 50, 50, 50, 50, 50, 50, 50, 50,
+    60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    70, 70, 70, 70, 70, 70, 70, 70, 70, 70,
+    80, 80, 80, 80, 80, 80, 80, 80, 80, 80,
+    90, 90, 90, 90, 90, 90, 90, 90, 90, 90,
+    100, 100, 100, 100, 100, 100, 100, 100, 100, 100
+  ],
+  logSpeedAdjust: [
+    -0.0057, -0.0017, 0, -0.0001, -0.0019, -0.0032, -0.004, -0.0047, -0.0053, -0.006,
+    -0.0057, -0.0017, 0, -0.0001, -0.0042, -0.0073, -0.0097, -0.012, -0.0143, -0.0166,
+    -0.0057, -0.0017, 0, -0.0001, -0.0059, -0.0111, -0.0156, -0.02, -0.0243, -0.0287,
+    -0.0057, -0.0017, 0, -0.0001, -0.0069, -0.0145, -0.0218, -0.0289, -0.0361, -0.0433,
+    -0.0057, -0.0017, 0, -0.0001, -0.0082, -0.0181, -0.0284, -0.0386, -0.0489, -0.0591,
+    -0.0057, -0.0017, 0, -0.0003, -0.0104, -0.0225, -0.0356, -0.0488, -0.062, -0.0752,
+    -0.0057, -0.0017, 0, -0.0015, -0.0123, -0.027, -0.0437, -0.0608, -0.0778, -0.0948,
+    -0.0057, -0.0017, 0, -0.0017, -0.0129, -0.031, -0.053, -0.0756, -0.0982, -0.1208,
+    -0.0057, -0.0017, 0, -0.0017, -0.0129, -0.0346, -0.0629, -0.0921, -0.1214, -0.1507,
+    -0.006, -0.0018, 0, -0.0017, -0.0129, -0.0382, -0.0729, -0.1089, -0.145, -0.1811,
+    -0.008, -0.0036, -0.0001, -0.0017, -0.0129, -0.0418, -0.0828, -0.1258, -0.1687, -0.2116
+  ]
+});
 
 const workoutCatalog = Object.freeze([
   t("T-A1", 0, 66, "20 分鐘 T 配速", "20 min at T pace", "20 分鐘"),
@@ -302,14 +332,20 @@ export function calculateHeatAdjustment(temperatureC, humidity, vdot = 45) {
   const relativeHumidity = clamp(Number(humidity), 0, 100);
   const dewPoint = calculateDewPoint(temperature, relativeHumidity);
   const heatIndex = calculateHeatIndex(temperature, relativeHumidity);
-  const speedLoss = interpolateHeatSpeedLoss(heatIndex);
-  const multiplier = 1 / (1 - speedLoss);
+  const logSpeedAdjust = interpolateRunningWritingsLogSpeedAdjust(
+    temperature,
+    relativeHumidity
+  );
+  const speedRatio = Math.exp(logSpeedAdjust);
+  const speedLoss = clamp(1 - speedRatio, 0, 0.5);
+  const multiplier = 1 / speedRatio;
   const percentage = multiplier - 1;
   const recoveryPercentage = getHeatRecoveryPercentage(heatIndex);
 
   return {
     dewPoint: roundTo(dewPoint, 1),
     heatIndex: roundTo(heatIndex, 1),
+    logSpeedAdjust: roundTo(logSpeedAdjust, 4),
     speedLossPercentage: roundTo(speedLoss * 100, 1),
     percentage: roundTo(percentage * 100, 1),
     multiplier,
@@ -378,26 +414,56 @@ function calculateHeatIndex(temperatureC, humidity) {
   return (heatIndexF - 32) / 1.8;
 }
 
-function interpolateHeatSpeedLoss(heatIndexC) {
-  const first = heatSlowdownTable[0];
-  const last = heatSlowdownTable[heatSlowdownTable.length - 1];
+function interpolateRunningWritingsLogSpeedAdjust(temperatureC, humidityPct) {
+  const { airTempC, humidityPct: modelHumidity, logSpeedAdjust } =
+    runningWritingsHeatHumidityModel;
+  const temperatures = [...new Set(airTempC)].sort((a, b) => a - b);
+  const humidities = [...new Set(modelHumidity)].sort((a, b) => a - b);
+  const [x0, x1, tx] = bracketForInterpolation(temperatures, temperatureC);
+  const [y0, y1, ty] = bracketForInterpolation(humidities, humidityPct);
+  const z00 = getRunningWritingsGridValue(x0, y0);
+  const z10 = getRunningWritingsGridValue(x1, y0);
+  const z01 = getRunningWritingsGridValue(x0, y1);
+  const z11 = getRunningWritingsGridValue(x1, y1);
+  const lower = z00 * (1 - tx) + z10 * tx;
+  const upper = z01 * (1 - tx) + z11 * tx;
+  return upper * ty + lower * (1 - ty);
+}
 
-  if (heatIndexC <= first.heatIndexC) return first.speedLoss;
-  if (heatIndexC >= last.heatIndexC) return last.speedLoss;
+function bracketForInterpolation(values, rawValue) {
+  const value = clamp(Number(rawValue), values[0], values[values.length - 1]);
 
-  for (let index = 0; index < heatSlowdownTable.length - 1; index += 1) {
-    const lower = heatSlowdownTable[index];
-    const upper = heatSlowdownTable[index + 1];
+  if (value <= values[0]) return [values[0], values[1], 0];
+  if (value >= values[values.length - 1]) {
+    return [values[values.length - 2], values[values.length - 1], 1];
+  }
 
-    if (heatIndexC >= lower.heatIndexC && heatIndexC <= upper.heatIndexC) {
-      const position =
-        (heatIndexC - lower.heatIndexC) /
-        (upper.heatIndexC - lower.heatIndexC);
-      return lower.speedLoss + position * (upper.speedLoss - lower.speedLoss);
+  for (let index = 1; index < values.length; index += 1) {
+    if (value <= values[index]) {
+      const lower = values[index - 1];
+      const upper = values[index];
+      return [lower, upper, (value - lower) / (upper - lower)];
     }
   }
 
-  return last.speedLoss;
+  return [values[values.length - 2], values[values.length - 1], 1];
+}
+
+function getRunningWritingsGridValue(temperatureC, humidityPct) {
+  const { airTempC, humidityPct: modelHumidity, logSpeedAdjust } =
+    runningWritingsHeatHumidityModel;
+  const index = airTempC.findIndex(
+    (temperature, itemIndex) =>
+      temperature === temperatureC && modelHumidity[itemIndex] === humidityPct
+  );
+
+  if (index === -1) {
+    throw new Error(
+      `Missing Running Writings heat model point ${temperatureC}C/${humidityPct}%`
+    );
+  }
+
+  return logSpeedAdjust[index];
 }
 
 function getHeatRecoveryPercentage(heatIndexC) {

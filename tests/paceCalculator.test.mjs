@@ -141,21 +141,22 @@ assert.match(
   /\d+-\d+ km/
 );
 
-const coolWeather = calculateHeatAdjustment(6, 40, 50);
+const coolWeather = calculateHeatAdjustment(10, 40, 50);
 assert.equal(coolWeather.percentage, 0);
 
 const warmWeather = calculateHeatAdjustment(26, 70, 50);
 assert.ok(warmWeather.heatIndex > 26);
 assert.ok(warmWeather.heatIndex < 27);
-assert.ok(warmWeather.speedLossPercentage > 2.5);
-assert.ok(warmWeather.speedLossPercentage < 3.5);
+assert.ok(warmWeather.logSpeedAdjust < 0);
+assert.ok(warmWeather.speedLossPercentage > 3);
+assert.ok(warmWeather.speedLossPercentage < 4);
 assert.ok(warmWeather.percentage > warmWeather.speedLossPercentage);
-assert.ok(warmWeather.percentage < 4);
+assert.ok(warmWeather.percentage < 4.5);
 
 const hotWeather = calculateHeatAdjustment(30, 70, 50);
 assert.ok(hotWeather.percentage >= warmWeather.percentage);
 assert.ok(hotWeather.speedLossPercentage > 5);
-assert.ok(hotWeather.speedLossPercentage < 6);
+assert.ok(hotWeather.speedLossPercentage < 5.5);
 assert.equal(hotWeather.recoveryPercentage, 25);
 
 const fiveKTwenty = calculateVdotFromRaceResult(5000, 20 * 60);
