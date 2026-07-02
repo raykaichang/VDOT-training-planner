@@ -47,7 +47,10 @@ const copy = {
     seconds: "秒",
     estimatedVdot: "換算 VDOT",
     vdotEquivalentTitle: "該 VDOT 等效成績",
-    vdotEquivalentNote: "以同一套 Daniels VDOT 比賽成績公式反推，作為能力對照參考。",
+    vdotEquivalentNote:
+      "原始等效成績以 Daniels VDOT 比賽成績公式反推；熱影響後成績使用目前溫濕度的配速倍率估算，作為同等努力參考。",
+    heatAdjustedEquivalentResult: "熱影響後成績",
+    heatAdjustedEquivalentPace: "熱影響後配速",
     finishTime: "完賽時間",
     estimatedPace: "平均配速",
     invalidRaceTime: "請輸入有效的時分秒。",
@@ -83,9 +86,9 @@ const copy = {
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
     heatAdjustment: "熱環境調整",
-    slowerBy: "建議放慢",
+    slowerBy: "配速增加",
     heatIndex: "Heat Index",
-    speedLoss: "估計速度下降",
+    speedLoss: "速度下降",
     dewPoint: "露點",
     heatFormulaTitle: "熱環境估算式",
     heatFormula:
@@ -187,7 +190,10 @@ const copy = {
     seconds: "Sec",
     estimatedVdot: "Estimated VDOT",
     vdotEquivalentTitle: "Equivalent Race Results",
-    vdotEquivalentNote: "Estimated from the same Daniels VDOT race-performance equation for ability reference.",
+    vdotEquivalentNote:
+      "Baseline equivalents are estimated from the Daniels VDOT race-performance equation; heat-adjusted results apply the current temperature/humidity pace multiplier as an equal-effort reference.",
+    heatAdjustedEquivalentResult: "Heat-adjusted result",
+    heatAdjustedEquivalentPace: "Heat-adjusted pace",
     finishTime: "Finish Time",
     estimatedPace: "Average Pace",
     invalidRaceTime: "Enter a valid race time.",
@@ -223,9 +229,9 @@ const copy = {
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
     heatAdjustment: "Heat Adjustment",
-    slowerBy: "Slow by",
+    slowerBy: "Pace increase",
     heatIndex: "Heat Index",
-    speedLoss: "Estimated speed loss",
+    speedLoss: "Speed loss",
     dewPoint: "Dew Point",
     heatFormulaTitle: "Heat Adjustment Formula",
     heatFormula:
@@ -891,18 +897,32 @@ function renderVdotEquivalentResults(model, t) {
       <p class="eyebrow">${t.vdotEquivalentTitle}</p>
       <div class="vdot-equivalent-grid">
         ${results
-          .map(
-            (result) => `
+          .map((result) => {
+            const basePaceSeconds = result.seconds / (result.meters / 1000);
+            const heatAdjustedSeconds = result.seconds * model.heatAdjustment.multiplier;
+            const heatAdjustedPaceSeconds =
+              basePaceSeconds * model.heatAdjustment.multiplier;
+
+            return `
               <article>
                 <span>${state.locale === "en" ? result.en : result.zh}</span>
                 <strong>${formatFinishTime(result.seconds)}</strong>
                 <small>${t.estimatedPace} ${formatPaceForUnit(
-                  result.seconds / (result.meters / 1000),
+                  basePaceSeconds,
                   state.unitSystem
                 )}</small>
+                <div class="vdot-heat-equivalent">
+                  <small>${t.heatAdjustedEquivalentResult} ${formatFinishTime(
+                    heatAdjustedSeconds
+                  )}</small>
+                  <small>${t.heatAdjustedEquivalentPace} ${formatPaceForUnit(
+                    heatAdjustedPaceSeconds,
+                    state.unitSystem
+                  )}</small>
+                </div>
               </article>
-            `
-          )
+            `;
+          })
           .join("")}
       </div>
       <p>${t.vdotEquivalentNote}</p>
