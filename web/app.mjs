@@ -84,16 +84,18 @@ const copy = {
     ],
     heatAdjustment: "熱環境調整",
     slowerBy: "建議放慢",
+    heatIndex: "Heat Index",
+    speedLoss: "估計速度下降",
     dewPoint: "露點",
     heatFormulaTitle: "熱環境估算式",
     heatFormula:
-      "露點 Td 以 Magnus 公式估算，僅作熱壓力提示，不直接進入降速係數。配速調整依 El Helou et al. 2012 對六大馬拉松成績建立的氣溫-跑速二次模型估算：v(T)=aT²+bT+c，熱環境調整後配速 = 原始配速 × v(Topt) / v(T)。本工具依 VDOT 估算能力層級並在表 S3 的 P1/Q1/Median/Q3 模型間插值；超出 Topt+20°C 的區間以表 S3 上限保守截斷。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
+      "先以 NOAA/NWS Rothfusz regression 將氣溫與相對濕度整合為 Heat Index；較涼條件使用簡化 Heat Index。再依 Running Writings / John Davis 2025 對 3,891 筆馬拉松成績、754 場賽事模型結果的近似數位化節點線性插值，取得估計速度下降率 s。熱環境調整後配速 = 原始配速 / (1 - s)。此估算主要適用於馬拉松、M 配速長跑與長時間穩定跑；短 T/I/R 不宜完整照搬。恢復時間採安全規則：Heat Index 24-29°C 約 +10%，29-35°C 約 +15-25%，35°C 以上以 +25% 為上限並優先考慮減量、改課或移至較涼時段。R 不套用配速降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
     heatReferencesTitle: "熱環境參考文獻",
     heatReferences: [
-      "El Helou et al. 2012, Impact of Environmental Parameters on Marathon Running Performance, PLOS ONE, DOI: 10.1371/journal.pone.0037407",
+      "Running Writings / John Davis 2025 heat-adjusted pace model：以 Mantzios et al. 公開馬拉松資料集重新分析；本工具採近似數位化節點與線性插值，非原始閉式方程。",
+      "Rothfusz 1990, NWS Technical Attachment SR 90-23, The Heat Index Equation.",
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
-      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
-      "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
     mileageClass: "跑量課表級距",
     availableQuality: "可開品質課",
@@ -221,16 +223,18 @@ const copy = {
     ],
     heatAdjustment: "Heat Adjustment",
     slowerBy: "Slow by",
+    heatIndex: "Heat Index",
+    speedLoss: "Estimated speed loss",
     dewPoint: "Dew Point",
     heatFormulaTitle: "Heat Adjustment Formula",
     heatFormula:
-      "Dew point Td is estimated with the Magnus formula for heat-stress context only; it does not directly change the slowdown coefficient. Pace adjustment uses the air-temperature/running-speed quadratic model from El Helou et al. 2012: v(T)=aT²+bT+c, heat-adjusted pace = base pace × v(Topt) / v(T). The app estimates performance level from VDOT and interpolates across the P1/Q1/Median/Q3 models in Table S3; values beyond Topt+20°C are conservatively capped at the Table S3 limit. Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
+      "The app first uses the NOAA/NWS Rothfusz regression to combine air temperature and relative humidity into Heat Index; cooler conditions use the simplified Heat Index. It then linearly interpolates approximate digitized slowdown nodes from the Running Writings / John Davis 2025 model based on 3,891 marathon results across 754 races. If speed loss is s, heat-adjusted pace = base pace / (1 - s). This estimate is most appropriate for marathon racing, M-pace long runs, and long steady running; short T/I/R work should not inherit the full marathon adjustment. Recovery uses a safety rule: Heat Index 24-29°C about +10%, 29-35°C about +15-25%, and 35°C+ capped at +25% while prioritizing lower volume, workout changes, or cooler timing. R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
     heatReferencesTitle: "Heat References",
     heatReferences: [
-      "El Helou et al. 2012, Impact of Environmental Parameters on Marathon Running Performance, PLOS ONE, DOI: 10.1371/journal.pone.0037407",
+      "Running Writings / John Davis 2025 heat-adjusted pace model: reanalysis of the Mantzios et al. public marathon dataset; this app uses approximate digitized nodes and linear interpolation, not a closed-form equation from the original paper.",
+      "Rothfusz 1990, NWS Technical Attachment SR 90-23, The Heat Index Equation.",
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
-      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
-      "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"
+      "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
     mileageClass: "Mileage Class",
     availableQuality: "Available Quality Work",
@@ -844,6 +848,14 @@ function renderEnvironmentSummary(model, t) {
     <section class="summary-card heat-card">
       <p class="eyebrow">${t.heatAdjustment}</p>
       <div class="metric-row">
+        <div>
+          <span>${t.heatIndex}</span>
+          <strong>${model.heatAdjustment.heatIndex}${t.celsius}</strong>
+        </div>
+        <div>
+          <span>${t.speedLoss}</span>
+          <strong>${model.heatAdjustment.speedLossPercentage}%</strong>
+        </div>
         <div>
           <span>${t.slowerBy}</span>
           <strong>${model.heatAdjustment.percentage}%</strong>
