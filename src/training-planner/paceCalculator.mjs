@@ -115,6 +115,39 @@ const mileageClasses = Object.freeze([
   }
 ]);
 
+const MARATHON_DISTANCE_METERS = 42195;
+
+const heatPerformanceModels = Object.freeze([
+  {
+    name: "P1",
+    optimalTemperature: 6.86,
+    peakSpeed: 4.07,
+    speedAtPlus10: 3.98,
+    speedAtPlus20: 3.725
+  },
+  {
+    name: "Q1",
+    optimalTemperature: 6.435,
+    peakSpeed: 3.125,
+    speedAtPlus10: 3.03,
+    speedAtPlus20: 2.755
+  },
+  {
+    name: "Median",
+    optimalTemperature: 6.495,
+    peakSpeed: 2.805,
+    speedAtPlus10: 2.715,
+    speedAtPlus20: 2.44
+  },
+  {
+    name: "Q3",
+    optimalTemperature: 7.385,
+    peakSpeed: 2.505,
+    speedAtPlus10: 2.415,
+    speedAtPlus20: 2.13
+  }
+]);
+
 const workoutCatalog = Object.freeze([
   t("T-A1", 0, 66, "20 分鐘 T 配速", "20 min at T pace", "20 分鐘"),
   t("T-A2", 48, 66, "4 x（5 分鐘 T + 1 分鐘休息）", "4 x (5 min T + 1 min rest)", "20 分鐘"),
@@ -227,7 +260,7 @@ export function calculatePaceModel(input = {}) {
   const trainingCycle = normalizeTrainingCycle(input.trainingCycle);
   const temperatureC = clamp(Number(input.temperatureC ?? 22), -5, 45);
   const humidity = clamp(Number(input.humidity ?? 60), 0, 100);
-  const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity);
+  const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity, vdot);
   const mileageClass = getMileageClass(weeklyMileageKm);
   const zones = zoneDefinitions.map((zone) => {
     const heatMultiplier =
@@ -283,24 +316,36 @@ export function getMileageClass(weeklyMileage) {
   );
 }
 
-export function calculateHeatAdjustment(temperatureC, humidity) {
-  const dewPoint = calculateDewPoint(temperatureC, humidity);
-  const temperatureLoad = Math.max(0, temperatureC - 15) * 0.0025;
-  const dewPointLoad = Math.max(0, dewPoint - 12) * 0.0035;
-  const severeHeatLoad = Math.max(0, temperatureC - 30) * 0.004;
-  const percentage = clamp(
-    temperatureLoad + dewPointLoad + severeHeatLoad,
-    0,
-    0.16
+export function calculateHeatAdjustment(temperatureC, humidity, vdot = 45) {
+  const temperature = clamp(Number(temperatureC), -5, 45);
+  const relativeHumidity = clamp(Number(humidity), 0, 100);
+  const dewPoint = calculateDewPoint(temperature, relativeHumidity);
+  const performanceModel = getHeatPerformanceModel(vdot);
+  const modelTemperature = Math.min(
+    temperature,
+    performanceModel.optimalTemperature + 20
   );
+  const speedAtTemperature =
+    temperature <= performanceModel.optimalTemperature
+      ? performanceModel.peakSpeed
+      : calculateQuadraticSpeed(performanceModel, modelTemperature);
+  const multiplier = clamp(
+    performanceModel.peakSpeed / speedAtTemperature,
+    1,
+    1.35
+  );
+  const percentage = multiplier - 1;
   const recoveryPercentage = clamp(percentage * 1.5, 0, 0.25);
 
   return {
     dewPoint: roundTo(dewPoint, 1),
     percentage: roundTo(percentage * 100, 1),
-    multiplier: 1 + percentage,
+    multiplier,
     recoveryPercentage: roundTo(recoveryPercentage * 100, 1),
-    recoveryMultiplier: 1 + recoveryPercentage
+    recoveryMultiplier: 1 + recoveryPercentage,
+    optimalTemperature: roundTo(performanceModel.optimalTemperature, 1),
+    modelTemperature: roundTo(modelTemperature, 1),
+    performanceLevel: performanceModel.name
   };
 }
 
@@ -322,6 +367,92 @@ export function calculateVdotFromRaceResult(distanceMeters, timeSeconds) {
     0.2989558 * Math.exp(-0.1932605 * minutes);
 
   return roundTo(oxygenCost / effortFraction, 1);
+}
+
+function getHeatPerformanceModel(vdot) {
+  const marathonSpeed = estimateMarathonSpeedFromVdot(vdot);
+  const models = heatPerformanceModels;
+
+  if (marathonSpeed >= models[0].peakSpeed) return models[0];
+  if (marathonSpeed <= models[models.length - 1].peakSpeed) {
+    return models[models.length - 1];
+  }
+
+  for (let index = 0; index < models.length - 1; index += 1) {
+    const faster = models[index];
+    const slower = models[index + 1];
+    if (
+      marathonSpeed <= faster.peakSpeed &&
+      marathonSpeed >= slower.peakSpeed
+    ) {
+      const fasterWeight =
+        (marathonSpeed - slower.peakSpeed) /
+        (faster.peakSpeed - slower.peakSpeed);
+      return blendHeatPerformanceModels(faster, slower, fasterWeight);
+    }
+  }
+
+  return models[models.length - 1];
+}
+
+function estimateMarathonSpeedFromVdot(vdot) {
+  const targetVdot = clamp(Number(vdot ?? 45), 30, 85);
+  let lowSeconds = 2 * 3600;
+  let highSeconds = 7 * 3600;
+
+  for (let index = 0; index < 50; index += 1) {
+    const midpoint = (lowSeconds + highSeconds) / 2;
+    const estimate = calculateVdotFromRaceResult(
+      MARATHON_DISTANCE_METERS,
+      midpoint
+    );
+
+    if (estimate > targetVdot) {
+      lowSeconds = midpoint;
+    } else {
+      highSeconds = midpoint;
+    }
+  }
+
+  return MARATHON_DISTANCE_METERS / ((lowSeconds + highSeconds) / 2);
+}
+
+function blendHeatPerformanceModels(faster, slower, fasterWeight) {
+  const slowerWeight = 1 - fasterWeight;
+  return {
+    name: `${faster.name}/${slower.name}`,
+    optimalTemperature:
+      faster.optimalTemperature * fasterWeight +
+      slower.optimalTemperature * slowerWeight,
+    peakSpeed: faster.peakSpeed * fasterWeight + slower.peakSpeed * slowerWeight,
+    speedAtPlus10:
+      faster.speedAtPlus10 * fasterWeight +
+      slower.speedAtPlus10 * slowerWeight,
+    speedAtPlus20:
+      faster.speedAtPlus20 * fasterWeight +
+      slower.speedAtPlus20 * slowerWeight
+  };
+}
+
+function calculateQuadraticSpeed(model, temperatureC) {
+  const offset = clamp(temperatureC - model.optimalTemperature, 0, 20);
+  return lagrangeQuadratic(
+    offset,
+    0,
+    model.peakSpeed,
+    10,
+    model.speedAtPlus10,
+    20,
+    model.speedAtPlus20
+  );
+}
+
+function lagrangeQuadratic(x, x0, y0, x1, y1, x2, y2) {
+  return (
+    (y0 * (x - x1) * (x - x2)) / ((x0 - x1) * (x0 - x2)) +
+    (y1 * (x - x0) * (x - x2)) / ((x1 - x0) * (x1 - x2)) +
+    (y2 * (x - x0) * (x - x1)) / ((x2 - x0) * (x2 - x1))
+  );
 }
 
 export function getWorkoutExamplesForMileage(

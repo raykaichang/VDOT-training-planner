@@ -82,14 +82,15 @@ const copy = {
       "Racinais et al. 2015, BJSM, DOI: 10.1136/bjsports-2015-094915",
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
-    heatAdjustment: "溫濕度調整",
+    heatAdjustment: "熱環境調整",
     slowerBy: "建議放慢",
     dewPoint: "露點",
     heatFormulaTitle: "熱環境估算式",
     heatFormula:
-      "露點 Td 以 Magnus 公式估算。降速比例 = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%)；調整後配速 = 原始配速 × (1 + 降速比例)。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
+      "露點 Td 以 Magnus 公式估算，僅作熱壓力提示，不直接進入降速係數。配速調整依 El Helou et al. 2012 對六大馬拉松成績建立的氣溫-跑速二次模型估算：v(T)=aT²+bT+c，熱環境調整後配速 = 原始配速 × v(Topt) / v(T)。本工具依 VDOT 估算能力層級並在表 S3 的 P1/Q1/Median/Q3 模型間插值；超出 Topt+20°C 的區間以表 S3 上限保守截斷。熱天恢復延長 = min(25%, 降速比例 × 1.5)。R 不套用降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
     heatReferencesTitle: "熱環境參考文獻",
     heatReferences: [
+      "El Helou et al. 2012, Impact of Environmental Parameters on Marathon Running Performance, PLOS ONE, DOI: 10.1371/journal.pone.0037407",
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
       "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"
@@ -218,14 +219,15 @@ const copy = {
       "Racinais et al. 2015, BJSM, DOI: 10.1136/bjsports-2015-094915",
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012"
     ],
-    heatAdjustment: "Heat/Humidity Adjustment",
+    heatAdjustment: "Heat Adjustment",
     slowerBy: "Slow by",
     dewPoint: "Dew Point",
     heatFormulaTitle: "Heat Adjustment Formula",
     heatFormula:
-      "Dew point Td is estimated with the Magnus formula. Slowdown = min(16%, max(0, T-15)×0.25% + max(0, Td-12)×0.35% + max(0, T-30)×0.40%); adjusted pace = base pace × (1 + slowdown). Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
+      "Dew point Td is estimated with the Magnus formula for heat-stress context only; it does not directly change the slowdown coefficient. Pace adjustment uses the air-temperature/running-speed quadratic model from El Helou et al. 2012: v(T)=aT²+bT+c, heat-adjusted pace = base pace × v(Topt) / v(T). The app estimates performance level from VDOT and interpolates across the P1/Q1/Median/Q3 models in Table S3; values beyond Topt+20°C are conservatively capped at the Table S3 limit. Hot recovery extension = min(25%, slowdown × 1.5). R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
     heatReferencesTitle: "Heat References",
     heatReferences: [
+      "El Helou et al. 2012, Impact of Environmental Parameters on Marathon Running Performance, PLOS ONE, DOI: 10.1371/journal.pone.0037407",
       "Racinais et al. 2015, Consensus recommendations on training and competing in the heat, BJSM, DOI: 10.1136/bjsports-2015-094915",
       "Nybo, Rasmussen & Sawka 2014, Performance in the Heat-Physiological Factors of Importance for Hyperthermia-Induced Fatigue, Comprehensive Physiology, DOI: 10.1002/cphy.c130012",
       "Lawrence 2005, The relationship between relative humidity and the dewpoint temperature in moist air, Bulletin of the American Meteorological Society, DOI: 10.1175/BAMS-86-2-225"

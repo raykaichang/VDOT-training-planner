@@ -141,8 +141,16 @@ assert.match(
   /\d+-\d+ km/
 );
 
-const coolWeather = calculateHeatAdjustment(10, 40);
+const coolWeather = calculateHeatAdjustment(6, 40, 50);
 assert.equal(coolWeather.percentage, 0);
+
+const warmWeather = calculateHeatAdjustment(26, 70, 50);
+assert.ok(warmWeather.percentage > 8);
+assert.ok(warmWeather.percentage < 12);
+
+const hotWeather = calculateHeatAdjustment(30, 70, 50);
+assert.ok(hotWeather.percentage >= warmWeather.percentage);
+assert.ok(hotWeather.percentage < 12);
 
 const fiveKTwenty = calculateVdotFromRaceResult(5000, 20 * 60);
 assert.ok(fiveKTwenty > 49);
