@@ -990,6 +990,7 @@ input[type="range"]::-moz-range-thumb {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   padding-bottom: 6px;
 }
@@ -1309,6 +1310,8 @@ input[type="range"]::-moz-range-thumb {
   grid-auto-flow: column;
   gap: 12px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 4px;
 }
 
@@ -1320,7 +1323,7 @@ input[type="range"]::-moz-range-thumb {
   padding: 14px;
   min-width: 0;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-x pan-y;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -1731,5 +1734,13 @@ dd {
   .split-row {
     grid-column: auto;
     padding-left: 0;
+  }
+
+  .week-scroll {
+    --plan-card-width: min(250px, calc(100vw - 64px));
+  }
+
+  .example-row {
+    grid-auto-columns: minmax(250px, calc(100vw - 64px));
   }
 }
