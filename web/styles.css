@@ -1259,6 +1259,8 @@ input[type="range"]::-moz-range-thumb {
   grid-template-columns: 150px minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .example-group-heading {
@@ -1309,9 +1311,14 @@ input[type="range"]::-moz-range-thumb {
   grid-auto-columns: minmax(430px, 540px);
   grid-auto-flow: column;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   padding-bottom: 4px;
 }
 
@@ -1322,14 +1329,9 @@ input[type="range"]::-moz-range-thumb {
   background: var(--surface);
   padding: 14px;
   min-width: 0;
-  cursor: grab;
-  touch-action: pan-x pan-y;
-  user-select: none;
+  cursor: default;
+  touch-action: pan-x;
   -webkit-user-drag: none;
-}
-
-.example-card:active {
-  cursor: grabbing;
 }
 
 .example-card.is-dragging {
@@ -1698,8 +1700,7 @@ dd {
     grid-auto-columns: minmax(260px, min(420px, calc(100vw - 80px)));
   }
 
-  .plan-day,
-  .example-card {
+  .plan-day {
     cursor: default;
   }
 }

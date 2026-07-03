@@ -1327,6 +1327,8 @@ function bindEvents() {
   });
 
   const prefersTouchScrolling =
+    window.innerWidth <= 900 ||
+    navigator.maxTouchPoints > 0 ||
     window.matchMedia?.("(pointer: coarse)").matches ||
     window.matchMedia?.("(hover: none)").matches;
 
@@ -1338,18 +1340,6 @@ function bindEvents() {
       card.addEventListener("drop", handlePlanDrop);
     });
 
-    app.querySelectorAll("[data-example-card]").forEach((card) => {
-      card.addEventListener("pointerdown", handleExamplePointerDown);
-      card.addEventListener("pointermove", handleExamplePointerMove);
-      card.addEventListener("pointerup", handleExamplePointerEnd);
-      card.addEventListener("pointercancel", handleExamplePointerEnd);
-      card.addEventListener("lostpointercapture", handleExamplePointerEnd);
-      card.addEventListener("mousedown", handleExampleMouseDown);
-      card.addEventListener("dragstart", handleExampleDragStart);
-      card.addEventListener("dragover", handleExampleDragOver);
-      card.addEventListener("dragend", handleExampleDragEnd);
-      card.addEventListener("drop", handleExampleDrop);
-    });
   }
 
   app.querySelectorAll(".week-scroll").forEach((scroller) => {
