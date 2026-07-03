@@ -361,7 +361,7 @@ const state = {
   humidity: 70,
   planOrder: null,
   draggedPlanIndex: null,
-  planPointerDrag: null,
+  planTouchDrag: null,
   exampleOrder: {},
   draggedExample: null,
   planWorkoutOverrides: {},
@@ -1342,11 +1342,10 @@ function bindEvents() {
     });
   } else {
     app.querySelectorAll("[data-plan-card]").forEach((card) => {
-      card.addEventListener("pointerdown", handlePlanPointerDown);
-      card.addEventListener("pointermove", handlePlanPointerMove);
-      card.addEventListener("pointerup", handlePlanPointerEnd);
-      card.addEventListener("pointercancel", handlePlanPointerEnd);
-      card.addEventListener("lostpointercapture", handlePlanPointerEnd);
+      card.addEventListener("touchstart", handlePlanTouchStart, { passive: true });
+      card.addEventListener("touchmove", handlePlanTouchMove, { passive: false });
+      card.addEventListener("touchend", handlePlanTouchEnd);
+      card.addEventListener("touchcancel", handlePlanTouchEnd);
     });
   }
 
@@ -1584,40 +1583,45 @@ function handlePlanDragEnd() {
   state.draggedPlanIndex = null;
 }
 
-function handlePlanPointerDown(event) {
-  if (event.button !== 0 && event.pointerType !== "touch") return;
+function handlePlanTouchStart(event) {
   if (event.target.closest("button, input, textarea, select, a")) return;
+  const touch = event.touches[0];
+  if (!touch) return;
 
   const card = event.currentTarget;
-  clearPlanPointerDragState();
+  clearPlanTouchDragState();
 
-  const pointerDrag = {
-    pointerId: event.pointerId,
+  const touchDrag = {
+    touchId: touch.identifier,
     index: Number(card.dataset.planIndex),
-    startX: event.clientX,
-    startY: event.clientY,
+    startX: touch.clientX,
+    startY: touch.clientY,
     active: false,
     timerId: window.setTimeout(() => {
-      pointerDrag.active = true;
-      state.draggedPlanIndex = pointerDrag.index;
+      touchDrag.active = true;
+      state.draggedPlanIndex = touchDrag.index;
       card.classList.add("is-dragging");
-      card.setPointerCapture?.(event.pointerId);
     }, 360)
   };
 
-  state.planPointerDrag = pointerDrag;
+  state.planTouchDrag = touchDrag;
 }
 
-function handlePlanPointerMove(event) {
-  const pointerDrag = state.planPointerDrag;
-  if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return;
+function handlePlanTouchMove(event) {
+  const touchDrag = state.planTouchDrag;
+  if (!touchDrag) return;
 
-  const distanceX = Math.abs(event.clientX - pointerDrag.startX);
-  const distanceY = Math.abs(event.clientY - pointerDrag.startY);
+  const touch = [...event.changedTouches].find(
+    (item) => item.identifier === touchDrag.touchId
+  );
+  if (!touch) return;
 
-  if (!pointerDrag.active) {
+  const distanceX = Math.abs(touch.clientX - touchDrag.startX);
+  const distanceY = Math.abs(touch.clientY - touchDrag.startY);
+
+  if (!touchDrag.active) {
     if (Math.hypot(distanceX, distanceY) > 10) {
-      clearPlanPointerDragState();
+      clearPlanTouchDragState();
     }
     return;
   }
@@ -1625,30 +1629,34 @@ function handlePlanPointerMove(event) {
   event.preventDefault();
 
   const target = document
-    .elementFromPoint(event.clientX, event.clientY)
+    .elementFromPoint(touch.clientX, touch.clientY)
     ?.closest("[data-plan-card]");
   if (!target || target === event.currentTarget) return;
 
-  swapPlanWithTarget(target, event.clientX);
+  swapPlanWithTarget(target, touch.clientX);
 }
 
-function handlePlanPointerEnd(event) {
-  const pointerDrag = state.planPointerDrag;
-  if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return;
+function handlePlanTouchEnd(event) {
+  const touchDrag = state.planTouchDrag;
+  if (!touchDrag) return;
 
-  event.currentTarget.releasePointerCapture?.(event.pointerId);
-  clearPlanPointerDragState();
+  const touchFinished = [...event.changedTouches].some(
+    (item) => item.identifier === touchDrag.touchId
+  );
+  if (!touchFinished) return;
+
+  clearPlanTouchDragState();
 }
 
-function clearPlanPointerDragState() {
-  if (state.planPointerDrag?.timerId) {
-    window.clearTimeout(state.planPointerDrag.timerId);
+function clearPlanTouchDragState() {
+  if (state.planTouchDrag?.timerId) {
+    window.clearTimeout(state.planTouchDrag.timerId);
   }
   app.querySelectorAll("[data-plan-card]").forEach((card) => {
     card.classList.remove("is-dragging");
   });
   state.draggedPlanIndex = null;
-  state.planPointerDrag = null;
+  state.planTouchDrag = null;
 }
 
 function handleExampleDragStart(event) {
