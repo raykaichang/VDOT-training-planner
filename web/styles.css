@@ -1675,7 +1675,8 @@ dd {
 @media (max-width: 900px) {
   .pace-layout,
   .topbar,
-  .weekly-plan-head {
+  .weekly-plan-head,
+  .example-group {
     grid-template-columns: 1fr;
   }
 
@@ -1692,11 +1693,20 @@ dd {
   .topbar-controls > * {
     flex: 1 1 170px;
   }
+
+  .example-row {
+    grid-auto-columns: minmax(260px, min(420px, calc(100vw - 80px)));
+  }
+
+  .plan-day,
+  .example-card {
+    cursor: default;
+  }
 }
 
 @media (max-width: 620px) {
   .app-shell {
-    padding: 12px;
+    padding: 8px;
   }
 
   .app-workspace,
@@ -1707,6 +1717,16 @@ dd {
   .tool-sidebar {
     position: static;
     min-height: auto;
+  }
+
+  .content-shell {
+    padding: 0 8px 20px;
+  }
+
+  .control-panel,
+  .results-panel,
+  .weekly-plan {
+    padding: 12px;
   }
 
   .tool-sidebar-nav {
@@ -1737,10 +1757,10 @@ dd {
   }
 
   .week-scroll {
-    --plan-card-width: min(250px, calc(100vw - 64px));
+    --plan-card-width: min(220px, calc(100vw - 96px));
   }
 
   .example-row {
-    grid-auto-columns: minmax(250px, calc(100vw - 64px));
+    grid-auto-columns: minmax(210px, calc(100vw - 96px));
   }
 }

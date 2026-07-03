@@ -1326,25 +1326,31 @@ function bindEvents() {
     button.addEventListener("click", handleAction);
   });
 
-  app.querySelectorAll("[data-plan-card]").forEach((card) => {
-    card.addEventListener("dragstart", handlePlanDragStart);
-    card.addEventListener("dragover", handlePlanDragOver);
-    card.addEventListener("dragend", handlePlanDragEnd);
-    card.addEventListener("drop", handlePlanDrop);
-  });
+  const prefersTouchScrolling =
+    window.matchMedia?.("(pointer: coarse)").matches ||
+    window.matchMedia?.("(hover: none)").matches;
 
-  app.querySelectorAll("[data-example-card]").forEach((card) => {
-    card.addEventListener("pointerdown", handleExamplePointerDown);
-    card.addEventListener("pointermove", handleExamplePointerMove);
-    card.addEventListener("pointerup", handleExamplePointerEnd);
-    card.addEventListener("pointercancel", handleExamplePointerEnd);
-    card.addEventListener("lostpointercapture", handleExamplePointerEnd);
-    card.addEventListener("mousedown", handleExampleMouseDown);
-    card.addEventListener("dragstart", handleExampleDragStart);
-    card.addEventListener("dragover", handleExampleDragOver);
-    card.addEventListener("dragend", handleExampleDragEnd);
-    card.addEventListener("drop", handleExampleDrop);
-  });
+  if (!prefersTouchScrolling) {
+    app.querySelectorAll("[data-plan-card]").forEach((card) => {
+      card.addEventListener("dragstart", handlePlanDragStart);
+      card.addEventListener("dragover", handlePlanDragOver);
+      card.addEventListener("dragend", handlePlanDragEnd);
+      card.addEventListener("drop", handlePlanDrop);
+    });
+
+    app.querySelectorAll("[data-example-card]").forEach((card) => {
+      card.addEventListener("pointerdown", handleExamplePointerDown);
+      card.addEventListener("pointermove", handleExamplePointerMove);
+      card.addEventListener("pointerup", handleExamplePointerEnd);
+      card.addEventListener("pointercancel", handleExamplePointerEnd);
+      card.addEventListener("lostpointercapture", handleExamplePointerEnd);
+      card.addEventListener("mousedown", handleExampleMouseDown);
+      card.addEventListener("dragstart", handleExampleDragStart);
+      card.addEventListener("dragover", handleExampleDragOver);
+      card.addEventListener("dragend", handleExampleDragEnd);
+      card.addEventListener("drop", handleExampleDrop);
+    });
+  }
 
   app.querySelectorAll(".week-scroll").forEach((scroller) => {
     scroller.addEventListener("scroll", positionOpenPlanSwapMenu, { passive: true });
