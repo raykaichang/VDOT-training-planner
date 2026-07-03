@@ -1029,6 +1029,8 @@ input[type="range"]::-moz-range-thumb {
   padding: 12px;
   overflow: hidden;
   cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
   transition:
     box-shadow 160ms ease,
     opacity 160ms ease,
