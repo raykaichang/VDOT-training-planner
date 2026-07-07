@@ -3,10 +3,7 @@ import {
   applyHeatSlowdownToPace,
   calculateHeatIndexCelsius,
   estimateHeatSlowdownPercent,
-  RaceType,
-  AcclimationLevel,
-  SunExposure,
-  WindCondition
+  RaceType
 } from "../src/gpx-effort/heat.mjs";
 import { createSegments } from "../src/gpx-effort/segmentation.mjs";
 
@@ -18,10 +15,7 @@ const cool = estimateHeatSlowdownPercent({
   enabled: false,
   temperatureC: 30,
   relativeHumidity: 85,
-  raceType: RaceType.MARATHON,
-  acclimationLevel: AcclimationLevel.NONE,
-  sunExposure: SunExposure.FULL_SUN,
-  windCondition: WindCondition.STILL
+  raceType: RaceType.MARATHON
 });
 assert.equal(cool.finalSlowdown, 0);
 
@@ -50,10 +44,7 @@ const hotSegments = createSegments(flatRoute, 1, 330, 0.65, {
   enabled: true,
   temperatureC: 32,
   relativeHumidity: 90,
-  raceType: RaceType.MARATHON,
-  acclimationLevel: AcclimationLevel.NONE,
-  sunExposure: SunExposure.FULL_SUN,
-  windCondition: WindCondition.STILL
+  raceType: RaceType.MARATHON
 });
 assert.ok(hotSegments[0].heatAdjustedPaceSecPerKm > hotSegments[0].recommendedActualPaceSecPerKm);
 assert.ok(hotSegments[0].finalSegmentTimeSec > hotSegments[0].gradeAdjustedSegmentTimeSec);

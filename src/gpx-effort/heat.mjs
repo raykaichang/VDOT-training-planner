@@ -8,48 +8,12 @@ export const RaceType = Object.freeze({
   LONG_CONTINUOUS: "LONG_CONTINUOUS"
 });
 
-export const AcclimationLevel = Object.freeze({
-  NONE: "NONE",
-  PARTIAL: "PARTIAL",
-  FULL: "FULL"
-});
-
-export const SunExposure = Object.freeze({
-  SHADE: "SHADE",
-  NORMAL: "NORMAL",
-  FULL_SUN: "FULL_SUN"
-});
-
-export const WindCondition = Object.freeze({
-  BREEZY: "BREEZY",
-  NORMAL: "NORMAL",
-  STILL: "STILL"
-});
-
 export const RACE_TYPE_FACTORS = Object.freeze({
   [RaceType.FIVE_K]: 0.35,
   [RaceType.TEN_K]: 0.55,
   [RaceType.HALF_MARATHON]: 0.8,
   [RaceType.MARATHON]: 1,
   [RaceType.LONG_CONTINUOUS]: 0.9
-});
-
-export const ACCLIMATION_FACTORS = Object.freeze({
-  [AcclimationLevel.NONE]: 1.25,
-  [AcclimationLevel.PARTIAL]: 1,
-  [AcclimationLevel.FULL]: 0.8
-});
-
-export const SUN_FACTORS = Object.freeze({
-  [SunExposure.SHADE]: 0.9,
-  [SunExposure.NORMAL]: 1,
-  [SunExposure.FULL_SUN]: 1.15
-});
-
-export const WIND_FACTORS = Object.freeze({
-  [WindCondition.BREEZY]: 0.9,
-  [WindCondition.NORMAL]: 1,
-  [WindCondition.STILL]: 1.1
 });
 
 export function calculateHeatIndexCelsius(tempC, relativeHumidity) {
@@ -107,10 +71,7 @@ export function estimateHeatSlowdownPercent(settings) {
   const baseSlowdown = clamp(1 - 1 / baseHeatAdjustment.multiplier, 0, 0.5);
   const finalSlowdown = clamp(
     baseSlowdown *
-      (RACE_TYPE_FACTORS[settings.raceType] ?? RACE_TYPE_FACTORS.HALF_MARATHON) *
-      (ACCLIMATION_FACTORS[settings.acclimationLevel] ?? ACCLIMATION_FACTORS.PARTIAL) *
-      (SUN_FACTORS[settings.sunExposure] ?? SUN_FACTORS.NORMAL) *
-      (WIND_FACTORS[settings.windCondition] ?? WIND_FACTORS.NORMAL),
+      (RACE_TYPE_FACTORS[settings.raceType] ?? RACE_TYPE_FACTORS.HALF_MARATHON),
     0,
     0.25
   );

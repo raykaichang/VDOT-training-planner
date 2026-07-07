@@ -8,12 +8,7 @@ import {
 } from "../src/training-planner/paceCalculator.mjs";
 import { segmentsToCsv } from "../src/gpx-effort/csv.mjs";
 import { parseGpxTrackPoints } from "../src/gpx-effort/gpxParser.mjs";
-import {
-  AcclimationLevel,
-  RaceType,
-  SunExposure,
-  WindCondition
-} from "../src/gpx-effort/heat.mjs";
+import { RaceType } from "../src/gpx-effort/heat.mjs";
 import {
   formatDuration as formatGpxDuration,
   formatPace as formatGpxPace,
@@ -396,9 +391,6 @@ const state = {
   gpxHeatTemperatureC: 26,
   gpxHeatHumidity: 70,
   gpxHeatRaceType: RaceType.HALF_MARATHON,
-  gpxHeatAcclimationLevel: AcclimationLevel.PARTIAL,
-  gpxHeatSunExposure: SunExposure.NORMAL,
-  gpxHeatWindCondition: WindCondition.NORMAL,
   planOrder: null,
   draggedPlanIndex: null,
   planTouchDrag: null,
@@ -470,30 +462,12 @@ function getGpxCopy() {
       heatTemperature: "Temperature",
       heatHumidity: "Relative humidity",
       heatRaceType: "Race distance type",
-      heatAcclimation: "Heat acclimation",
-      heatSun: "Sun exposure",
-      heatWind: "Wind",
       raceTypes: {
         [RaceType.FIVE_K]: "5K",
         [RaceType.TEN_K]: "10K",
         [RaceType.HALF_MARATHON]: "Half marathon",
         [RaceType.MARATHON]: "Marathon",
         [RaceType.LONG_CONTINUOUS]: "Long continuous run"
-      },
-      acclimationLevels: {
-        [AcclimationLevel.NONE]: "Not acclimated",
-        [AcclimationLevel.PARTIAL]: "Partially acclimated",
-        [AcclimationLevel.FULL]: "Acclimated"
-      },
-      sunExposures: {
-        [SunExposure.SHADE]: "Shade / cloudy",
-        [SunExposure.NORMAL]: "Normal",
-        [SunExposure.FULL_SUN]: "Full sun"
-      },
-      windConditions: {
-        [WindCondition.BREEZY]: "Breezy",
-        [WindCondition.NORMAL]: "Normal",
-        [WindCondition.STILL]: "Still / muggy"
       },
       targetTotalTime: "Target flat total",
       gradeTotalTime: "Grade-adjusted total",
@@ -535,7 +509,7 @@ function getGpxCopy() {
       fileReady: "Loaded",
       formulaTitle: "Model",
       formula:
-        "This tool first segments the GPX route, applies the Minetti et al. 2002 running grade-cost model to convert a flat-equivalent target pace into each segment's grade-adjusted pace, then optionally applies race-day heat/humidity slowdown to that grade-adjusted pace. Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6; grade pace = flat-equivalent pace x Cr(g) / Cr(0). Heat adjustment uses the same temperature/humidity model used elsewhere in this site, with additional conservative factors for event duration, acclimation, sun, and wind.",
+        "This tool first segments the GPX route, applies the Minetti et al. 2002 running grade-cost model to convert a flat-equivalent target pace into each segment's grade-adjusted pace, then optionally applies race-day heat/humidity slowdown to that grade-adjusted pace. Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6; grade pace = flat-equivalent pace x Cr(g) / Cr(0). Heat adjustment uses the same temperature/humidity model used elsewhere in this site, with a conservative event-duration factor.",
       sourceTitle: "Source & Limits",
       source:
         "Source: Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001. GPS elevation is noisy; use this as a route-planning estimate, not a race guarantee.",
@@ -580,30 +554,12 @@ function getGpxCopy() {
     heatTemperature: "氣溫",
     heatHumidity: "相對濕度",
     heatRaceType: "比賽距離類型",
-    heatAcclimation: "熱適應程度",
-    heatSun: "日照條件",
-    heatWind: "風況",
     raceTypes: {
       [RaceType.FIVE_K]: "5K",
       [RaceType.TEN_K]: "10K",
       [RaceType.HALF_MARATHON]: "半馬",
       [RaceType.MARATHON]: "馬拉松",
       [RaceType.LONG_CONTINUOUS]: "長時間穩定跑"
-    },
-    acclimationLevels: {
-      [AcclimationLevel.NONE]: "未適應",
-      [AcclimationLevel.PARTIAL]: "部分適應",
-      [AcclimationLevel.FULL]: "已適應"
-    },
-    sunExposures: {
-      [SunExposure.SHADE]: "陰天 / 樹蔭",
-      [SunExposure.NORMAL]: "一般",
-      [SunExposure.FULL_SUN]: "大太陽曝曬"
-    },
-    windConditions: {
-      [WindCondition.BREEZY]: "微風或有風",
-      [WindCondition.NORMAL]: "一般",
-      [WindCondition.STILL]: "悶熱無風"
     },
     targetTotalTime: "原始目標總時間",
     gradeTotalTime: "坡度修正後總時間",
@@ -643,8 +599,8 @@ function getGpxCopy() {
     exportCsv: "匯出 CSV",
     fileReady: "已載入",
     formulaTitle: "模型",
-      formula:
-      "本工具先根據 GPX 路線分段計算坡度，使用 Minetti et al. (2002) 的跑步坡度能量成本模型，將目標平地等效配速換算為每段坡度下的建議實際配速。若啟用比賽當天溫濕度修正，工具會再根據氣溫、相對濕度、比賽距離、熱適應程度、日照與風況，估算熱環境可能造成的速度下降，並套用到每段坡度修正配速上。Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6；坡度修正配速 = 平路等效配速 x Cr(g) / Cr(0)。",
+    formula:
+      "本工具先根據 GPX 路線分段計算坡度，使用 Minetti et al. (2002) 的跑步坡度能量成本模型，將目標平地等效配速換算為每段坡度下的建議實際配速。若啟用比賽當天溫濕度修正，工具會再根據氣溫、相對濕度與比賽距離，估算熱環境可能造成的速度下降，並套用到每段坡度修正配速上。Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6；坡度修正配速 = 平路等效配速 x Cr(g) / Cr(0)。",
     sourceTitle: "來源與限制",
     source:
       "來源：Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001。GPS 海拔容易有雜訊，本工具適合作為路線規劃估算，不是比賽結果保證。",
@@ -1159,33 +1115,6 @@ function renderGpxHeatSettings(gpx) {
                 Object.values(RaceType).map((value) => ({
                   value,
                   label: gpx.raceTypes[value]
-                }))
-              )}
-              ${renderNativeSelect(
-                gpx.heatAcclimation,
-                "gpxHeatAcclimationLevel",
-                state.gpxHeatAcclimationLevel,
-                Object.values(AcclimationLevel).map((value) => ({
-                  value,
-                  label: gpx.acclimationLevels[value]
-                }))
-              )}
-              ${renderNativeSelect(
-                gpx.heatSun,
-                "gpxHeatSunExposure",
-                state.gpxHeatSunExposure,
-                Object.values(SunExposure).map((value) => ({
-                  value,
-                  label: gpx.sunExposures[value]
-                }))
-              )}
-              ${renderNativeSelect(
-                gpx.heatWind,
-                "gpxHeatWindCondition",
-                state.gpxHeatWindCondition,
-                Object.values(WindCondition).map((value) => ({
-                  value,
-                  label: gpx.windConditions[value]
                 }))
               )}
             </div>
@@ -2657,9 +2586,6 @@ async function handleGpxFieldChange(event) {
     field === "gpxTargetPaceInput" ||
     field === "gpxDownhillStrategy" ||
     field === "gpxHeatRaceType" ||
-    field === "gpxHeatAcclimationLevel" ||
-    field === "gpxHeatSunExposure" ||
-    field === "gpxHeatWindCondition" ||
     field === "gpxHeatEnabled"
   ) {
     state[field] = value;
@@ -2772,10 +2698,7 @@ function getGpxHeatAdjustmentSettings() {
     enabled: Boolean(state.gpxHeatEnabled),
     temperatureC: state.gpxHeatTemperatureC,
     relativeHumidity: state.gpxHeatHumidity,
-    raceType: state.gpxHeatRaceType,
-    acclimationLevel: state.gpxHeatAcclimationLevel,
-    sunExposure: state.gpxHeatSunExposure,
-    windCondition: state.gpxHeatWindCondition
+    raceType: state.gpxHeatRaceType
   };
 }
 

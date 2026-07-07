@@ -52,9 +52,6 @@ export function segmentsToCsv(segments, formatters, heatSettings = null, heatAdj
           ["heatIndexC", heatAdjustment.heatIndexC.toFixed(1)],
           ["heatSlowdownPercent", (heatAdjustment.finalSlowdown * 100).toFixed(1)],
           ["raceType", heatSettings.raceType],
-          ["acclimationLevel", heatSettings.acclimationLevel],
-          ["sunExposure", heatSettings.sunExposure],
-          ["windCondition", heatSettings.windCondition],
           []
         ]
       : [];
