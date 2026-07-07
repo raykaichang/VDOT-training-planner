@@ -9,6 +9,12 @@ import {
 import { segmentsToCsv } from "../src/gpx-effort/csv.mjs";
 import { parseGpxTrackPoints } from "../src/gpx-effort/gpxParser.mjs";
 import {
+  AcclimationLevel,
+  RaceType,
+  SunExposure,
+  WindCondition
+} from "../src/gpx-effort/heat.mjs";
+import {
   formatDuration as formatGpxDuration,
   formatPace as formatGpxPace,
   formatPaceDelta as formatGpxPaceDelta,
@@ -386,6 +392,13 @@ const state = {
   gpxSegmentSizeKm: 5,
   gpxSmoothingWindowM: 200,
   gpxDownhillStrategy: "standard",
+  gpxHeatEnabled: false,
+  gpxHeatTemperatureC: 26,
+  gpxHeatHumidity: 70,
+  gpxHeatRaceType: RaceType.HALF_MARATHON,
+  gpxHeatAcclimationLevel: AcclimationLevel.PARTIAL,
+  gpxHeatSunExposure: SunExposure.NORMAL,
+  gpxHeatWindCondition: WindCondition.NORMAL,
   planOrder: null,
   draggedPlanIndex: null,
   planTouchDrag: null,
@@ -452,6 +465,60 @@ function getGpxCopy() {
       conservative: "Conservative",
       standard: "Standard",
       aggressive: "Aggressive",
+      heatTitle: "Race-day heat/humidity adjustment",
+      heatEnabled: "Enable heat/humidity adjustment",
+      heatTemperature: "Temperature",
+      heatHumidity: "Relative humidity",
+      heatRaceType: "Race distance type",
+      heatAcclimation: "Heat acclimation",
+      heatSun: "Sun exposure",
+      heatWind: "Wind",
+      raceTypes: {
+        [RaceType.FIVE_K]: "5K",
+        [RaceType.TEN_K]: "10K",
+        [RaceType.HALF_MARATHON]: "Half marathon",
+        [RaceType.MARATHON]: "Marathon",
+        [RaceType.LONG_CONTINUOUS]: "Long continuous run"
+      },
+      acclimationLevels: {
+        [AcclimationLevel.NONE]: "Not acclimated",
+        [AcclimationLevel.PARTIAL]: "Partially acclimated",
+        [AcclimationLevel.FULL]: "Acclimated"
+      },
+      sunExposures: {
+        [SunExposure.SHADE]: "Shade / cloudy",
+        [SunExposure.NORMAL]: "Normal",
+        [SunExposure.FULL_SUN]: "Full sun"
+      },
+      windConditions: {
+        [WindCondition.BREEZY]: "Breezy",
+        [WindCondition.NORMAL]: "Normal",
+        [WindCondition.STILL]: "Still / muggy"
+      },
+      targetTotalTime: "Target flat total",
+      gradeTotalTime: "Grade-adjusted total",
+      finalTotalTime: "Final recommended total",
+      heatSummaryTitle: "Race-day Heat Adjustment",
+      heatSlowdown: "Estimated speed loss",
+      heatPaceIncrease: "Pace increase at target",
+      heatAppliedNote:
+        "This slowdown is applied to every GPX segment after grade adjustment.",
+      heatSafetyNote:
+        "Heat adjustment is a statistical estimate, not medical advice or a safety guarantee. Heat Index does not fully capture solar radiation, wind, road reflection, fueling, sleep, clothing, sweat rate, or individual adaptation. Stop and seek help if dizziness, chills, unstable gait, confusion, chest tightness, or abnormal sweating occurs.",
+      heatWarnings: {
+        HEAT_INDEX_HIGH:
+          "Heat Index is in a high-risk range. Prioritize safety, hydration, cooling, and a lower target.",
+        HOT_HUMID:
+          "Hot and humid conditions can raise perceived effort and heart rate sharply. Treat Taiwan summer racing conservatively.",
+        HEAT_SLOWDOWN_HIGH:
+          "Estimated heat impact is large. Do not rely only on pace; watch effort and heart rate."
+      },
+      gradeWarnings: {
+        STEEP_UPHILL:
+          "Steep uphill: control by effort and heart rate rather than pace alone.",
+        STEEP_DOWNHILL:
+          "Steep downhill: real speed may be limited by technique, surface, and eccentric muscle load."
+      },
       noFile: "Upload a GPX file to calculate grade-adjusted target paces.",
       routeSummary: "Route Summary",
       totalDistance: "Total Distance",
@@ -468,7 +535,7 @@ function getGpxCopy() {
       fileReady: "Loaded",
       formulaTitle: "Model",
       formula:
-        "The route is split by distance. For each segment, average grade is converted with Minetti et al. 2002 running cost: Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6. Recommended actual pace = flat-equivalent pace x Cr(g) / Cr(0). Downhill strategy can reduce the full downhill speed-up for safer execution.",
+        "This tool first segments the GPX route, applies the Minetti et al. 2002 running grade-cost model to convert a flat-equivalent target pace into each segment's grade-adjusted pace, then optionally applies race-day heat/humidity slowdown to that grade-adjusted pace. Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6; grade pace = flat-equivalent pace x Cr(g) / Cr(0). Heat adjustment uses the same temperature/humidity model used elsewhere in this site, with additional conservative factors for event duration, acclimation, sun, and wind.",
       sourceTitle: "Source & Limits",
       source:
         "Source: Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001. GPS elevation is noisy; use this as a route-planning estimate, not a race guarantee.",
@@ -508,6 +575,59 @@ function getGpxCopy() {
     conservative: "保守",
     standard: "標準",
     aggressive: "積極",
+    heatTitle: "比賽當天溫濕度修正",
+    heatEnabled: "啟用溫濕度修正",
+    heatTemperature: "氣溫",
+    heatHumidity: "相對濕度",
+    heatRaceType: "比賽距離類型",
+    heatAcclimation: "熱適應程度",
+    heatSun: "日照條件",
+    heatWind: "風況",
+    raceTypes: {
+      [RaceType.FIVE_K]: "5K",
+      [RaceType.TEN_K]: "10K",
+      [RaceType.HALF_MARATHON]: "半馬",
+      [RaceType.MARATHON]: "馬拉松",
+      [RaceType.LONG_CONTINUOUS]: "長時間穩定跑"
+    },
+    acclimationLevels: {
+      [AcclimationLevel.NONE]: "未適應",
+      [AcclimationLevel.PARTIAL]: "部分適應",
+      [AcclimationLevel.FULL]: "已適應"
+    },
+    sunExposures: {
+      [SunExposure.SHADE]: "陰天 / 樹蔭",
+      [SunExposure.NORMAL]: "一般",
+      [SunExposure.FULL_SUN]: "大太陽曝曬"
+    },
+    windConditions: {
+      [WindCondition.BREEZY]: "微風或有風",
+      [WindCondition.NORMAL]: "一般",
+      [WindCondition.STILL]: "悶熱無風"
+    },
+    targetTotalTime: "原始目標總時間",
+    gradeTotalTime: "坡度修正後總時間",
+    finalTotalTime: "最終建議總時間",
+    heatSummaryTitle: "比賽當天熱環境修正",
+    heatSlowdown: "估計速度下降",
+    heatPaceIncrease: "以目標配速約增加",
+    heatAppliedNote: "此放慢比例會套用到 GPX 每個分段的坡度修正配速上。",
+    heatSafetyNote:
+      "溫濕度修正是統計與經驗性估算，不是醫療建議，也不是安全保證。Heat Index 主要由氣溫與相對濕度推估，未完整納入太陽輻射、風速、黑球溫度、路面反射、補給、睡眠、衣著、個人流汗率與熱適應差異。若比賽當天出現頭暈、寒顫、步態不穩、意識混亂、胸悶、停止流汗等症狀，應立即停止比賽並尋求協助。",
+    heatWarnings: {
+      HEAT_INDEX_HIGH:
+        "Heat Index 已達高風險區間，建議優先考慮安全、補水、降溫與降低目標。",
+      HOT_HUMID:
+        "高溫高濕環境可能使體感與心率明顯上升，台灣夏季路跑需保守看待配速。",
+      HEAT_SLOWDOWN_HIGH:
+        "估計熱環境影響較大，建議不要只依賴配速，應同時觀察體感與心率。"
+    },
+    gradeWarnings: {
+      STEEP_UPHILL:
+        "此段坡度較陡，建議以努力程度與心率控制，不要完全依賴配速。",
+      STEEP_DOWNHILL:
+        "此段下坡較陡，實際速度可能受技術、路面與肌肉離心負荷限制，建議保守。"
+    },
     noFile: "匯入 GPX 後，系統會依坡度換算每段建議實際配速。",
     routeSummary: "路線摘要",
     totalDistance: "總距離",
@@ -523,8 +643,8 @@ function getGpxCopy() {
     exportCsv: "匯出 CSV",
     fileReady: "已載入",
     formulaTitle: "模型",
-    formula:
-      "先依距離切分 GPX 路線，再把每段平均坡度帶入 Minetti et al. 2002 跑步代謝成本公式：Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6。建議實際配速 = 平路等效配速 x Cr(g) / Cr(0)。下坡策略可降低公式給出的完整下坡加速，讓執行更保守。",
+      formula:
+      "本工具先根據 GPX 路線分段計算坡度，使用 Minetti et al. (2002) 的跑步坡度能量成本模型，將目標平地等效配速換算為每段坡度下的建議實際配速。若啟用比賽當天溫濕度修正，工具會再根據氣溫、相對濕度、比賽距離、熱適應程度、日照與風況，估算熱環境可能造成的速度下降，並套用到每段坡度修正配速上。Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6；坡度修正配速 = 平路等效配速 x Cr(g) / Cr(0)。",
     sourceTitle: "來源與限制",
     source:
       "來源：Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001。GPS 海拔容易有雜訊，本工具適合作為路線規劃估算，不是比賽結果保證。",
@@ -995,6 +1115,7 @@ function renderGpxInputs() {
           { value: "aggressive", label: gpx.aggressive }
         ]
       )}
+      ${renderGpxHeatSettings(gpx)}
       <aside class="note-panel gpx-note">
         <h3>${gpx.formulaTitle}</h3>
         <p>${gpx.formula}</p>
@@ -1002,6 +1123,76 @@ function renderGpxInputs() {
         <p>${gpx.source}</p>
       </aside>
     </div>
+  `;
+}
+
+function renderGpxHeatSettings(gpx) {
+  return `
+    <details class="gpx-heat-settings" ${state.gpxHeatEnabled ? "open" : ""}>
+      <summary>${gpx.heatTitle}</summary>
+      <label class="gpx-toggle-row">
+        <input data-gpx-field="gpxHeatEnabled" type="checkbox" ${state.gpxHeatEnabled ? "checked" : ""} />
+        <span>${gpx.heatEnabled}</span>
+      </label>
+      ${
+        state.gpxHeatEnabled
+          ? `
+            <div class="gpx-heat-grid">
+              <label class="field">
+                <span>${gpx.heatTemperature}</span>
+                <div class="inline-unit-input">
+                  <input data-gpx-field="gpxHeatTemperatureC" type="number" inputmode="decimal" min="-5" max="45" step="1" value="${state.gpxHeatTemperatureC}" />
+                  <b>°C</b>
+                </div>
+              </label>
+              <label class="field">
+                <span>${gpx.heatHumidity}</span>
+                <div class="inline-unit-input">
+                  <input data-gpx-field="gpxHeatHumidity" type="number" inputmode="decimal" min="0" max="100" step="1" value="${state.gpxHeatHumidity}" />
+                  <b>%</b>
+                </div>
+              </label>
+              ${renderNativeSelect(
+                gpx.heatRaceType,
+                "gpxHeatRaceType",
+                state.gpxHeatRaceType,
+                Object.values(RaceType).map((value) => ({
+                  value,
+                  label: gpx.raceTypes[value]
+                }))
+              )}
+              ${renderNativeSelect(
+                gpx.heatAcclimation,
+                "gpxHeatAcclimationLevel",
+                state.gpxHeatAcclimationLevel,
+                Object.values(AcclimationLevel).map((value) => ({
+                  value,
+                  label: gpx.acclimationLevels[value]
+                }))
+              )}
+              ${renderNativeSelect(
+                gpx.heatSun,
+                "gpxHeatSunExposure",
+                state.gpxHeatSunExposure,
+                Object.values(SunExposure).map((value) => ({
+                  value,
+                  label: gpx.sunExposures[value]
+                }))
+              )}
+              ${renderNativeSelect(
+                gpx.heatWind,
+                "gpxHeatWindCondition",
+                state.gpxHeatWindCondition,
+                Object.values(WindCondition).map((value) => ({
+                  value,
+                  label: gpx.windConditions[value]
+                }))
+              )}
+            </div>
+          `
+          : ""
+      }
+    </details>
   `;
 }
 
@@ -1103,6 +1294,7 @@ function renderGpxResults() {
       analysis
         ? `
           ${renderGpxSummary(analysis.summary, gpx)}
+          ${renderGpxHeatSummary(analysis, gpx)}
           <section class="gpx-chart-grid">
             ${renderElevationChart(analysis.points, gpx)}
             ${renderPaceChart(analysis.segments, gpx)}
@@ -1161,7 +1353,64 @@ function renderGpxSummary(summary, gpx) {
           <span>${gpx.steepestDescent}</span>
           <strong>#${descent.index} ${formatGrade(descent.averageGrade)}</strong>
         </div>
+        <div>
+          <span>${gpx.targetTotalTime}</span>
+          <strong>${formatGpxDuration(summary.targetTotalTimeSec)}</strong>
+        </div>
+        <div>
+          <span>${gpx.gradeTotalTime}</span>
+          <strong>${formatGpxDuration(summary.gradeAdjustedTotalTimeSec)}</strong>
+        </div>
+        ${
+          summary.heatAdjustment?.finalSlowdown > 0
+            ? `
+              <div>
+                <span>${gpx.finalTotalTime}</span>
+                <strong>${formatGpxDuration(summary.finalTotalTimeSec)}</strong>
+              </div>
+            `
+            : ""
+        }
       </div>
+    </section>
+  `;
+}
+
+function renderGpxHeatSummary(analysis, gpx) {
+  const heat = analysis.heatAdjustment;
+  const settings = analysis.heatSettings;
+  if (!settings?.enabled || !heat) return "";
+  const targetPace = analysis.segments[0]?.targetEquivalentPaceSecPerKm ?? 0;
+  const paceIncrease = targetPace / (1 - heat.finalSlowdown) - targetPace;
+
+  return `
+    <section class="summary-card gpx-heat-summary">
+      <p class="eyebrow">${gpx.heatSummaryTitle}</p>
+      <div class="metric-row">
+        <div>
+          <span>${gpx.heatTemperature}</span>
+          <strong>${settings.temperatureC}°C</strong>
+        </div>
+        <div>
+          <span>${gpx.heatHumidity}</span>
+          <strong>${settings.relativeHumidity}%</strong>
+        </div>
+        <div>
+          <span>Heat Index</span>
+          <strong>${heat.heatIndexC.toFixed(1)}°C</strong>
+        </div>
+        <div>
+          <span>${gpx.heatSlowdown}</span>
+          <strong>${formatPercent(heat.finalSlowdown * 100)}</strong>
+        </div>
+        <div>
+          <span>${gpx.heatPaceIncrease}</span>
+          <strong>${formatGpxPaceDelta(paceIncrease)}</strong>
+        </div>
+      </div>
+      <p>${gpx.heatAppliedNote}</p>
+      ${renderWarningList(heat.warnings, gpx.heatWarnings)}
+      <p class="gpx-safety-note">${gpx.heatSafetyNote}</p>
     </section>
   `;
 }
@@ -1173,8 +1422,8 @@ function renderElevationChart(points, gpx) {
 }
 
 function renderPaceChart(segments, gpx) {
-  const values = segments.map((segment) => segment.actualPaceSecPerKm);
-  return renderBarChart(gpx.paceProfile, segments, values, (value) => formatGpxPace(value));
+  const hasHeat = segments.some((segment) => segment.heatDeltaSecPerKm > 0.1);
+  return renderPaceComparisonChart(gpx.paceProfile, segments, hasHeat);
 }
 
 function renderGainLossChart(segments, gpx) {
@@ -1186,6 +1435,114 @@ function renderGainLossChart(segments, gpx) {
     (value) => `${Math.round(value)} m`,
     true
   );
+}
+
+function renderPaceComparisonChart(title, segments, hasHeat) {
+  const width = 640;
+  const height = 240;
+  const margin = { top: 12, right: 18, bottom: 48, left: 62 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const allValues = segments.flatMap((segment) => [
+    segment.targetEquivalentPaceSecPerKm,
+    segment.recommendedActualPaceSecPerKm,
+    ...(hasHeat ? [segment.heatAdjustedPaceSecPerKm] : [])
+  ]);
+  const axis = buildNiceAxis(Math.min(...allValues), Math.max(...allValues), "pace");
+  const totalDistanceKm = Math.max(0.01, segments.at(-1)?.endKm ?? segments.length);
+  const xTicks = buildDistanceTicks(totalDistanceKm);
+  const series = [
+    {
+      key: "target",
+      label: state.locale === "en" ? "Flat target" : "目標平路等效",
+      className: "target",
+      values: segments.map((segment) => segment.targetEquivalentPaceSecPerKm)
+    },
+    {
+      key: "grade",
+      label: state.locale === "en" ? "Grade adjusted" : "坡度修正",
+      className: "grade",
+      values: segments.map((segment) => segment.recommendedActualPaceSecPerKm)
+    },
+    ...(hasHeat
+      ? [
+          {
+            key: "final",
+            label: state.locale === "en" ? "Grade + heat" : "坡度 + 溫濕度",
+            className: "final",
+            values: segments.map((segment) => segment.heatAdjustedPaceSecPerKm)
+          }
+        ]
+      : [])
+  ];
+
+  const pointX = (segment) =>
+    margin.left +
+    (((segment.startKm + segment.endKm) / 2) / totalDistanceKm) * plotWidth;
+  const pointY = (value) => mapValueToY(value, axis.min, axis.max, margin.top, plotHeight);
+
+  return `
+    <article class="summary-card gpx-chart-card">
+      <h3>${title}</h3>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}">
+        ${renderChartAxes({
+          width,
+          height,
+          margin,
+          plotWidth,
+          plotHeight,
+          xTicks,
+          yTicks: axis.ticks,
+          yFormatter: (value) => formatClock(value),
+          yMin: axis.min,
+          yMax: axis.max,
+          xLabel: "km",
+          yLabel: "/km"
+        })}
+        ${series
+          .map((item) => {
+            const path = item.values
+              .map((value, index) => {
+                const x = pointX(segments[index]);
+                const y = pointY(value);
+                return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+              })
+              .join(" ");
+            return `<path class="gpx-pace-line ${item.className}" d="${path}" />`;
+          })
+          .join("")}
+        ${segments
+          .map((segment) => {
+            const x = pointX(segment);
+            const tooltip = [
+              `#${segment.index}`,
+              `${series[0].label}: ${formatGpxPace(segment.targetEquivalentPaceSecPerKm)}`,
+              `${series[1].label}: ${formatGpxPace(segment.recommendedActualPaceSecPerKm)}`,
+              ...(hasHeat
+                ? [`${series[2].label}: ${formatGpxPace(segment.heatAdjustedPaceSecPerKm)}`]
+                : [])
+            ].join(" | ");
+            return series
+              .map((item) => {
+                const value = item.values[segment.index - 1];
+                return `<circle class="gpx-pace-dot ${item.className}" cx="${x.toFixed(1)}" cy="${pointY(value).toFixed(1)}" r="4"><title>${tooltip}</title></circle>`;
+              })
+              .join("");
+          })
+          .join("")}
+      </svg>
+      <div class="gpx-chart-legend">
+        ${series
+          .map(
+            (item) => `
+              <span><i class="${item.className}"></i>${item.label}</span>
+            `
+          )
+          .join("")}
+      </div>
+      <p>${formatGpxPace(axis.min)} - ${formatGpxPace(axis.max)} · x: km · y: /km</p>
+    </article>
+  `;
 }
 
 function buildNiceAxis(rawMin, rawMax, type) {
@@ -1397,11 +1754,42 @@ function renderBarChart(title, segments, values, formatValue, allowNegative = fa
 }
 
 function renderGpxTable(segments, gpx) {
+  const hasHeat = segments.some((segment) => segment.heatDeltaSecPerKm > 0.1);
+  const headers = [
+    state.locale === "en" ? "Seg" : "段落",
+    state.locale === "en" ? "Range" : "距離範圍",
+    state.locale === "en" ? "Distance" : "段距離",
+    state.locale === "en" ? "Gain" : "爬升",
+    state.locale === "en" ? "Loss" : "下降",
+    state.locale === "en" ? "Net" : "淨海拔",
+    state.locale === "en" ? "Avg grade" : "平均坡度",
+    state.locale === "en" ? "Formula grade" : "公式用坡度",
+    state.locale === "en" ? "Equivalent" : "目標等效配速",
+    state.locale === "en" ? "Grade pace" : "坡度修正配速",
+    state.locale === "en" ? "Grade delta" : "坡度修正差",
+    ...(hasHeat
+      ? [
+          state.locale === "en" ? "Heat pace" : "溫濕度修正後配速",
+          state.locale === "en" ? "Heat delta" : "溫濕度增加秒數",
+          state.locale === "en" ? "Final delta" : "最終配速差"
+        ]
+      : []),
+    state.locale === "en" ? "Grade time" : "坡度修正段時間",
+    state.locale === "en" ? "Grade cumulative" : "坡度修正累積",
+    ...(hasHeat
+      ? [
+          state.locale === "en" ? "Final time" : "最終段時間",
+          state.locale === "en" ? "Final cumulative" : "最終累積時間"
+        ]
+      : []),
+    state.locale === "en" ? "Notes" : "提示"
+  ];
+
   return `
     <div class="gpx-table-wrap">
       <table class="gpx-table">
         <thead>
-          <tr>${gpx.tableHeaders.map((header) => `<th>${header}</th>`).join("")}</tr>
+          <tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr>
         </thead>
         <tbody>
           ${segments
@@ -1410,12 +1798,35 @@ function renderGpxTable(segments, gpx) {
                 <tr>
                   <td>#${segment.index}</td>
                   <td>${segment.startKm.toFixed(1)}-${segment.endKm.toFixed(1)} km</td>
+                  <td>${segment.distanceKm.toFixed(2)} km</td>
+                  <td>${Math.round(segment.elevationGainM)} m</td>
+                  <td>${Math.round(segment.elevationLossM)} m</td>
+                  <td>${Math.round(segment.netElevationM)} m</td>
                   <td>${formatGrade(segment.averageGrade)}</td>
-                  <td>+${Math.round(segment.elevationGainM)} / -${Math.round(segment.elevationLossM)} m</td>
+                  <td>${formatGrade(segment.gradeForFormula)}</td>
                   <td>${formatGpxPace(segment.targetEquivalentPaceSecPerKm)}</td>
-                  <td><strong>${formatGpxPace(segment.actualPaceSecPerKm)}</strong></td>
-                  <td>${formatGpxPaceDelta(segment.paceDeltaSecPerKm)}</td>
-                  <td>${formatGpxDuration(segment.segmentTimeSec)}</td>
+                  <td><strong>${formatGpxPace(segment.recommendedActualPaceSecPerKm)}</strong></td>
+                  <td>${formatGpxPaceDelta(segment.gradePaceDeltaSecPerKm)}</td>
+                  ${
+                    hasHeat
+                      ? `
+                        <td><strong>${formatGpxPace(segment.heatAdjustedPaceSecPerKm)}</strong></td>
+                        <td>${formatGpxPaceDelta(segment.heatDeltaSecPerKm)}</td>
+                        <td>${formatGpxPaceDelta(segment.finalPaceDeltaSecPerKm)}</td>
+                      `
+                      : ""
+                  }
+                  <td>${formatGpxDuration(segment.gradeAdjustedSegmentTimeSec)}</td>
+                  <td>${formatGpxDuration(segment.cumulativeGradeAdjustedTimeSec)}</td>
+                  ${
+                    hasHeat
+                      ? `
+                        <td>${formatGpxDuration(segment.finalSegmentTimeSec)}</td>
+                        <td>${formatGpxDuration(segment.cumulativeFinalTimeSec)}</td>
+                      `
+                      : ""
+                  }
+                  <td>${renderWarningInline(segment.warnings, gpx.gradeWarnings)}</td>
                 </tr>
               `
             )
@@ -1424,6 +1835,24 @@ function renderGpxTable(segments, gpx) {
       </table>
     </div>
   `;
+}
+
+function renderWarningList(warnings, dictionary) {
+  if (!warnings?.length) return "";
+  return `
+    <ul class="gpx-warning-list">
+      ${warnings
+        .map((warning) => `<li>${dictionary[warning] ?? warning}</li>`)
+        .join("")}
+    </ul>
+  `;
+}
+
+function renderWarningInline(warnings, dictionary) {
+  if (!warnings?.length) return "";
+  return warnings
+    .map((warning) => `<span class="gpx-warning-pill">${dictionary[warning] ?? warning}</span>`)
+    .join("");
 }
 
 function renderEquivalentResults(model, t) {
@@ -2216,14 +2645,22 @@ function handleAction(event) {
 
 async function handleGpxFieldChange(event) {
   const field = event.currentTarget.dataset.gpxField;
-  const value = event.currentTarget.value;
+  const value =
+    event.currentTarget.type === "checkbox"
+      ? event.currentTarget.checked
+      : event.currentTarget.value;
 
   if (
     field === "gpxSourceMode" ||
     field === "gpxPresetRoute" ||
     field === "gpxTargetMode" ||
     field === "gpxTargetPaceInput" ||
-    field === "gpxDownhillStrategy"
+    field === "gpxDownhillStrategy" ||
+    field === "gpxHeatRaceType" ||
+    field === "gpxHeatAcclimationLevel" ||
+    field === "gpxHeatSunExposure" ||
+    field === "gpxHeatWindCondition" ||
+    field === "gpxHeatEnabled"
   ) {
     state[field] = value;
   } else {
@@ -2290,12 +2727,15 @@ function recalculateGpxAnalysis() {
       points,
       state.gpxSegmentSizeKm,
       targetPace,
-      downhillStrategyOptions[state.gpxDownhillStrategy] ?? downhillStrategyOptions.standard
+      downhillStrategyOptions[state.gpxDownhillStrategy] ?? downhillStrategyOptions.standard,
+      getGpxHeatAdjustmentSettings()
     );
     state.gpxAnalysis = {
       points,
       segments,
-      summary: summarizeRoute(points, segments)
+      summary: summarizeRoute(points, segments),
+      heatAdjustment: segments[0]?.heatAdjustment ?? null,
+      heatSettings: getGpxHeatAdjustmentSettings()
     };
     state.gpxError = "";
   } catch (error) {
@@ -2325,6 +2765,18 @@ async function loadPresetGpxRoute(fileName) {
           ? "Unable to load preset GPX."
           : "無法載入常用路線 GPX。";
   }
+}
+
+function getGpxHeatAdjustmentSettings() {
+  return {
+    enabled: Boolean(state.gpxHeatEnabled),
+    temperatureC: state.gpxHeatTemperatureC,
+    relativeHumidity: state.gpxHeatHumidity,
+    raceType: state.gpxHeatRaceType,
+    acclimationLevel: state.gpxHeatAcclimationLevel,
+    sunExposure: state.gpxHeatSunExposure,
+    windCondition: state.gpxHeatWindCondition
+  };
 }
 
 function getGpxTargetPaceSeconds(points = state.gpxAnalysis?.points) {
@@ -2360,7 +2812,7 @@ function exportGpxCsv() {
     formatPace: formatGpxPace,
     formatPaceDelta: formatGpxPaceDelta,
     formatDuration: formatGpxDuration
-  });
+  }, state.gpxAnalysis.heatSettings, state.gpxAnalysis.heatAdjustment);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

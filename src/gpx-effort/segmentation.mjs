@@ -1,9 +1,14 @@
 import { haversineDistance } from "./distance.mjs";
 import {
   actualPaceFromEquivalent,
+  clampGradeForModel,
   equivalentPaceFromActual,
   minettiRunningCost
 } from "./minetti.mjs";
+import {
+  applyHeatSlowdownToPace,
+  estimateHeatSlowdownPercent
+} from "./heat.mjs";
 
 function nearestIndexAtDistance(points, distanceM) {
   let low = 0;
@@ -91,7 +96,8 @@ export function createSegments(
   routePoints,
   segmentSizeKm,
   targetEquivalentPaceSecPerKm,
-  downhillFactor = 0.65
+  downhillFactor = 0.65,
+  heatAdjustmentSettings = { enabled: false }
 ) {
   const totalDistanceM = routePoints.at(-1).distanceM;
   if (!Number.isFinite(totalDistanceM) || totalDistanceM <= 1) {
@@ -100,7 +106,9 @@ export function createSegments(
   const segmentSizeM = segmentSizeKm * 1000;
   const segmentCount = Math.ceil(totalDistanceM / segmentSizeM);
   const segments = [];
-  let cumulativeTimeSec = 0;
+  const heatAdjustment = estimateHeatSlowdownPercent(heatAdjustmentSettings);
+  let cumulativeGradeAdjustedTimeSec = 0;
+  let cumulativeFinalTimeSec = 0;
 
   for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
     const startM = segmentIndex * segmentSizeM;
@@ -122,17 +130,37 @@ export function createSegments(
 
     const averageGrade =
       distanceM > 0 ? (end.smoothedElevationM - start.smoothedElevationM) / distanceM : 0;
-    const actualPaceSecPerKm = actualPaceFromEquivalent(
+    const gradeForFormula = clampGradeForModel(averageGrade);
+    const recommendedActualPaceSecPerKm = actualPaceFromEquivalent(
       targetEquivalentPaceSecPerKm,
       averageGrade,
       downhillFactor
     );
     const equivalentPaceSecPerKm = equivalentPaceFromActual(
-      actualPaceSecPerKm,
+      recommendedActualPaceSecPerKm,
       averageGrade
     );
-    const segmentTimeSec = actualPaceSecPerKm * (distanceM / 1000);
-    cumulativeTimeSec += segmentTimeSec;
+    const heatAdjustedPaceSecPerKm = heatAdjustmentSettings?.enabled
+      ? applyHeatSlowdownToPace(
+          recommendedActualPaceSecPerKm,
+          heatAdjustment.finalSlowdown
+        )
+      : recommendedActualPaceSecPerKm;
+    const gradePaceDeltaSecPerKm =
+      recommendedActualPaceSecPerKm - targetEquivalentPaceSecPerKm;
+    const heatDeltaSecPerKm =
+      heatAdjustedPaceSecPerKm - recommendedActualPaceSecPerKm;
+    const finalPaceDeltaSecPerKm =
+      heatAdjustedPaceSecPerKm - targetEquivalentPaceSecPerKm;
+    const gradeAdjustedSegmentTimeSec =
+      recommendedActualPaceSecPerKm * (distanceM / 1000);
+    const finalSegmentTimeSec = heatAdjustedPaceSecPerKm * (distanceM / 1000);
+    cumulativeGradeAdjustedTimeSec += gradeAdjustedSegmentTimeSec;
+    cumulativeFinalTimeSec += finalSegmentTimeSec;
+    const warnings = [];
+
+    if (averageGrade > 0.08) warnings.push("STEEP_UPHILL");
+    if (averageGrade < -0.08) warnings.push("STEEP_DOWNHILL");
 
     segments.push({
       index: segmentIndex + 1,
@@ -142,20 +170,30 @@ export function createSegments(
       elevationGainM,
       elevationLossM,
       netElevationM: end.smoothedElevationM - start.smoothedElevationM,
+      elevationGain: elevationGainM,
+      elevationLoss: elevationLossM,
+      netElevationChange: end.smoothedElevationM - start.smoothedElevationM,
       averageGrade,
+      gradeForFormula,
       metabolicCost: minettiRunningCost(averageGrade),
       targetEquivalentPaceSecPerKm,
-      actualPaceSecPerKm,
+      recommendedActualPaceSecPerKm,
       equivalentPaceSecPerKm,
-      paceDeltaSecPerKm: actualPaceSecPerKm - targetEquivalentPaceSecPerKm,
-      segmentTimeSec,
-      cumulativeTimeSec,
-      warning:
-        averageGrade > 0.08
-          ? "Steep uphill"
-          : averageGrade < -0.08
-            ? "Steep downhill"
-            : ""
+      gradePaceDeltaSecPerKm,
+      heatAdjustedPaceSecPerKm,
+      heatDeltaSecPerKm,
+      finalPaceDeltaSecPerKm,
+      gradeAdjustedSegmentTimeSec,
+      finalSegmentTimeSec,
+      cumulativeGradeAdjustedTimeSec,
+      cumulativeFinalTimeSec,
+      heatAdjustment,
+      warnings,
+      actualPaceSecPerKm: recommendedActualPaceSecPerKm,
+      paceDeltaSecPerKm: gradePaceDeltaSecPerKm,
+      segmentTimeSec: finalSegmentTimeSec,
+      cumulativeTimeSec: cumulativeFinalTimeSec,
+      warning: warnings.join("; ")
     });
   }
 
@@ -185,6 +223,17 @@ export function summarizeRoute(routePoints, segments) {
     netElevationM,
     averageGrade,
     steepestUphill,
-    steepestDownhill
+    steepestDownhill,
+    targetTotalTimeSec:
+      totalDistanceKm * (segments[0]?.targetEquivalentPaceSecPerKm ?? 0),
+    gradeAdjustedTotalTimeSec: segments.reduce(
+      (sum, segment) => sum + segment.gradeAdjustedSegmentTimeSec,
+      0
+    ),
+    finalTotalTimeSec: segments.reduce(
+      (sum, segment) => sum + segment.finalSegmentTimeSec,
+      0
+    ),
+    heatAdjustment: segments[0]?.heatAdjustment ?? null
   };
 }
