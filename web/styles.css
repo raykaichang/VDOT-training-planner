@@ -168,7 +168,8 @@ h3 {
 }
 
 select,
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -492,6 +493,208 @@ input[type="range"]::-moz-range-thumb {
 .sidebar-collapsed .tool-sidebar-nav button {
   justify-content: center;
   padding: 0;
+}
+
+.gpx-control-grid input[type="file"] {
+  width: 100%;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  padding: 12px;
+  font-weight: 800;
+}
+
+.gpx-upload-field small {
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.gpx-note {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.gpx-note h3,
+.gpx-note p {
+  margin: 0;
+}
+
+.gpx-error {
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 8px;
+  background: rgba(248, 81, 73, 0.08);
+  color: #ff7b72;
+  padding: 12px 14px;
+  font-weight: 900;
+}
+
+.gpx-empty {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.gpx-summary,
+.gpx-segment-panel,
+.gpx-chart-card {
+  margin-top: 12px;
+}
+
+.gpx-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.gpx-chart-card {
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.gpx-chart-card h3,
+.gpx-chart-card p {
+  margin: 0;
+}
+
+.gpx-chart-card p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.gpx-chart-card svg {
+  width: 100%;
+  min-height: 130px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.gpx-chart-line {
+  fill: none;
+  stroke: var(--teal);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.gpx-chart-fill {
+  fill: rgba(57, 208, 180, 0.14);
+  stroke: none;
+}
+
+.gpx-chart-axis {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.gpx-zero-axis {
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+
+.gpx-grid-line {
+  stroke: var(--line);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.gpx-x-tick-line {
+  stroke: var(--muted);
+  stroke-width: 1.4;
+}
+
+.gpx-x-tick,
+.gpx-y-tick,
+.gpx-x-label,
+.gpx-y-label {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gpx-y-tick {
+  text-anchor: end;
+}
+
+.gpx-x-tick {
+  text-anchor: middle;
+}
+
+.gpx-x-label {
+  text-anchor: end;
+}
+
+.gpx-y-label {
+  text-anchor: start;
+}
+
+.gpx-chart-card rect {
+  fill: var(--blue);
+  opacity: 0.8;
+}
+
+.gpx-panel-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gpx-panel-head h3 {
+  word-break: break-word;
+}
+
+.secondary-button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  padding: 0 12px;
+  font-weight: 900;
+}
+
+.secondary-button:hover {
+  border-color: rgba(88, 166, 255, 0.45);
+}
+
+.gpx-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gpx-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.gpx-table th,
+.gpx-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.gpx-table th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .control-panel,
@@ -1705,6 +1908,20 @@ dd {
   .plan-day {
     cursor: default;
   }
+
+  .gpx-chart-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+
+  .gpx-chart-card {
+    min-width: min(460px, calc(100vw - 72px));
+    scroll-snap-align: start;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1765,5 +1982,13 @@ dd {
 
   .example-row {
     grid-auto-columns: minmax(210px, calc(100vw - 96px));
+  }
+
+  .gpx-panel-head {
+    display: grid;
+  }
+
+  .secondary-button {
+    width: 100%;
   }
 }

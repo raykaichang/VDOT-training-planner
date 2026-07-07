@@ -5,6 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/server.mjs",
-    "test": "node tests/rotationPlanner.test.mjs && node tests/paceCalculator.test.mjs"
+    "test": "node tests/rotationPlanner.test.mjs && node tests/paceCalculator.test.mjs && node tests/gpxEffort.test.mjs"
   }
 }

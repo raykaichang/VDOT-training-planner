@@ -6,6 +6,19 @@ import {
   calculatePaceModel,
   calculateVdotFromRaceResult
 } from "../src/training-planner/paceCalculator.mjs";
+import { segmentsToCsv } from "../src/gpx-effort/csv.mjs";
+import { parseGpxTrackPoints } from "../src/gpx-effort/gpxParser.mjs";
+import {
+  formatDuration as formatGpxDuration,
+  formatPace as formatGpxPace,
+  formatPaceDelta as formatGpxPaceDelta,
+  parsePaceToSeconds as parseGpxPace
+} from "../src/gpx-effort/pace.mjs";
+import {
+  createSegments,
+  prepareRoutePoints,
+  summarizeRoute
+} from "../src/gpx-effort/segmentation.mjs";
 
 const copy = {
   "zh-TW": {
@@ -359,6 +372,20 @@ const state = {
   weeklyMileage: 58,
   temperatureC: 26,
   humidity: 70,
+  gpxFileName: "",
+  gpxTrackPoints: null,
+  gpxAnalysis: null,
+  gpxError: "",
+  gpxSourceMode: "upload",
+  gpxPresetRoute: "",
+  gpxTargetMode: "pace",
+  gpxTargetPaceInput: "4:30",
+  gpxTargetHours: 1,
+  gpxTargetMinutes: 35,
+  gpxTargetSeconds: 0,
+  gpxSegmentSizeKm: 5,
+  gpxSmoothingWindowM: 200,
+  gpxDownhillStrategy: "standard",
   planOrder: null,
   draggedPlanIndex: null,
   planTouchDrag: null,
@@ -371,12 +398,156 @@ const state = {
 const app = document.querySelector("#app");
 let pacePanelObserver = null;
 
+const downhillStrategyOptions = {
+  conservative: 0.35,
+  standard: 0.65,
+  aggressive: 1
+};
+
+const popularGpxRoutes = [
+  {
+    file: "2025台北馬拉松半馬組.gpx",
+    zh: "2025 台北馬拉松半馬組",
+    en: "2025 Taipei Marathon Half"
+  },
+  {
+    file: "2026_台南古都半程馬拉松.gpx",
+    zh: "2026 台南古都半程馬拉松",
+    en: "2026 Tainan Historic Capital Half"
+  },
+  {
+    file: "2026渣打馬拉松半馬組.gpx",
+    zh: "2026 渣打馬拉松半馬組",
+    en: "2026 Standard Chartered Half"
+  },
+  {
+    file: "萬金石挑戰馬10k.gpx",
+    zh: "萬金石挑戰馬 10K",
+    en: "Wan Jin Shi Challenge 10K"
+  }
+];
+
+function getGpxCopy() {
+  if (state.locale === "en") {
+    return {
+      sidebarLabel: "GPX Grade Pace",
+      inputsTitle: "GPX Route Inputs",
+      resultsTitle: "GPX Grade-Adjusted Pace",
+      sourceMode: "GPX source",
+      uploadSource: "Upload your own GPX",
+      presetSource: "Popular race routes",
+      presetRoute: "Popular race route",
+      uploadLabel: "Upload GPX",
+      uploadButton: "Choose GPX file",
+      targetInputMode: "Target input",
+      paceMode: "Flat-equivalent pace",
+      finishTimeMode: "Goal finish time",
+      targetPace: "Target flat-equivalent pace",
+      targetFinishTime: "Goal finish time",
+      derivedPace: "Equivalent pace from route",
+      uploadFirstForTime: "Upload GPX first so the app can use route distance.",
+      segmentSize: "Segment size",
+      smoothingWindow: "Elevation smoothing",
+      downhillStrategy: "Downhill strategy",
+      conservative: "Conservative",
+      standard: "Standard",
+      aggressive: "Aggressive",
+      noFile: "Upload a GPX file to calculate grade-adjusted target paces.",
+      routeSummary: "Route Summary",
+      totalDistance: "Total Distance",
+      elevationGain: "Elevation Gain",
+      elevationLoss: "Elevation Loss",
+      avgGrade: "Average Grade",
+      steepestClimb: "Steepest Climb",
+      steepestDescent: "Steepest Descent",
+      elevationProfile: "Elevation Profile",
+      paceProfile: "Segment Pace",
+      gainLossProfile: "Gain / Loss",
+      segmentTable: "Segment Details",
+      exportCsv: "Export CSV",
+      fileReady: "Loaded",
+      formulaTitle: "Model",
+      formula:
+        "The route is split by distance. For each segment, average grade is converted with Minetti et al. 2002 running cost: Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6. Recommended actual pace = flat-equivalent pace x Cr(g) / Cr(0). Downhill strategy can reduce the full downhill speed-up for safer execution.",
+      sourceTitle: "Source & Limits",
+      source:
+        "Source: Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001. GPS elevation is noisy; use this as a route-planning estimate, not a race guarantee.",
+      tableHeaders: [
+        "Seg",
+        "Distance",
+        "Grade",
+        "Gain/Loss",
+        "Equivalent",
+        "Actual Pace",
+        "Delta",
+        "Time"
+      ]
+    };
+  }
+
+  return {
+    sidebarLabel: "GPX 坡度換算",
+    inputsTitle: "GPX 路線設定",
+    resultsTitle: "GPX 坡度代謝等效配速",
+    sourceMode: "GPX 來源",
+    uploadSource: "自行匯入",
+    presetSource: "常用比賽路線",
+    presetRoute: "常用比賽路線",
+    uploadLabel: "匯入 GPX",
+    uploadButton: "選擇 GPX 檔",
+    targetInputMode: "目標輸入方式",
+    paceMode: "輸入平路等效配速",
+    finishTimeMode: "輸入目標完賽時間",
+    targetPace: "目標平路等效配速",
+    targetFinishTime: "目標完賽時間",
+    derivedPace: "依路線換算等效配速",
+    uploadFirstForTime: "請先匯入 GPX，系統才能依路線總距離換算配速。",
+    segmentSize: "分段距離",
+    smoothingWindow: "海拔平滑視窗",
+    downhillStrategy: "下坡策略",
+    conservative: "保守",
+    standard: "標準",
+    aggressive: "積極",
+    noFile: "匯入 GPX 後，系統會依坡度換算每段建議實際配速。",
+    routeSummary: "路線摘要",
+    totalDistance: "總距離",
+    elevationGain: "爬升",
+    elevationLoss: "下降",
+    avgGrade: "平均坡度",
+    steepestClimb: "最陡上坡",
+    steepestDescent: "最陡下坡",
+    elevationProfile: "海拔剖面",
+    paceProfile: "分段配速",
+    gainLossProfile: "爬升 / 下降",
+    segmentTable: "分段明細",
+    exportCsv: "匯出 CSV",
+    fileReady: "已載入",
+    formulaTitle: "模型",
+    formula:
+      "先依距離切分 GPX 路線，再把每段平均坡度帶入 Minetti et al. 2002 跑步代謝成本公式：Cr = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6。建議實際配速 = 平路等效配速 x Cr(g) / Cr(0)。下坡策略可降低公式給出的完整下坡加速，讓執行更保守。",
+    sourceTitle: "來源與限制",
+    source:
+      "來源：Minetti, Moia, Roi, Susta & Ferretti 2002, Energy cost of walking and running at extreme uphill and downhill slopes, Journal of Applied Physiology, DOI: 10.1152/japplphysiol.01177.2001。GPS 海拔容易有雜訊，本工具適合作為路線規劃估算，不是比賽結果保證。",
+    tableHeaders: [
+      "段",
+      "距離",
+      "坡度",
+      "爬升/下降",
+      "等效配速",
+      "實際配速",
+      "差異",
+      "時間"
+    ]
+  };
+}
+
 function render() {
   const t = copy[state.locale];
   const activeVdot = getActiveVdot();
   const model = calculatePaceModel({ ...state, vdot: activeVdot });
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
+  const isGpx = state.toolMode === "gpx";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
   document.documentElement.dataset.theme = state.theme;
@@ -403,16 +574,24 @@ function render() {
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
               <p class="eyebrow">Runner</p>
-              <h2 id="inputs-title">${t.inputs}</h2>
+              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
             </div>
-            ${renderInputs(t)}
-            ${renderEnvironmentSummary(model, t)}
-            ${isPlan ? renderMileageClass(model, t) : ""}
+            ${
+              isGpx
+                ? renderGpxInputs()
+                : `
+                  ${renderInputs(t)}
+                  ${renderEnvironmentSummary(model, t)}
+                  ${isPlan ? renderMileageClass(model, t) : ""}
+                `
+            }
           </section>
 
           <section class="results-panel" aria-live="polite">
             ${
-              isConverter
+              isGpx
+                ? renderGpxResults()
+                : isConverter
                 ? renderEquivalentResults(model, t)
                 : isPlan
                   ? renderTrainingPlanResults(model, t)
@@ -432,7 +611,7 @@ function render() {
   `;
 
   bindEvents();
-  if (!isConverter) fitPaceZonePanel();
+  if (!isConverter && !isGpx) fitPaceZonePanel();
 }
 
 function renderInputs(t) {
@@ -519,6 +698,11 @@ function renderToolSidebar(t) {
       value: "plan",
       label: t.trainingPlanMode,
       icon: renderSidebarIcon("plan")
+    },
+    {
+      value: "gpx",
+      label: getGpxCopy().sidebarLabel,
+      icon: renderSidebarIcon("gpx")
     }
   ];
 
@@ -616,6 +800,16 @@ function renderSidebarIcon(type) {
         <path d="M6 5h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
         <path d="M8 12h3" />
         <path d="M8 16h6" />
+      </svg>
+    `;
+  }
+
+  if (type === "gpx") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M4 18c2.2-5.4 4-8 6-8 2.8 0 2.7 5 5 5 1.5 0 2.8-1.3 5-5" />
+        <path d="M5 19h14" />
+        <path d="M7 16l3-7 3 7" />
       </svg>
     `;
   }
@@ -753,6 +947,482 @@ function renderRangeField(label, field, value, min, max, step, unit) {
         <b>${unit}</b>
       </div>
     </label>
+  `;
+}
+
+function renderGpxInputs() {
+  const gpx = getGpxCopy();
+  return `
+    <div class="field-grid gpx-control-grid">
+      ${renderNativeSelect(
+        gpx.sourceMode,
+        "gpxSourceMode",
+        state.gpxSourceMode,
+        [
+          { value: "upload", label: gpx.uploadSource },
+          { value: "preset", label: gpx.presetSource }
+        ]
+      )}
+      ${renderGpxSourceInput(gpx)}
+      ${renderNativeSelect(
+        gpx.targetInputMode,
+        "gpxTargetMode",
+        state.gpxTargetMode,
+        [
+          { value: "pace", label: gpx.paceMode },
+          { value: "time", label: gpx.finishTimeMode }
+        ]
+      )}
+      ${renderGpxTargetInput(gpx)}
+      ${renderNativeSelect(
+        gpx.segmentSize,
+        "gpxSegmentSizeKm",
+        String(state.gpxSegmentSizeKm),
+        [
+          { value: "1", label: "1 km" },
+          { value: "5", label: "5 km" },
+          { value: "10", label: "10 km" },
+          { value: "20", label: "20 km" }
+        ]
+      )}
+      ${renderNativeSelect(
+        gpx.downhillStrategy,
+        "gpxDownhillStrategy",
+        state.gpxDownhillStrategy,
+        [
+          { value: "conservative", label: gpx.conservative },
+          { value: "standard", label: gpx.standard },
+          { value: "aggressive", label: gpx.aggressive }
+        ]
+      )}
+      <aside class="note-panel gpx-note">
+        <h3>${gpx.formulaTitle}</h3>
+        <p>${gpx.formula}</p>
+        <h3>${gpx.sourceTitle}</h3>
+        <p>${gpx.source}</p>
+      </aside>
+    </div>
+  `;
+}
+
+function renderGpxSourceInput(gpx) {
+  if (state.gpxSourceMode === "preset") {
+    return `
+      ${renderNativeSelect(
+        gpx.presetRoute,
+        "gpxPresetRoute",
+        state.gpxPresetRoute,
+        popularGpxRoutes.map((route) => ({
+          value: route.file,
+          label: state.locale === "en" ? route.en : route.zh
+        }))
+      )}
+      <p class="field-note">${state.gpxFileName ? `${gpx.fileReady}: ${escapeHtml(state.gpxFileName)}` : gpx.noFile}</p>
+    `;
+  }
+
+  return `
+    <label class="field gpx-upload-field">
+      <span>${gpx.uploadLabel}</span>
+      <input data-gpx-file type="file" accept=".gpx,application/gpx+xml" />
+      <small>${state.gpxFileName ? `${gpx.fileReady}: ${escapeHtml(state.gpxFileName)}` : gpx.noFile}</small>
+    </label>
+  `;
+}
+
+function renderGpxTargetInput(gpx) {
+  if (state.gpxTargetMode === "time") {
+    const derivedPace = getGpxDerivedPaceLabel();
+    return `
+      <fieldset class="time-fieldset gpx-time-fieldset">
+        <legend>${gpx.targetFinishTime}</legend>
+        <label>
+          <span>${copy[state.locale].hours}</span>
+          <input data-gpx-field="gpxTargetHours" type="number" inputmode="numeric" min="0" max="99" step="1" value="${state.gpxTargetHours}" />
+        </label>
+        <label>
+          <span>${copy[state.locale].minutes}</span>
+          <input data-gpx-field="gpxTargetMinutes" type="number" inputmode="numeric" min="0" max="59" step="1" value="${state.gpxTargetMinutes}" />
+        </label>
+        <label>
+          <span>${copy[state.locale].seconds}</span>
+          <input data-gpx-field="gpxTargetSeconds" type="number" inputmode="numeric" min="0" max="59" step="1" value="${state.gpxTargetSeconds}" />
+        </label>
+      </fieldset>
+      <p class="field-note">${derivedPace ? `${gpx.derivedPace}: ${derivedPace}` : gpx.uploadFirstForTime}</p>
+    `;
+  }
+
+  return `
+    <label class="field">
+      <span>${gpx.targetPace}</span>
+      <input
+        data-gpx-field="gpxTargetPaceInput"
+        type="text"
+        inputmode="numeric"
+        value="${escapeHtml(state.gpxTargetPaceInput)}"
+        placeholder="4:30"
+      />
+    </label>
+  `;
+}
+
+function renderNativeSelect(label, field, value, items) {
+  return `
+    <label class="field">
+      <span>${label}</span>
+      <select data-gpx-field="${field}">
+        ${items
+          .map(
+            (item) => `
+              <option value="${item.value}" ${String(item.value) === String(value) ? "selected" : ""}>
+                ${item.label}
+              </option>
+            `
+          )
+          .join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderGpxResults() {
+  const gpx = getGpxCopy();
+  const analysis = state.gpxAnalysis;
+  return `
+    <div class="section-heading">
+      <p class="eyebrow">GPX</p>
+      <h2>${gpx.resultsTitle}</h2>
+    </div>
+    ${
+      state.gpxError
+        ? `<p class="gpx-error">${escapeHtml(state.gpxError)}</p>`
+        : ""
+    }
+    ${
+      analysis
+        ? `
+          ${renderGpxSummary(analysis.summary, gpx)}
+          <section class="gpx-chart-grid">
+            ${renderElevationChart(analysis.points, gpx)}
+            ${renderPaceChart(analysis.segments, gpx)}
+            ${renderGainLossChart(analysis.segments, gpx)}
+          </section>
+          <section class="summary-card gpx-segment-panel">
+            <div class="gpx-panel-head">
+              <div>
+                <p class="eyebrow">${gpx.segmentTable}</p>
+                <h3>${state.gpxFileName ? escapeHtml(state.gpxFileName) : gpx.resultsTitle}</h3>
+              </div>
+              <button type="button" class="secondary-button" data-action="export-gpx-csv">
+                ${gpx.exportCsv}
+              </button>
+            </div>
+            ${renderGpxTable(analysis.segments, gpx)}
+          </section>
+        `
+        : `
+          <section class="summary-card gpx-empty">
+            <p>${gpx.noFile}</p>
+          </section>
+        `
+    }
+  `;
+}
+
+function renderGpxSummary(summary, gpx) {
+  const climb = summary.steepestUphill;
+  const descent = summary.steepestDownhill;
+  return `
+    <section class="summary-card gpx-summary">
+      <p class="eyebrow">${gpx.routeSummary}</p>
+      <div class="metric-row">
+        <div>
+          <span>${gpx.totalDistance}</span>
+          <strong>${summary.totalDistanceKm.toFixed(2)} km</strong>
+        </div>
+        <div>
+          <span>${gpx.elevationGain}</span>
+          <strong>${Math.round(summary.totalGainM)} m</strong>
+        </div>
+        <div>
+          <span>${gpx.elevationLoss}</span>
+          <strong>${Math.round(summary.totalLossM)} m</strong>
+        </div>
+        <div>
+          <span>${gpx.avgGrade}</span>
+          <strong>${formatGrade(summary.averageGrade)}</strong>
+        </div>
+        <div>
+          <span>${gpx.steepestClimb}</span>
+          <strong>#${climb.index} ${formatGrade(climb.averageGrade)}</strong>
+        </div>
+        <div>
+          <span>${gpx.steepestDescent}</span>
+          <strong>#${descent.index} ${formatGrade(descent.averageGrade)}</strong>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderElevationChart(points, gpx) {
+  const sampled = sampleSeries(points, 220);
+  const values = sampled.map((point) => point.smoothedElevationM);
+  return renderLineChart(gpx.elevationProfile, sampled, values, "m");
+}
+
+function renderPaceChart(segments, gpx) {
+  const values = segments.map((segment) => segment.actualPaceSecPerKm);
+  return renderBarChart(gpx.paceProfile, segments, values, (value) => formatGpxPace(value));
+}
+
+function renderGainLossChart(segments, gpx) {
+  const values = segments.map((segment) => segment.elevationGainM - segment.elevationLossM);
+  return renderBarChart(
+    gpx.gainLossProfile,
+    segments,
+    values,
+    (value) => `${Math.round(value)} m`,
+    true
+  );
+}
+
+function buildNiceAxis(rawMin, rawMax, type) {
+  const minValue = Number.isFinite(rawMin) ? rawMin : 0;
+  const maxValue = Number.isFinite(rawMax) ? rawMax : minValue + 1;
+  const span = Math.max(0.01, maxValue - minValue);
+  const buckets =
+    type === "pace"
+      ? [
+          { range: 10, tick: 1 },
+          { range: 50, tick: 5 },
+          { range: 100, tick: 10 },
+          { range: 250, tick: 25 },
+          { range: 500, tick: 50 }
+        ]
+      : [
+          { range: 10, tick: 1 },
+          { range: 50, tick: 5 },
+          { range: 100, tick: 10 },
+          { range: 250, tick: 25 },
+          { range: 500, tick: 50 }
+        ];
+  const bucket =
+    buckets.find((item) => span <= item.range) ??
+    {
+      range: Math.ceil(span / 500) * 500,
+      tick: 100
+    };
+  const center = (minValue + maxValue) / 2;
+  const min = Math.floor((center - bucket.range / 2) / bucket.tick) * bucket.tick;
+  const max = min + bucket.range;
+  const ticks = [];
+
+  for (let value = min; value <= max + bucket.tick / 2; value += bucket.tick) {
+    ticks.push(Math.round(value * 10) / 10);
+  }
+
+  return { min, max, ticks };
+}
+
+function buildDistanceTicks(totalDistanceKm) {
+  const targetStep = totalDistanceKm / 4;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(0.01, targetStep))));
+  const normalized = targetStep / magnitude;
+  const step =
+    normalized <= 1
+      ? magnitude
+      : normalized <= 2
+        ? 2 * magnitude
+        : normalized <= 5
+          ? 5 * magnitude
+          : 10 * magnitude;
+  const ticks = [];
+
+  for (let value = 0; value <= totalDistanceKm + step / 2; value += step) {
+    ticks.push(Math.round(value * 10) / 10);
+  }
+
+  const roundedTotal = Math.round(totalDistanceKm * 10) / 10;
+  if (ticks.at(-1) !== roundedTotal) ticks.push(roundedTotal);
+  return ticks;
+}
+
+function mapValueToY(value, min, max, top, plotHeight) {
+  const span = Math.max(0.01, max - min);
+  return top + plotHeight - ((value - min) / span) * plotHeight;
+}
+
+function renderChartAxes({
+  margin,
+  plotWidth,
+  plotHeight,
+  xTicks,
+  yTicks,
+  yFormatter,
+  yMin,
+  yMax,
+  xLabel,
+  yLabel
+}) {
+  const totalDistanceKm = Math.max(0.01, xTicks.at(-1) ?? 1);
+  const left = margin.left;
+  const right = margin.left + plotWidth;
+  const top = margin.top;
+  const bottom = margin.top + plotHeight;
+
+  return `
+    <g class="gpx-axis">
+      ${yTicks
+        .map((tick) => {
+          const y = mapValueToY(tick, yMin, yMax, margin.top, plotHeight);
+          return `
+            <line class="gpx-grid-line" x1="${left}" y1="${y}" x2="${right}" y2="${y}" />
+            <text class="gpx-y-tick" x="${left - 8}" y="${y + 4}">${yFormatter(tick)}</text>
+          `;
+        })
+        .join("")}
+      ${xTicks
+        .map((tick) => {
+          const x = left + (tick / totalDistanceKm) * plotWidth;
+          return `
+            <line class="gpx-x-tick-line" x1="${x}" y1="${bottom}" x2="${x}" y2="${bottom + 5}" />
+            <text class="gpx-x-tick" x="${x}" y="${bottom + 22}">${tick}</text>
+          `;
+        })
+        .join("")}
+      <line class="gpx-chart-axis" x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" />
+      <line class="gpx-chart-axis" x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" />
+      <text class="gpx-x-label" x="${right}" y="${bottom + 40}">${xLabel}</text>
+      <text class="gpx-y-label" x="${left}" y="${top - 2}">${yLabel}</text>
+    </g>
+  `;
+}
+
+function renderLineChart(title, samples, values, suffix) {
+  const width = 640;
+  const height = 240;
+  const margin = { top: 12, right: 18, bottom: 48, left: 58 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const axis = buildNiceAxis(Math.min(...values), Math.max(...values), "meter");
+  const totalDistanceKm = Math.max(0.01, (samples.at(-1)?.distanceM ?? 1) / 1000);
+  const xTicks = buildDistanceTicks(totalDistanceKm);
+  const path = samples
+    .map((point, index) => {
+      const x = margin.left + (point.distanceM / 1000 / totalDistanceKm) * plotWidth;
+      const y = mapValueToY(values[index], axis.min, axis.max, margin.top, plotHeight);
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return `
+    <article class="summary-card gpx-chart-card">
+      <h3>${title}</h3>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}">
+        ${renderChartAxes({
+          width,
+          height,
+          margin,
+          plotWidth,
+          plotHeight,
+          xTicks,
+          yTicks: axis.ticks,
+          yFormatter: (value) => `${Math.round(value)}m`,
+          yMin: axis.min,
+          yMax: axis.max,
+          xLabel: "km",
+          yLabel: suffix
+        })}
+        <path class="gpx-chart-fill" d="${path} L ${margin.left + plotWidth} ${margin.top + plotHeight} L ${margin.left} ${margin.top + plotHeight} Z" />
+        <path class="gpx-chart-line" d="${path}" />
+      </svg>
+      <p>${axis.min}-${axis.max} ${suffix} · x: km · y: ${suffix}</p>
+    </article>
+  `;
+}
+
+function renderBarChart(title, segments, values, formatValue, allowNegative = false) {
+  const width = 640;
+  const height = 240;
+  const margin = { top: 12, right: 18, bottom: 48, left: 62 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const axis = buildNiceAxis(Math.min(...values), Math.max(...values), allowNegative ? "meter" : "pace");
+  const totalDistanceKm = Math.max(0.01, segments.at(-1)?.endKm ?? segments.length);
+  const xTicks = buildDistanceTicks(totalDistanceKm);
+  const zeroY = mapValueToY(0, axis.min, axis.max, margin.top, plotHeight);
+
+  return `
+    <article class="summary-card gpx-chart-card">
+      <h3>${title}</h3>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}">
+        ${renderChartAxes({
+          width,
+          height,
+          margin,
+          plotWidth,
+          plotHeight,
+          xTicks,
+          yTicks: axis.ticks,
+          yFormatter: allowNegative
+            ? (value) => `${Math.round(value)}m`
+            : (value) => formatClock(value),
+          yMin: axis.min,
+          yMax: axis.max,
+          xLabel: "km",
+          yLabel: allowNegative ? "m" : "/km"
+        })}
+        ${allowNegative ? `<line class="gpx-zero-axis" x1="${margin.left}" y1="${zeroY}" x2="${margin.left + plotWidth}" y2="${zeroY}" />` : ""}
+        ${values
+          .map((value, index) => {
+            const segment = segments[index];
+            const segmentStartRatio = (segment?.startKm ?? index) / totalDistanceKm;
+            const segmentEndRatio = (segment?.endKm ?? index + 1) / totalDistanceKm;
+            const x = margin.left + segmentStartRatio * plotWidth + 2;
+            const barWidth = Math.max(4, (segmentEndRatio - segmentStartRatio) * plotWidth - 4);
+            const y = mapValueToY(Math.max(value, 0), axis.min, axis.max, margin.top, plotHeight);
+            const barHeight = allowNegative
+              ? Math.abs(mapValueToY(value, axis.min, axis.max, margin.top, plotHeight) - zeroY)
+              : margin.top + plotHeight - y;
+            const top = allowNegative && value < 0 ? zeroY : y;
+            return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(2, barHeight).toFixed(1)}" />`;
+          })
+          .join("")}
+      </svg>
+      <p>${formatValue(axis.min)} - ${formatValue(axis.max)} · x: km · y: ${allowNegative ? "m" : "/km"}</p>
+    </article>
+  `;
+}
+
+function renderGpxTable(segments, gpx) {
+  return `
+    <div class="gpx-table-wrap">
+      <table class="gpx-table">
+        <thead>
+          <tr>${gpx.tableHeaders.map((header) => `<th>${header}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${segments
+            .map(
+              (segment) => `
+                <tr>
+                  <td>#${segment.index}</td>
+                  <td>${segment.startKm.toFixed(1)}-${segment.endKm.toFixed(1)} km</td>
+                  <td>${formatGrade(segment.averageGrade)}</td>
+                  <td>+${Math.round(segment.elevationGainM)} / -${Math.round(segment.elevationLossM)} m</td>
+                  <td>${formatGpxPace(segment.targetEquivalentPaceSecPerKm)}</td>
+                  <td><strong>${formatGpxPace(segment.actualPaceSecPerKm)}</strong></td>
+                  <td>${formatGpxPaceDelta(segment.paceDeltaSecPerKm)}</td>
+                  <td>${formatGpxDuration(segment.segmentTimeSec)}</td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1323,6 +1993,15 @@ function bindEvents() {
     input.addEventListener("change", handleFieldChange);
   });
 
+  app.querySelectorAll("[data-gpx-field]").forEach((input) => {
+    input.addEventListener("input", handleGpxFieldChange);
+    input.addEventListener("change", handleGpxFieldChange);
+  });
+
+  app.querySelectorAll("[data-gpx-file]").forEach((input) => {
+    input.addEventListener("change", handleGpxFileChange);
+  });
+
   app.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", handleAction);
   });
@@ -1527,7 +2206,170 @@ function handleAction(event) {
     state.openMenu = null;
   }
 
+  if (action === "export-gpx-csv") {
+    exportGpxCsv();
+    return;
+  }
+
   render();
+}
+
+async function handleGpxFieldChange(event) {
+  const field = event.currentTarget.dataset.gpxField;
+  const value = event.currentTarget.value;
+
+  if (
+    field === "gpxSourceMode" ||
+    field === "gpxPresetRoute" ||
+    field === "gpxTargetMode" ||
+    field === "gpxTargetPaceInput" ||
+    field === "gpxDownhillStrategy"
+  ) {
+    state[field] = value;
+  } else {
+    state[field] = Number(value);
+  }
+
+  if (field === "gpxSourceMode" && value === "preset") {
+    await loadPresetGpxRoute(state.gpxPresetRoute);
+    render();
+    return;
+  }
+
+  if (field === "gpxPresetRoute") {
+    await loadPresetGpxRoute(value);
+    render();
+    return;
+  }
+
+  recalculateGpxAnalysis();
+  render();
+}
+
+async function handleGpxFileChange(event) {
+  const file = event.currentTarget.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    state.gpxFileName = file.name;
+    state.gpxTrackPoints = parseGpxTrackPoints(text);
+    state.gpxError = "";
+    recalculateGpxAnalysis();
+  } catch (error) {
+    state.gpxTrackPoints = null;
+    state.gpxAnalysis = null;
+    state.gpxError = error instanceof Error ? error.message : "Unable to read GPX.";
+  }
+
+  render();
+}
+
+function recalculateGpxAnalysis() {
+  if (!state.gpxTrackPoints) return;
+
+  try {
+    const points = prepareRoutePoints(
+      state.gpxTrackPoints,
+      state.gpxSmoothingWindowM
+    );
+    const targetPace = getGpxTargetPaceSeconds(points);
+    if (!targetPace) {
+      state.gpxAnalysis = null;
+      state.gpxError =
+        state.gpxTargetMode === "time"
+          ? state.locale === "en"
+            ? "Enter a valid goal finish time."
+            : "請輸入有效的目標完賽時間。"
+          : state.locale === "en"
+            ? "Enter target pace as mm:ss, for example 4:30."
+            : "請用 mm:ss 輸入目標配速，例如 4:30。";
+      return;
+    }
+    const segments = createSegments(
+      points,
+      state.gpxSegmentSizeKm,
+      targetPace,
+      downhillStrategyOptions[state.gpxDownhillStrategy] ?? downhillStrategyOptions.standard
+    );
+    state.gpxAnalysis = {
+      points,
+      segments,
+      summary: summarizeRoute(points, segments)
+    };
+    state.gpxError = "";
+  } catch (error) {
+    state.gpxAnalysis = null;
+    state.gpxError = error instanceof Error ? error.message : "Unable to calculate GPX.";
+  }
+}
+
+async function loadPresetGpxRoute(fileName) {
+  try {
+    const route = popularGpxRoutes.find((item) => item.file === fileName) ?? popularGpxRoutes[0];
+    state.gpxPresetRoute = route.file;
+    const response = await fetch(`/Gpx/${encodeURIComponent(route.file)}`);
+    if (!response.ok) throw new Error(`Unable to load ${route.file}.`);
+    const text = await response.text();
+    state.gpxFileName = route.file;
+    state.gpxTrackPoints = parseGpxTrackPoints(text);
+    state.gpxError = "";
+    recalculateGpxAnalysis();
+  } catch (error) {
+    state.gpxTrackPoints = null;
+    state.gpxAnalysis = null;
+    state.gpxError =
+      error instanceof Error
+        ? error.message
+        : state.locale === "en"
+          ? "Unable to load preset GPX."
+          : "無法載入常用路線 GPX。";
+  }
+}
+
+function getGpxTargetPaceSeconds(points = state.gpxAnalysis?.points) {
+  if (state.gpxTargetMode === "time") {
+    const totalSeconds =
+      Number(state.gpxTargetHours) * 3600 +
+      Number(state.gpxTargetMinutes) * 60 +
+      Number(state.gpxTargetSeconds);
+    const totalDistanceKm = points?.at(-1)?.distanceM / 1000;
+    if (
+      !Number.isFinite(totalSeconds) ||
+      totalSeconds <= 0 ||
+      !Number.isFinite(totalDistanceKm) ||
+      totalDistanceKm <= 0
+    ) {
+      return null;
+    }
+    return totalSeconds / totalDistanceKm;
+  }
+
+  return parseGpxPace(state.gpxTargetPaceInput);
+}
+
+function getGpxDerivedPaceLabel() {
+  const seconds = getGpxTargetPaceSeconds();
+  return seconds ? formatGpxPace(seconds) : "";
+}
+
+function exportGpxCsv() {
+  if (!state.gpxAnalysis) return;
+
+  const csv = segmentsToCsv(state.gpxAnalysis.segments, {
+    formatPace: formatGpxPace,
+    formatPaceDelta: formatGpxPaceDelta,
+    formatDuration: formatGpxDuration
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "gpx-grade-equivalent-paces.csv";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function handlePlanDragStart(event) {
@@ -2195,6 +3037,28 @@ function formatClock(seconds) {
 
 function formatPercent(value) {
   return `${Math.round(value * 10) / 10}%`;
+}
+
+function formatGrade(grade) {
+  return `${(grade * 100).toFixed(1)}%`;
+}
+
+function sampleSeries(items, maxSamples) {
+  if (items.length <= maxSamples) return items;
+  const stride = (items.length - 1) / (maxSamples - 1);
+  return Array.from({ length: maxSamples }, (_, index) => {
+    const sourceIndex = Math.round(index * stride);
+    return items[Math.min(items.length - 1, sourceIndex)];
+  });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 render();

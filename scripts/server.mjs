@@ -10,13 +10,15 @@ const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8"
+  ".json": "application/json; charset=utf-8",
+  ".gpx": "application/gpx+xml; charset=utf-8"
 };
 
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
-    const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+    const requestedPath =
+      url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
     const filePath = normalize(join(root, requestedPath));
 
     if (!filePath.startsWith(root)) {
