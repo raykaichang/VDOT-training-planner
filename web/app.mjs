@@ -657,13 +657,16 @@ function getGpxCopy() {
 }
 
 function render() {
+  if (state.toolMode === "gpxCatalog") {
+    state.toolMode = "pace";
+  }
+
   const t = copy[state.locale];
   const activeVdot = getActiveVdot();
   const model = calculatePaceModel({ ...state, vdot: activeVdot });
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
   const isGpx = state.toolMode === "gpx";
-  const isGpxCatalog = state.toolMode === "gpxCatalog";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
   document.documentElement.dataset.theme = state.theme;
@@ -690,12 +693,10 @@ function render() {
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
               <p class="eyebrow">Runner</p>
-              <h2 id="inputs-title">${isGpxCatalog ? "賽事庫篩選" : isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
+              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
             </div>
             ${
-              isGpxCatalog
-                ? renderGpxCatalogFilters()
-                : isGpx
+              isGpx
                 ? renderGpxInputs()
                 : `
                   ${renderInputs(t)}
@@ -707,9 +708,7 @@ function render() {
 
           <section class="results-panel" aria-live="polite">
             ${
-              isGpxCatalog
-                ? renderGpxCatalogPage()
-                : isGpx
+              isGpx
                 ? renderGpxResults()
                 : isConverter
                 ? renderEquivalentResults(model, t)
@@ -731,8 +730,7 @@ function render() {
   `;
 
   bindEvents();
-  if (!isConverter && !isGpx && !isGpxCatalog) fitPaceZonePanel();
-  if (isGpxCatalog) initializeCatalogMap();
+  if (!isConverter && !isGpx) fitPaceZonePanel();
 }
 
 function renderInputs(t) {
@@ -824,11 +822,6 @@ function renderToolSidebar(t) {
       value: "gpx",
       label: getGpxCopy().sidebarLabel,
       icon: renderSidebarIcon("gpx")
-    },
-    {
-      value: "gpxCatalog",
-      label: "GPX 開源賽事庫",
-      icon: renderSidebarIcon("library")
     }
   ];
 
