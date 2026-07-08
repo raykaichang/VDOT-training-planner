@@ -585,6 +585,164 @@ input[type="range"]::-moz-range-thumb {
   line-height: 1.6;
 }
 
+.catalog-filter-grid select,
+.catalog-filter-grid input,
+.catalog-analysis-controls select,
+.catalog-analysis-controls input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.catalog-warning,
+.catalog-about {
+  padding: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.catalog-warning strong,
+.catalog-about h2 {
+  color: var(--text);
+}
+
+.catalog-count {
+  margin: 14px 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.catalog-list {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--teal);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  padding: 14px;
+}
+
+.catalog-card.selected {
+  border-color: var(--blue);
+  border-left-color: var(--blue);
+}
+
+.catalog-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.catalog-meta div {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.catalog-meta dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.catalog-meta dd {
+  margin: 0;
+  font-weight: 900;
+}
+
+.catalog-tags,
+.catalog-actions,
+.catalog-analysis-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-tags span {
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.catalog-detail {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.catalog-map-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.catalog-leaflet-map,
+.catalog-route-svg {
+  width: 100%;
+  min-height: 340px;
+}
+
+.catalog-route-svg {
+  display: block;
+}
+
+.catalog-route-svg.leaflet-active {
+  display: none;
+}
+
+.catalog-route-svg rect {
+  fill: var(--surface-soft);
+}
+
+.catalog-route-svg path {
+  fill: none;
+  stroke: var(--teal);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+}
+
+.catalog-route-svg circle.start {
+  fill: var(--green);
+}
+
+.catalog-route-svg circle.end {
+  fill: var(--orange);
+}
+
+.catalog-route-svg text {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.catalog-analysis-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-analysis-controls > * {
+  flex: 1 1 180px;
+}
+
 .gpx-summary,
 .gpx-segment-panel,
 .gpx-chart-card {
@@ -593,16 +751,16 @@ input[type="range"]::-moz-range-thumb {
 
 .gpx-chart-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 14px;
   margin-top: 12px;
 }
 
 .gpx-chart-card {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
-  padding: 14px;
+  padding: 16px;
 }
 
 .gpx-chart-card h3,
@@ -618,7 +776,7 @@ input[type="range"]::-moz-range-thumb {
 
 .gpx-chart-card svg {
   width: 100%;
-  min-height: 130px;
+  min-height: clamp(160px, 24vw, 240px);
   border-radius: 8px;
   background: var(--surface-soft);
 }
@@ -2059,7 +2217,8 @@ dd {
   }
 
   .gpx-chart-card {
-    min-width: min(460px, calc(100vw - 72px));
+    flex: 0 0 min(720px, calc(100vw - 72px));
+    min-width: min(720px, calc(100vw - 72px));
     scroll-snap-align: start;
   }
 }

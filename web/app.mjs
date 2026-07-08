@@ -20,6 +20,17 @@ import {
   prepareRoutePoints,
   summarizeRoute
 } from "../src/gpx-effort/segmentation.mjs";
+import { gpxCatalog } from "../src/gpx-catalog/catalog.mjs";
+import { downloadGpxFile } from "../src/gpx-catalog/download.mjs";
+import { analyzeElevationBySegments } from "../src/gpx-catalog/elevationAnalysis.mjs";
+import { filterCatalogItems } from "../src/gpx-catalog/filters.mjs";
+import {
+  formatDistanceKm,
+  formatMeters,
+  formatPercent as formatCatalogPercent,
+  sourceTypeLabel
+} from "../src/gpx-catalog/format.mjs";
+import { parseGpxText } from "../src/gpx-catalog/parser.mjs";
 
 const copy = {
   "zh-TW": {
@@ -391,6 +402,17 @@ const state = {
   gpxHeatTemperatureC: 26,
   gpxHeatHumidity: 70,
   gpxHeatRaceType: RaceType.HALF_MARATHON,
+  catalogMonth: "all",
+  catalogDistanceCategory: "all",
+  catalogKeyword: "",
+  catalogSort: "month-asc",
+  catalogSelectedId: "",
+  catalogPanelMode: "empty",
+  catalogParsedGpx: null,
+  catalogLoading: false,
+  catalogError: "",
+  catalogSegmentDistanceKm: 1,
+  catalogTargetPaceInput: "4:30",
   planOrder: null,
   draggedPlanIndex: null,
   planTouchDrag: null,
@@ -411,23 +433,23 @@ const downhillStrategyOptions = {
 
 const popularGpxRoutes = [
   {
-    file: "2025台北馬拉松半馬組.gpx",
-    zh: "2025 台北馬拉松半馬組",
+    file: "2025台北馬拉松-半馬組.gpx",
+    zh: "2025 台北馬拉松 - 半馬組",
     en: "2025 Taipei Marathon Half"
   },
   {
-    file: "2026_台南古都半程馬拉松.gpx",
-    zh: "2026 台南古都半程馬拉松",
+    file: "2026_台南古都半程馬拉松-半馬組.gpx",
+    zh: "2026 台南古都半程馬拉松 - 半馬組",
     en: "2026 Tainan Historic Capital Half"
   },
   {
-    file: "2026渣打馬拉松半馬組.gpx",
-    zh: "2026 渣打馬拉松半馬組",
+    file: "2026渣打馬拉松-半馬組.gpx",
+    zh: "2026 渣打馬拉松 - 半馬組",
     en: "2026 Standard Chartered Half"
   },
   {
-    file: "萬金石挑戰馬10k.gpx",
-    zh: "萬金石挑戰馬 10K",
+    file: "2026萬金石馬拉松-10k組.gpx",
+    zh: "2026 萬金石馬拉松 - 10K組",
     en: "Wan Jin Shi Challenge 10K"
   }
 ];
@@ -624,6 +646,7 @@ function render() {
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
   const isGpx = state.toolMode === "gpx";
+  const isGpxCatalog = state.toolMode === "gpxCatalog";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
   document.documentElement.dataset.theme = state.theme;
@@ -650,10 +673,12 @@ function render() {
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
               <p class="eyebrow">Runner</p>
-              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
+              <h2 id="inputs-title">${isGpxCatalog ? "賽事庫篩選" : isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
             </div>
             ${
-              isGpx
+              isGpxCatalog
+                ? renderGpxCatalogFilters()
+                : isGpx
                 ? renderGpxInputs()
                 : `
                   ${renderInputs(t)}
@@ -665,7 +690,9 @@ function render() {
 
           <section class="results-panel" aria-live="polite">
             ${
-              isGpx
+              isGpxCatalog
+                ? renderGpxCatalogPage()
+                : isGpx
                 ? renderGpxResults()
                 : isConverter
                 ? renderEquivalentResults(model, t)
@@ -687,7 +714,8 @@ function render() {
   `;
 
   bindEvents();
-  if (!isConverter && !isGpx) fitPaceZonePanel();
+  if (!isConverter && !isGpx && !isGpxCatalog) fitPaceZonePanel();
+  if (isGpxCatalog) initializeCatalogMap();
 }
 
 function renderInputs(t) {
@@ -779,6 +807,11 @@ function renderToolSidebar(t) {
       value: "gpx",
       label: getGpxCopy().sidebarLabel,
       icon: renderSidebarIcon("gpx")
+    },
+    {
+      value: "gpxCatalog",
+      label: "GPX 開源賽事庫",
+      icon: renderSidebarIcon("library")
     }
   ];
 
@@ -886,6 +919,17 @@ function renderSidebarIcon(type) {
         <path d="M4 18c2.2-5.4 4-8 6-8 2.8 0 2.7 5 5 5 1.5 0 2.8-1.3 5-5" />
         <path d="M5 19h14" />
         <path d="M7 16l3-7 3 7" />
+      </svg>
+    `;
+  }
+
+  if (type === "library") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M5 5h14v14H5z" />
+        <path d="M8 8h8" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
       </svg>
     `;
   }
@@ -1054,12 +1098,10 @@ function renderGpxInputs() {
         gpx.segmentSize,
         "gpxSegmentSizeKm",
         String(state.gpxSegmentSizeKm),
-        [
-          { value: "1", label: "1 km" },
-          { value: "5", label: "5 km" },
-          { value: "10", label: "10 km" },
-          { value: "20", label: "20 km" }
-        ]
+        Array.from({ length: 42 }, (_, index) => {
+          const km = index + 1;
+          return { value: String(km), label: `${km} km` };
+        })
       )}
       ${renderNativeSelect(
         gpx.downhillStrategy,
@@ -1819,6 +1861,334 @@ function renderEquivalentResults(model, t) {
   `;
 }
 
+function renderGpxCatalogFilters() {
+  return `
+    <div class="field-grid catalog-filter-grid">
+      <label class="field">
+        <span>月份篩選</span>
+        <select data-catalog-field="catalogMonth">
+          ${[
+            { value: "all", label: "全部月份" },
+            ...Array.from({ length: 12 }, (_, index) => ({
+              value: String(index + 1),
+              label: `${index + 1} 月`
+            }))
+          ]
+            .map(
+              (option) =>
+                `<option value="${option.value}" ${String(state.catalogMonth) === option.value ? "selected" : ""}>${option.label}</option>`
+            )
+            .join("")}
+        </select>
+      </label>
+      <label class="field">
+        <span>關鍵字搜尋</span>
+        <input
+          type="search"
+          data-catalog-field="catalogKeyword"
+          value="${escapeHtml(state.catalogKeyword)}"
+          placeholder="搜尋賽事、城市、地點、標籤"
+        />
+      </label>
+      <aside class="note-panel catalog-warning">
+        <strong>資料提醒</strong>
+        <p>目前資料為人工收錄或手動重建 GPX，不保證與官方丈量或當日封路動線完全一致。使用前請自行確認官方公告與賽道資訊。</p>
+      </aside>
+    </div>
+  `;
+}
+
+function getFilteredCatalogItems() {
+  return filterCatalogItems(gpxCatalog, {
+    month: state.catalogMonth,
+    keyword: state.catalogKeyword
+  });
+}
+
+function getSelectedCatalogItem() {
+  return gpxCatalog.find((item) => item.id === state.catalogSelectedId) ?? null;
+}
+
+function renderGpxCatalogPage() {
+  const items = getFilteredCatalogItems();
+  return `
+    <section class="gpx-catalog-page">
+      <div class="section-heading">
+        <p class="eyebrow">GPX</p>
+        <h2>GPX 開源賽事庫</h2>
+        <p class="subtitle">依月份與關鍵字尋找賽事 GPX，可下載，或直接帶入 GPX 坡度分析工具。</p>
+      </div>
+      <aside class="note-panel catalog-warning">
+        目前資料為人工收錄或手動重建 GPX，不保證與官方丈量或當日封路動線完全一致。使用前請自行確認官方公告與賽道資訊。
+      </aside>
+      <div class="catalog-count">目前顯示 ${items.length} 筆 GPX。</div>
+      <div class="catalog-list">
+        ${
+          items.length
+            ? items.map((item) => renderGpxRaceCard(item)).join("")
+            : `<p class="gpx-empty">沒有符合條件的 GPX。</p>`
+        }
+      </div>
+      ${renderCatalogAboutPanel()}
+    </section>
+  `;
+}
+
+function renderGpxRaceCard(item) {
+  return `
+    <article class="catalog-card ${state.catalogSelectedId === item.id ? "selected" : ""}">
+      <div>
+        <p class="eyebrow">${item.eventYear ?? "年份待補"} · ${item.eventMonth} 月</p>
+        <h3>${escapeHtml(formatCatalogRaceTitle(item))}</h3>
+      </div>
+      <dl class="catalog-meta">
+        <div><dt>月份</dt><dd>${item.eventMonth} 月</dd></div>
+        <div><dt>地點</dt><dd>${escapeHtml([item.city, item.location].filter(Boolean).join(" / ") || "待補")}</dd></div>
+        <div><dt>來源</dt><dd>${sourceTypeLabel(item.sourceType)}</dd></div>
+      </dl>
+      <p>${escapeHtml(item.sourceNote || item.description)}</p>
+      <div class="catalog-tags">
+        ${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
+      </div>
+      <div class="catalog-actions">
+        <button type="button" class="secondary-button" data-action="catalog-download" data-catalog-id="${item.id}">下載 GPX</button>
+        <button type="button" class="primary-button" data-action="catalog-analysis" data-catalog-id="${item.id}">GPX 坡度分析</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderCatalogDetailPanel() {
+  const item = getSelectedCatalogItem();
+  if (state.catalogLoading) {
+    return `<section class="summary-card catalog-detail"><p class="gpx-empty">GPX 讀取中...</p></section>`;
+  }
+  if (state.catalogError) {
+    return `<section class="summary-card catalog-detail"><p class="gpx-error">${escapeHtml(state.catalogError)}</p></section>`;
+  }
+  if (!item || !state.catalogParsedGpx) {
+    return `<section class="summary-card catalog-detail"><p class="gpx-empty">請先選擇一筆 GPX 進行預覽或坡度分析。</p></section>`;
+  }
+
+  return `
+    <section class="summary-card catalog-detail">
+      <div class="section-heading">
+        <p class="eyebrow">${state.catalogPanelMode === "analysis" ? "坡度分析" : "路線預覽"}</p>
+        <h2>${escapeHtml(formatCatalogRaceTitle(item))}</h2>
+      </div>
+      ${renderCatalogRouteSummary(item, state.catalogParsedGpx)}
+      ${renderCatalogPreviewMap(state.catalogParsedGpx)}
+      ${
+        state.catalogPanelMode === "analysis"
+          ? renderCatalogSlopeAnalysis(item, state.catalogParsedGpx)
+          : ""
+      }
+    </section>
+  `;
+}
+
+function formatCatalogRaceTitle(item) {
+  const year = item.eventYear ?? "年份待補";
+  return `${year} ${item.raceName} - ${item.distanceLabel}`;
+}
+
+function renderCatalogRouteSummary(item, parsed) {
+  return `
+    <div class="gpx-summary">
+      ${[
+        ["官方距離", item.officialDistanceKm == null ? "待補" : `${item.officialDistanceKm} km`],
+        ["GPX 計算距離", formatDistanceKm(parsed.distanceKm)],
+        ["海拔資料", parsed.hasElevation ? "有 elevation" : "沒有 elevation"],
+        ["總爬升", parsed.totalAscentM == null ? "-" : formatMeters(parsed.totalAscentM)],
+        ["總下降", parsed.totalDescentM == null ? "-" : formatMeters(parsed.totalDescentM)]
+      ]
+        .map(
+          ([label, value]) => `
+            <div class="metric-card">
+              <span>${label}</span>
+              <strong>${value}</strong>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+    ${
+      parsed.points.length
+        ? ""
+        : `<p class="gpx-error">此 GPX 未包含可解析的 trkpt 路線點。</p>`
+    }
+    ${
+      !parsed.hasElevation
+        ? `<p class="field-note">此 GPX 沒有海拔資料，坡度分析需要匯入海拔資料或串接 DEM / elevation API。</p>`
+        : `<p class="field-note">GPS elevation 未平滑，爬升下降可能因 GPS 雜訊而有誤差。</p>`
+    }
+  `;
+}
+
+function renderCatalogPreviewMap(parsed) {
+  if (!parsed.points.length) return "";
+  const bounds = getCatalogBounds(parsed.points);
+  const width = 720;
+  const height = 340;
+  const path = parsed.points
+    .map((point, index) => {
+      const x = mapRange(point.lng, bounds.minLng, bounds.maxLng, 24, width - 24);
+      const y = mapRange(point.lat, bounds.minLat, bounds.maxLat, height - 24, 24);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const start = parsed.points[0];
+  const end = parsed.points.at(-1);
+  const startX = mapRange(start.lng, bounds.minLng, bounds.maxLng, 24, width - 24);
+  const startY = mapRange(start.lat, bounds.minLat, bounds.maxLat, height - 24, 24);
+  const endX = mapRange(end.lng, bounds.minLng, bounds.maxLng, 24, width - 24);
+  const endY = mapRange(end.lat, bounds.minLat, bounds.maxLat, height - 24, 24);
+
+  return `
+    <div class="catalog-map-shell">
+      <div id="catalog-leaflet-map" class="catalog-leaflet-map" aria-label="GPX 路線地圖"></div>
+      <svg class="catalog-route-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="GPX 路線預覽">
+        <rect x="0" y="0" width="${width}" height="${height}" rx="10" />
+        <path d="${path}" />
+        <circle cx="${startX.toFixed(1)}" cy="${startY.toFixed(1)}" r="7" class="start" />
+        <circle cx="${endX.toFixed(1)}" cy="${endY.toFixed(1)}" r="7" class="end" />
+        <text x="${startX + 10}" y="${startY - 8}">起點</text>
+        <text x="${endX + 10}" y="${endY - 8}">終點</text>
+      </svg>
+    </div>
+  `;
+}
+
+function renderCatalogSlopeAnalysis(item, parsed) {
+  if (!parsed.points.length) return "";
+  if (!parsed.hasElevation) {
+    return `
+      <section class="catalog-analysis-panel">
+        <h3>分段坡度表</h3>
+        <p class="gpx-error">此 GPX 沒有海拔資料，暫時無法計算坡度。未來版本可加入 DEM elevation lookup 或使用外部 elevation API 補齊海拔。</p>
+      </section>
+    `;
+  }
+
+  const segments = analyzeElevationBySegments(parsed.points, state.catalogSegmentDistanceKm);
+  return `
+    <section class="catalog-analysis-panel">
+      <div class="catalog-analysis-controls">
+        <label class="field">
+          <span>分段距離</span>
+          <select data-catalog-field="catalogSegmentDistanceKm">
+            ${[0.5, 1, 2, 5]
+              .map(
+                (value) =>
+                  `<option value="${value}" ${Number(state.catalogSegmentDistanceKm) === value ? "selected" : ""}>${value} km</option>`
+              )
+              .join("")}
+          </select>
+        </label>
+        <label class="field">
+          <span>目標平路配速</span>
+          <input type="text" data-catalog-field="catalogTargetPaceInput" value="${escapeHtml(state.catalogTargetPaceInput)}" placeholder="4:30/km" />
+        </label>
+        <button type="button" class="secondary-button" disabled>計算等強配速</button>
+      </div>
+      <aside class="note-panel">
+        <strong>等強配速換算：尚未啟用</strong>
+        <p>此功能尚未啟用。未來版本會根據坡度成本模型估算每段建議配速。</p>
+      </aside>
+      <div class="gpx-table-wrap">
+        <table class="gpx-table">
+          <thead>
+            <tr>
+              <th>起點</th>
+              <th>終點</th>
+              <th>段距離</th>
+              <th>爬升</th>
+              <th>下降</th>
+              <th>淨高差</th>
+              <th>平均坡度</th>
+              <th>坡度分類</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${segments
+              .map(
+                (segment) => `
+                  <tr>
+                    <td>${segment.startKm.toFixed(1)} km</td>
+                    <td>${segment.endKm.toFixed(1)} km</td>
+                    <td>${formatDistanceKm(segment.distanceKm)}</td>
+                    <td>${formatMeters(segment.ascentM)}</td>
+                    <td>${formatMeters(segment.descentM)}</td>
+                    <td>${formatMeters(segment.netElevationM)}</td>
+                    <td>${formatCatalogPercent(segment.averageGradePercent)}</td>
+                    <td><strong>${segment.gradeCategory}</strong></td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderCatalogAboutPanel() {
+  return `
+    <section class="note-panel catalog-about">
+      <h2>關於 GPX 開源賽事庫</h2>
+      <p>此賽事庫的目標是收錄可供跑者參考的路跑賽道 GPX。資料可能來自官方公告、人工重建或使用者提供。由於路跑賽事常涉及封路、高架、折返點與臨時動線，本工具不保證 GPX 與官方丈量結果完全一致。</p>
+      <p>使用前請確認官方公告、比賽當日路線與實際交通管制。</p>
+    </section>
+  `;
+}
+
+function getCatalogBounds(points) {
+  const lats = points.map((point) => point.lat);
+  const lngs = points.map((point) => point.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  return {
+    minLat,
+    maxLat: maxLat === minLat ? maxLat + 0.001 : maxLat,
+    minLng,
+    maxLng: maxLng === minLng ? maxLng + 0.001 : maxLng
+  };
+}
+
+function mapRange(value, min, max, outputMin, outputMax) {
+  if (max === min) return (outputMin + outputMax) / 2;
+  return outputMin + ((value - min) / (max - min)) * (outputMax - outputMin);
+}
+
+function initializeCatalogMap() {
+  const container = document.querySelector("#catalog-leaflet-map");
+  const parsed = state.catalogParsedGpx;
+  if (!container || !parsed?.points?.length || !window.L) return;
+
+  container.innerHTML = "";
+  const map = window.L.map(container, {
+    attributionControl: true,
+    scrollWheelZoom: false
+  });
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  const latLngs = parsed.points.map((point) => [point.lat, point.lng]);
+  window.L.polyline(latLngs, { color: "#0a7d6b", weight: 5 }).addTo(map);
+  window.L.marker(latLngs[0]).addTo(map).bindPopup("起點");
+  window.L.marker(latLngs.at(-1)).addTo(map).bindPopup("終點");
+  map.fitBounds(latLngs, { padding: [18, 18] });
+
+  const svg = document.querySelector(".catalog-route-svg");
+  if (svg) svg.classList.add("leaflet-active");
+}
+
 function renderMenuField(label, field, value, items, className = "field") {
   const selected = items.find((item) => String(item.value) === String(value)) ?? items[0];
   const isOpen = state.openMenu === field;
@@ -2360,6 +2730,11 @@ function bindEvents() {
     input.addEventListener("change", handleGpxFileChange);
   });
 
+  app.querySelectorAll("[data-catalog-field]").forEach((input) => {
+    input.addEventListener("input", handleCatalogFieldChange);
+    input.addEventListener("change", handleCatalogFieldChange);
+  });
+
   app.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", handleAction);
   });
@@ -2569,7 +2944,111 @@ function handleAction(event) {
     return;
   }
 
+  if (action === "catalog-download") {
+    handleCatalogDownload(event.currentTarget.dataset.catalogId);
+    return;
+  }
+
+  if (action === "catalog-analysis") {
+    loadCatalogItemAsGpxAnalysis(event.currentTarget.dataset.catalogId);
+    return;
+  }
+
   render();
+}
+
+async function loadCatalogItemAsGpxAnalysis(id) {
+  const item = gpxCatalog.find((entry) => entry.id === id);
+  if (!item) return;
+
+  state.catalogError = "";
+  state.catalogSelectedId = item.id;
+  state.toolMode = "gpx";
+  state.gpxSourceMode = "preset";
+  state.gpxPresetRoute = item.gpxUrl.split("/").pop() ?? "";
+  state.gpxFileName = item.gpxUrl.split("/").pop() ?? formatCatalogRaceTitle(item);
+  state.gpxError = "";
+  state.gpxTrackPoints = null;
+  state.gpxAnalysis = null;
+  render();
+
+  try {
+    const response = await fetch(item.gpxUrl);
+    if (!response.ok) throw new Error(`無法讀取 GPX：${item.gpxUrl}`);
+    const text = await response.text();
+    state.gpxTrackPoints = parseGpxTrackPoints(text);
+    state.gpxFileName = item.gpxUrl.split("/").pop() ?? formatCatalogRaceTitle(item);
+    state.gpxError = "";
+    recalculateGpxAnalysis();
+  } catch (error) {
+    state.gpxTrackPoints = null;
+    state.gpxAnalysis = null;
+    state.gpxError = error instanceof Error ? error.message : "GPX 載入失敗。";
+  }
+
+  render();
+}
+
+function handleCatalogFieldChange(event) {
+  const field = event.currentTarget.dataset.catalogField;
+  const value = event.currentTarget.value;
+  state[field] = value;
+  state.catalogError = "";
+  refreshCatalogResultsPanel();
+}
+
+function refreshCatalogResultsPanel() {
+  const panel = app.querySelector(".results-panel");
+  if (!panel) {
+    render();
+    return;
+  }
+  panel.innerHTML = renderGpxCatalogPage();
+  panel.querySelectorAll("[data-action]").forEach((button) => {
+    button.addEventListener("click", handleAction);
+  });
+}
+
+async function handleCatalogDownload(id) {
+  const item = gpxCatalog.find((entry) => entry.id === id);
+  if (!item) return;
+  try {
+    state.catalogError = "";
+    await downloadGpxFile(item);
+  } catch (error) {
+    state.catalogError = error instanceof Error ? error.message : "GPX 下載失敗。";
+    render();
+  }
+}
+
+async function loadCatalogItem(id, mode) {
+  const item = gpxCatalog.find((entry) => entry.id === id);
+  if (!item) return;
+
+  state.catalogSelectedId = item.id;
+  state.catalogPanelMode = mode;
+  state.catalogLoading = true;
+  state.catalogError = "";
+  state.catalogParsedGpx = null;
+  render();
+
+  try {
+    const response = await fetch(item.gpxUrl);
+    if (!response.ok) throw new Error(`無法讀取 GPX：${item.gpxUrl}`);
+    const text = await response.text();
+    const parsed = parseGpxText(text);
+    if (!parsed.points.length) {
+      throw new Error("此 GPX 未包含可解析的 trkpt 路線點。");
+    }
+    state.catalogParsedGpx = parsed;
+    state.catalogError = "";
+  } catch (error) {
+    state.catalogParsedGpx = null;
+    state.catalogError = error instanceof Error ? error.message : "GPX 解析失敗。";
+  } finally {
+    state.catalogLoading = false;
+    render();
+  }
 }
 
 async function handleGpxFieldChange(event) {

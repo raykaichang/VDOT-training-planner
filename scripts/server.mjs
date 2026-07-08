@@ -19,7 +19,10 @@ createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
     const requestedPath =
       url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
-    const filePath = normalize(join(root, requestedPath));
+    const staticPath = requestedPath.startsWith("/gpx/")
+      ? `/public${requestedPath}`
+      : requestedPath;
+    const filePath = normalize(join(root, staticPath));
 
     if (!filePath.startsWith(root)) {
       response.writeHead(403);
