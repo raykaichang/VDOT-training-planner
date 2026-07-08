@@ -58,8 +58,14 @@ const copy = {
     converterType: "換算類型",
     paceConverter: "配速換算",
     raceConverter: "成績換算",
+    converterDirection: "換算方向",
+    coolToHot: "理想基準 → 熱環境",
+    hotToCool: "熱環境 → 理想基準",
     baselinePace: "基準配速",
+    heatEnvironmentPace: "熱環境配速",
+    estimatedBaselinePace: "推估基準配速",
     equivalentRace: "理想成績",
+    heatEnvironmentResult: "熱環境成績",
     equivalentResult: "等效換算結果",
     equivalentPace: "熱環境等強配速",
     heatEquivalentTime: "熱環境等效成績",
@@ -67,6 +73,8 @@ const copy = {
     averagePace: "平均配速",
     converterAssumption:
       "假設輸入值是在涼爽或基準條件下的目標；下方用目前溫濕度估算相同主觀強度在熱環境下的大約配速或成績。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
+    reverseConverterAssumption:
+      "假設輸入值是在目前溫濕度下實際可跑出的配速或成績；下方會回推涼爽或基準條件下大約相當的配速或成績。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
     hours: "時",
     minutes: "分",
     seconds: "秒",
@@ -201,8 +209,14 @@ const copy = {
     converterType: "Converter Type",
     paceConverter: "Pace Converter",
     raceConverter: "Race Result Converter",
+    converterDirection: "Conversion Direction",
+    coolToHot: "Baseline → Heat",
+    hotToCool: "Heat → Baseline",
     baselinePace: "Baseline Pace",
+    heatEnvironmentPace: "Hot-condition Pace",
+    estimatedBaselinePace: "Estimated Baseline Pace",
     equivalentRace: "Goal Result",
+    heatEnvironmentResult: "Hot-condition Result",
     equivalentResult: "Equivalent Result",
     equivalentPace: "Heat-Equivalent Pace",
     heatEquivalentTime: "Heat-Equivalent Result",
@@ -210,6 +224,8 @@ const copy = {
     averagePace: "Average Pace",
     converterAssumption:
       "Assumption: the input is a cool-condition or baseline target. The result estimates the pace or finish time for roughly the same effort under the selected temperature and humidity. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
+    reverseConverterAssumption:
+      "Assumption: the input is what you can run under the selected hot condition. The result estimates the roughly equivalent cool-condition or baseline pace/result. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
     hours: "Hr",
     minutes: "Min",
     seconds: "Sec",
@@ -366,6 +382,7 @@ const state = {
   theme: "light",
   abilityMode: "vdot",
   converterType: "pace",
+  equivalentDirection: "coolToHot",
   openMenu: null,
   unitSystem: UnitSystem.METRIC,
   targetRace: TargetRace.FIVE_TEN_K,
@@ -1000,20 +1017,28 @@ function renderEquivalentInputs(t) {
       { value: "pace", label: t.paceConverter },
       { value: "race", label: t.raceConverter }
     ])}
+    ${renderMenuField(t.converterDirection, "equivalentDirection", state.equivalentDirection, [
+      { value: "coolToHot", label: t.coolToHot },
+      { value: "hotToCool", label: t.hotToCool }
+    ])}
     ${
       state.converterType === "pace"
         ? renderPaceEquivalentInput(t)
         : renderRaceEquivalentInput(t)
     }
-    <p class="field-note">${t.converterAssumption}</p>
+    <p class="field-note">${getEquivalentAssumption(t)}</p>
   `;
 }
 
 function renderPaceEquivalentInput(t) {
   const unit = state.unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
+  const legend =
+    state.equivalentDirection === "hotToCool"
+      ? t.heatEnvironmentPace
+      : t.baselinePace;
   return `
     <fieldset class="time-fieldset pace-time-fieldset">
-      <legend>${t.baselinePace} ${unit}</legend>
+      <legend>${legend} ${unit}</legend>
       <label>
         <span>${t.minutes}</span>
         <input data-field="paceMinutes" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="30" step="1" value="${state.paceMinutes}" />
@@ -1027,6 +1052,10 @@ function renderPaceEquivalentInput(t) {
 }
 
 function renderRaceEquivalentInput(t) {
+  const legend =
+    state.equivalentDirection === "hotToCool"
+      ? t.heatEnvironmentResult
+      : t.equivalentRace;
   return `
     <div class="race-result-grid single">
       ${renderMenuField(
@@ -1040,7 +1069,7 @@ function renderRaceEquivalentInput(t) {
       )}
     </div>
     <fieldset class="time-fieldset">
-      <legend>${t.equivalentRace}</legend>
+      <legend>${legend}</legend>
       <label>
         <span>${t.hours}</span>
         <input data-field="equivalentRaceHours" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="9" step="1" value="${state.equivalentRaceHours}" />
@@ -1055,6 +1084,12 @@ function renderRaceEquivalentInput(t) {
       </label>
     </fieldset>
   `;
+}
+
+function getEquivalentAssumption(t) {
+  return state.equivalentDirection === "hotToCool"
+    ? t.reverseConverterAssumption
+    : t.converterAssumption;
 }
 
 function renderRangeField(label, field, value, min, max, step, unit) {
@@ -1838,7 +1873,7 @@ function renderEquivalentResults(model, t) {
       <h2>${t.equivalentResult}</h2>
     </div>
     <section class="equivalent-panel">
-      <p class="equivalent-lead">${t.converterAssumption}</p>
+      <p class="equivalent-lead">${getEquivalentAssumption(t)}</p>
       <div class="equivalent-grid">
         ${result.cards
           .map(
@@ -1855,7 +1890,7 @@ function renderEquivalentResults(model, t) {
       <aside class="note-panel equivalent-note">
         <h2>${t.heatAdjustment}</h2>
         <p>${t.slowerBy}: ${model.heatAdjustment.percentage}% · ${t.dewPoint}: ${model.heatAdjustment.dewPoint}${t.celsius}</p>
-        <p>${state.converterType === "pace" ? t.paceConverter : t.raceConverter}</p>
+        <p>${state.converterType === "pace" ? t.paceConverter : t.raceConverter} · ${state.equivalentDirection === "hotToCool" ? t.hotToCool : t.coolToHot}</p>
       </aside>
     </section>
   `;
@@ -2845,6 +2880,7 @@ function updateFieldValue(field, value) {
     field === "locale" ||
     field === "toolMode" ||
     field === "converterType" ||
+    field === "equivalentDirection" ||
     field === "abilityMode" ||
     field === "targetRace" ||
     field === "trainingCycle"
@@ -3761,8 +3797,29 @@ function getPaceEquivalent(heatMultiplier) {
   const inputSeconds = getPaceInputSeconds();
   const secondsPerKm =
     state.unitSystem === UnitSystem.IMPERIAL ? inputSeconds / KM_PER_MILE : inputSeconds;
-  const hotSecondsPerKm = secondsPerKm * heatMultiplier;
   const t = copy[state.locale];
+  const reverse = state.equivalentDirection === "hotToCool";
+
+  if (reverse) {
+    const baselineSecondsPerKm = secondsPerKm / heatMultiplier;
+    return {
+      cards: [
+        {
+          label: t.heatEnvironmentPace,
+          value: formatPaceForUnit(secondsPerKm, state.unitSystem),
+          meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
+        },
+        {
+          label: t.estimatedBaselinePace,
+          value: formatPaceForUnit(baselineSecondsPerKm, state.unitSystem),
+          meta: `-${formatPercent((1 - 1 / heatMultiplier) * 100)}`,
+          highlight: true
+        }
+      ]
+    };
+  }
+
+  const hotSecondsPerKm = secondsPerKm * heatMultiplier;
 
   return {
     cards: [
@@ -3783,9 +3840,35 @@ function getPaceEquivalent(heatMultiplier) {
 
 function getRaceEquivalent(heatMultiplier) {
   const inputSeconds = getEquivalentRaceTimeSeconds();
-  const hotSeconds = inputSeconds * heatMultiplier;
   const distanceKm = Number(state.equivalentRaceDistanceMeters) / 1000;
   const t = copy[state.locale];
+  const reverse = state.equivalentDirection === "hotToCool";
+
+  if (reverse) {
+    const baselineSeconds = inputSeconds / heatMultiplier;
+    return {
+      cards: [
+        {
+          label: t.heatEnvironmentResult,
+          value: formatFinishTime(inputSeconds),
+          meta: getEquivalentRaceLabel()
+        },
+        {
+          label: t.baselineTime,
+          value: formatFinishTime(baselineSeconds),
+          meta: `-${formatPercent((1 - 1 / heatMultiplier) * 100)}`,
+          highlight: true
+        },
+        {
+          label: t.averagePace,
+          value: formatPaceForUnit(baselineSeconds / distanceKm, state.unitSystem),
+          meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
+        }
+      ]
+    };
+  }
+
+  const hotSeconds = inputSeconds * heatMultiplier;
 
   return {
     cards: [
