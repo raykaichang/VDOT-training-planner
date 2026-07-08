@@ -686,6 +686,7 @@ function render() {
               { value: "zh-TW", label: "中文" },
               { value: "en", label: "EN" }
             ], "language-toggle")}
+            ${renderFeedbackLink()}
           </div>
         </header>
 
@@ -895,6 +896,26 @@ function renderThemeSwitch(t) {
         </button>
       </div>
     </div>
+  `;
+}
+
+function renderFeedbackLink() {
+  const label = state.locale === "en" ? "Feedback" : "意見回饋";
+  return `
+    <a
+      class="feedback-link"
+      href="https://forms.gle/g9of21FT8VwgfoYF8"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="${label}"
+      title="${label}"
+    >
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M4 6h16v12H4z" />
+        <path d="m4 7 8 6 8-6" />
+      </svg>
+      <span>${label}</span>
+    </a>
   `;
 }
 

@@ -163,6 +163,37 @@ h3 {
   gap: 12px;
 }
 
+.feedback-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.feedback-link:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.feedback-link svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 .topbar-controls .ability-select-trigger {
   font-size: 0.86rem;
 }
