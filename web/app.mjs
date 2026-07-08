@@ -1312,9 +1312,6 @@ function renderGpxResults() {
                 <p class="eyebrow">${gpx.segmentTable}</p>
                 <h3>${state.gpxFileName ? escapeHtml(state.gpxFileName) : gpx.resultsTitle}</h3>
               </div>
-              <button type="button" class="secondary-button" data-action="export-gpx-csv">
-                ${gpx.exportCsv}
-              </button>
             </div>
             ${renderGpxTable(analysis.segments, gpx)}
           </section>
@@ -1982,12 +1979,9 @@ function renderGpxRaceCard(item) {
         <div><dt>來源</dt><dd>${sourceTypeLabel(item.sourceType)}</dd></div>
       </dl>
       <p>${escapeHtml(item.sourceNote || item.description)}</p>
-      <div class="catalog-tags">
-        ${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
-      </div>
       <div class="catalog-actions">
         <button type="button" class="secondary-button" data-action="catalog-download" data-catalog-id="${item.id}">下載 GPX</button>
-        <button type="button" class="primary-button" data-action="catalog-analysis" data-catalog-id="${item.id}">GPX 坡度分析</button>
+        <button type="button" class="secondary-button" data-action="catalog-analysis" data-catalog-id="${item.id}">GPX 坡度分析</button>
       </div>
     </article>
   `;

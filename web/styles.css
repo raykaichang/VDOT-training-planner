@@ -663,21 +663,11 @@ input[type="range"]::-moz-range-thumb {
   font-weight: 900;
 }
 
-.catalog-tags,
 .catalog-actions,
 .catalog-analysis-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.catalog-tags span {
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  padding: 5px 10px;
-  font-size: 0.78rem;
-  font-weight: 900;
 }
 
 .catalog-detail {
