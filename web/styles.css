@@ -435,7 +435,7 @@ input[type="range"]::-moz-range-thumb {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  padding: 0 10px 0 12px;
+  padding: 9px 10px 9px 12px;
   text-align: left;
   font-weight: 900;
   transition:
@@ -498,9 +498,10 @@ input[type="range"]::-moz-range-thumb {
 
 .tool-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: normal;
 }
 
 .sidebar-collapsed .tool-sidebar {
@@ -526,7 +527,12 @@ input[type="range"]::-moz-range-thumb {
   padding: 0;
 }
 
-.gpx-control-grid input[type="file"] {
+.gpx-file-picker {
+  position: relative;
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   border: 1px dashed var(--line);
   border-radius: 8px;
@@ -534,6 +540,31 @@ input[type="range"]::-moz-range-thumb {
   color: var(--muted);
   padding: 12px;
   font-weight: 800;
+}
+
+.gpx-file-picker input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.gpx-file-button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 7px 10px;
+}
+
+.gpx-file-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gpx-upload-field small {

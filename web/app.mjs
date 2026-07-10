@@ -34,7 +34,8 @@ import { parseGpxText } from "../src/gpx-catalog/parser.mjs";
 
 const copy = {
   "zh-TW": {
-    appTitle: "VDOT 配速工具",
+    brandEyebrow: "PACECRAFT RUNNER TOOLBOX",
+    appTitle: "PaceCraft 跑者工具箱",
     subtitle:
       "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速與熱環境調整。",
     language: "語言",
@@ -43,7 +44,8 @@ const copy = {
     plannerMode: "VDOT 配速",
     trainingPlanMode: "訓練課表",
     heatEquivalentMode: "熱適應換算",
-    toolSection: "工具",
+    toolSection: "跑者工具箱",
+    toolBrand: "PaceCraft",
     collapseSidebar: "收合側邊欄",
     expandSidebar: "展開側邊欄",
     themeMode: "外觀",
@@ -185,7 +187,8 @@ const copy = {
     }
   },
   en: {
-    appTitle: "VDOT Pace Zone Tool",
+    brandEyebrow: "PACECRAFT RUNNER TOOLBOX",
+    appTitle: "PaceCraft Runner Toolbox",
     subtitle:
       "Enter VDOT, mileage, temperature, and humidity to estimate training paces with heat adjustment.",
     language: "Language",
@@ -194,7 +197,8 @@ const copy = {
     plannerMode: "VDOT Paces",
     trainingPlanMode: "Training Plan",
     heatEquivalentMode: "Heat Adaptation Converter",
-    toolSection: "Tools",
+    toolSection: "Runner Toolbox",
+    toolBrand: "PaceCraft",
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
     themeMode: "Theme",
@@ -452,22 +456,22 @@ const popularGpxRoutes = [
   {
     file: "2025台北馬拉松-半馬組.gpx",
     zh: "2025 台北馬拉松 - 半馬組",
-    en: "2025 Taipei Marathon Half"
+    en: "2025 Taipei Marathon - Half Marathon"
   },
   {
     file: "2026_台南古都半程馬拉松-半馬組.gpx",
     zh: "2026 台南古都半程馬拉松 - 半馬組",
-    en: "2026 Tainan Historic Capital Half"
+    en: "2026 Tainan Historical Capital International Half Marathon"
   },
   {
     file: "2026渣打馬拉松-半馬組.gpx",
-    zh: "2026 渣打馬拉松 - 半馬組",
-    en: "2026 Standard Chartered Half"
+    zh: "2026 渣打臺北公益馬拉松 - 半馬組",
+    en: "2026 Standard Chartered Taipei Charity Marathon - Half Marathon"
   },
   {
     file: "2026萬金石馬拉松-10k組.gpx",
-    zh: "2026 萬金石馬拉松 - 10K組",
-    en: "Wan Jin Shi Challenge 10K"
+    zh: "2026 新北市萬金石馬拉松 - 10K組",
+    en: "2026 New Taipei City Wan Jin Shi Marathon - 10K"
   }
 ];
 
@@ -483,6 +487,8 @@ function getGpxCopy() {
       presetRoute: "Popular race route",
       uploadLabel: "Upload GPX",
       uploadButton: "Choose GPX file",
+      chooseFile: "Choose file",
+      noFileSelected: "No file selected",
       targetInputMode: "Target input",
       paceMode: "Flat-equivalent pace",
       finishTimeMode: "Goal finish time",
@@ -575,6 +581,8 @@ function getGpxCopy() {
     presetRoute: "常用比賽路線",
     uploadLabel: "匯入 GPX",
     uploadButton: "選擇 GPX 檔",
+    chooseFile: "選擇檔案",
+    noFileSelected: "未選擇任何檔案",
     targetInputMode: "目標輸入方式",
     paceMode: "輸入平路等效配速",
     finishTimeMode: "輸入目標完賽時間",
@@ -676,7 +684,7 @@ function render() {
       <div class="content-shell">
         <header class="topbar">
           <div>
-            <p class="eyebrow">VDOT Pace Lab</p>
+            <p class="eyebrow">${t.brandEyebrow}</p>
             <h1>${t.appTitle}</h1>
             <p class="subtitle">${t.subtitle}</p>
           </div>
@@ -831,7 +839,7 @@ function renderToolSidebar(t) {
       <div class="tool-sidebar-head">
         <div>
           <span>${t.toolSection}</span>
-          <strong>VDOT</strong>
+          <strong>${t.toolBrand}</strong>
         </div>
         <button
           type="button"
@@ -1218,6 +1226,7 @@ function renderGpxHeatSettings(gpx) {
 
 function renderGpxSourceInput(gpx) {
   if (state.gpxSourceMode === "preset") {
+    const loadedName = getGpxDisplayName();
     return `
       ${renderNativeSelect(
         gpx.presetRoute,
@@ -1228,17 +1237,30 @@ function renderGpxSourceInput(gpx) {
           label: state.locale === "en" ? route.en : route.zh
         }))
       )}
-      <p class="field-note">${state.gpxFileName ? `${gpx.fileReady}: ${escapeHtml(state.gpxFileName)}` : gpx.noFile}</p>
+      <p class="field-note">${loadedName ? `${gpx.fileReady}: ${escapeHtml(loadedName)}` : gpx.noFile}</p>
     `;
   }
 
   return `
     <label class="field gpx-upload-field">
       <span>${gpx.uploadLabel}</span>
-      <input data-gpx-file type="file" accept=".gpx,application/gpx+xml" />
+      <span class="gpx-file-picker">
+        <span class="gpx-file-button">${gpx.chooseFile}</span>
+        <span class="gpx-file-name">${state.gpxFileName ? escapeHtml(state.gpxFileName) : gpx.noFileSelected}</span>
+        <input data-gpx-file type="file" accept=".gpx,application/gpx+xml" />
+      </span>
       <small>${state.gpxFileName ? `${gpx.fileReady}: ${escapeHtml(state.gpxFileName)}` : gpx.noFile}</small>
     </label>
   `;
+}
+
+function getGpxDisplayName() {
+  if (!state.gpxFileName) return "";
+  if (state.gpxSourceMode === "preset") {
+    const route = popularGpxRoutes.find((item) => item.file === state.gpxPresetRoute || item.file === state.gpxFileName);
+    if (route) return state.locale === "en" ? route.en : route.zh;
+  }
+  return state.gpxFileName;
 }
 
 function renderGpxTargetInput(gpx) {
@@ -1300,6 +1322,7 @@ function renderNativeSelect(label, field, value, items) {
 function renderGpxResults() {
   const gpx = getGpxCopy();
   const analysis = state.gpxAnalysis;
+  const displayName = getGpxDisplayName();
   return `
     <div class="section-heading">
       <p class="eyebrow">GPX</p>
@@ -1324,7 +1347,7 @@ function renderGpxResults() {
             <div class="gpx-panel-head">
               <div>
                 <p class="eyebrow">${gpx.segmentTable}</p>
-                <h3>${state.gpxFileName ? escapeHtml(state.gpxFileName) : gpx.resultsTitle}</h3>
+                <h3>${displayName ? escapeHtml(displayName) : gpx.resultsTitle}</h3>
               </div>
             </div>
             ${renderGpxTable(analysis.segments, gpx)}
