@@ -98,8 +98,9 @@ p {
 
 h1 {
   margin-bottom: 8px;
-  font-size: clamp(2rem, 4vw, 3.8rem);
-  line-height: 1;
+  font-size: clamp(1.75rem, 2.5vw, 2.8rem);
+  line-height: 1.08;
+  white-space: nowrap;
 }
 
 h2 {
@@ -329,33 +330,52 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tool-sidebar-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   border-bottom: 1px solid var(--line);
   padding: 0 8px 16px;
 }
 
 .tool-sidebar-head div {
-  min-width: 0;
+  display: contents;
 }
 
 .tool-sidebar-head span {
   display: block;
+  grid-column: 1 / -1;
   color: var(--blue);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
 .tool-sidebar-head strong {
   display: block;
-  margin-top: 3px;
+  grid-column: 1;
   color: var(--text);
   font-size: 1rem;
   white-space: nowrap;
+}
+
+html[lang="en"] .tool-sidebar-head span {
+  font-size: 0.46rem;
+  letter-spacing: 0;
+}
+
+@media (max-width: 1200px) {
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar-controls {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
 }
 
 .sidebar-toggle {
@@ -1538,6 +1558,30 @@ input[type="range"]::-moz-range-thumb {
   line-height: 1.5;
 }
 
+.week-volume-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.week-volume-summary span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  padding: 7px 11px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.week-volume-summary strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
 .week-scroll {
   --plan-card-width: 250px;
   overflow-x: auto;
@@ -1760,6 +1804,18 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 999px;
   background: var(--surface-soft);
   margin-bottom: 8px;
+}
+
+.plan-distance-label {
+  display: block;
+  margin-top: 7px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  padding: 6px 8px;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.4;
 }
 
 .plan-day p {
@@ -2290,6 +2346,10 @@ dd {
     min-height: auto;
   }
 
+  html[lang="en"] .tool-sidebar-head span {
+    font-size: 0.66rem;
+  }
+
   .content-shell {
     padding: 0 8px 20px;
   }
@@ -2310,6 +2370,7 @@ dd {
 
   h1 {
     font-size: 2rem;
+    white-space: normal;
   }
 
   .range-row,

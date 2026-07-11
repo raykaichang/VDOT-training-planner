@@ -34,8 +34,8 @@ import { parseGpxText } from "../src/gpx-catalog/parser.mjs";
 
 const copy = {
   "zh-TW": {
-    brandEyebrow: "PACECRAFT RUNNER TOOLBOX",
-    appTitle: "PaceCraft 跑者工具箱",
+    brandEyebrow: "RUNSTRATEGY",
+    appTitle: "RUNSTRATEGY 跑者的配速與賽事策略工具",
     subtitle:
       "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速與熱環境調整。",
     language: "語言",
@@ -44,8 +44,8 @@ const copy = {
     plannerMode: "VDOT 配速",
     trainingPlanMode: "訓練課表",
     heatEquivalentMode: "熱適應換算",
-    toolSection: "跑者工具箱",
-    toolBrand: "PaceCraft",
+    toolSection: "跑者的配速與賽事策略工具",
+    toolBrand: "runstrategy",
     collapseSidebar: "收合側邊欄",
     expandSidebar: "展開側邊欄",
     themeMode: "外觀",
@@ -139,13 +139,15 @@ const copy = {
     mileageClass: "跑量課表級距",
     availableQuality: "可開品質課",
     weeklyPlan: "本週建議安排",
+    plannedWeeklyTotal: "本週規劃總量",
+    longRunShare: "長跑占比",
     weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；T 閾值訓練固定保留。",
     switchWorkout: "換堂課",
     coachPick: "教練建議",
     skipEasyRun: "今天不跑",
     restoreEasyRun: "恢復跑步",
     workoutExamples: "跑量可用課表",
-    draggableWorkoutHint: "提示：課表卡片可左右拖曳交換順序。",
+    scheduleDragHint: "左右滑動查看整週；長按卡片後左右拖曳可交換日期。",
     recovery: "恢復",
     recoveryHot: "熱天恢復",
     totalTime: "總時間",
@@ -187,8 +189,8 @@ const copy = {
     }
   },
   en: {
-    brandEyebrow: "PACECRAFT RUNNER TOOLBOX",
-    appTitle: "PaceCraft Runner Toolbox",
+    brandEyebrow: "RUNSTRATEGY",
+    appTitle: "RUNSTRATEGY Pace and Race Strategy Tools for Runners",
     subtitle:
       "Enter VDOT, mileage, temperature, and humidity to estimate training paces with heat adjustment.",
     language: "Language",
@@ -197,8 +199,8 @@ const copy = {
     plannerMode: "VDOT Paces",
     trainingPlanMode: "Training Plan",
     heatEquivalentMode: "Heat Adaptation Converter",
-    toolSection: "Runner Toolbox",
-    toolBrand: "PaceCraft",
+    toolSection: "Pace and Race Strategy Tools for Runners",
+    toolBrand: "runstrategy",
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
     themeMode: "Theme",
@@ -292,13 +294,15 @@ const copy = {
     mileageClass: "Mileage Class",
     availableQuality: "Available Quality Work",
     weeklyPlan: "Suggested Week",
+    plannedWeeklyTotal: "Planned weekly total",
+    longRunShare: "Long-run share",
     weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Threshold stays in every plan.",
     switchWorkout: "Swap Workout",
     coachPick: "Coach Pick",
     skipEasyRun: "Skip Run",
     restoreEasyRun: "Restore Run",
     workoutExamples: "Mileage-Based Workouts",
-    draggableWorkoutHint: "Tip: drag workout cards sideways to swap their order.",
+    scheduleDragHint: "Swipe sideways to view the week; press and hold a card, then drag to swap days.",
     recovery: "Recovery",
     recoveryHot: "Hot Recovery",
     totalTime: "Total Time",
@@ -436,6 +440,7 @@ const state = {
   catalogTargetPaceInput: "4:30",
   planOrder: null,
   draggedPlanIndex: null,
+  planPointerDrag: null,
   planTouchDrag: null,
   exampleOrder: {},
   draggedExample: null,
@@ -2447,6 +2452,18 @@ function renderPaceZonePanel(model, t, embedded = false, options = {}) {
 function renderWeeklySchedule(model, t) {
   const schedule = applyEasyRunRedistribution(model.weeklySchedule);
   const orderedSchedule = getOrderedSchedule(schedule);
+  const plannedTotalKm = schedule.reduce(
+    (total, day) => total + Number(day.plannedDistanceKm ?? 0),
+    0
+  );
+  const longRunKm = Number(schedule.find((day) => day.isLongRun)?.plannedDistanceKm ?? 0);
+  const longRunShare = plannedTotalKm > 0
+    ? Math.round((longRunKm / plannedTotalKm) * 1000) / 10
+    : 0;
+  const plannedTotal = formatPlanDistanceRange({
+    min: plannedTotalKm,
+    max: plannedTotalKm
+  });
   const fixedDayLabels = schedule.map((day) =>
     state.locale === "en" ? day.enDay : day.zhDay
   );
@@ -2462,6 +2479,11 @@ function renderWeeklySchedule(model, t) {
         </div>
         <p>${t.weeklyPlanNote}</p>
       </div>
+      <div class="week-volume-summary">
+        <span>${t.plannedWeeklyTotal}<strong>${plannedTotal}</strong></span>
+        <span>${t.longRunShare}<strong>${longRunShare}% ≤ 30%</strong></span>
+      </div>
+      <p class="drag-hint schedule-drag-hint">${t.scheduleDragHint}</p>
       <div class="week-scroll">
         <div class="week-day-row" aria-hidden="true">
           ${fixedDayLabels.map((label) => `<span>${label}</span>`).join("")}
@@ -2493,11 +2515,14 @@ function renderPlanDay(day, t, index, model) {
       </div>`
     : "";
   const easyRestControl = renderEasyRestControl(day, index, t);
+  const plannedDistanceLabel = state.locale === "en"
+    ? day.enDistanceLabel
+    : day.zhDistanceLabel;
 
   return `
     <article
       class="plan-day ${zoneTone[day.zone]} ${day.isSkippedEasyRun ? "is-rest" : ""}"
-      draggable="true"
+      draggable="false"
       data-plan-card
       data-plan-index="${index}"
       aria-label="${title}"
@@ -2507,6 +2532,7 @@ function renderPlanDay(day, t, index, model) {
       <div>
         <b>${day.zone}</b>
         <p>${title}</p>
+        ${plannedDistanceLabel ? `<span class="plan-distance-label">${plannedDistanceLabel}</span>` : ""}
         ${paceBlock}
       </div>
     </article>
@@ -2596,7 +2622,6 @@ function renderWorkoutExamples(model, t) {
 
   return `
     <div class="example-list">
-      <p class="drag-hint">${t.draggableWorkoutHint}</p>
       ${groupedExamples.map((group) => renderWorkoutGroup(group, t)).join("")}
     </div>
   `;
@@ -2788,7 +2813,6 @@ function bindEvents() {
   });
 
   app.querySelectorAll("[data-gpx-field]").forEach((input) => {
-    input.addEventListener("input", handleGpxFieldChange);
     input.addEventListener("change", handleGpxFieldChange);
   });
 
@@ -2805,27 +2829,16 @@ function bindEvents() {
     button.addEventListener("click", handleAction);
   });
 
-  const prefersTouchScrolling =
-    window.innerWidth <= 900 ||
-    navigator.maxTouchPoints > 0 ||
-    window.matchMedia?.("(pointer: coarse)").matches ||
-    window.matchMedia?.("(hover: none)").matches;
-
-  if (!prefersTouchScrolling) {
-    app.querySelectorAll("[data-plan-card]").forEach((card) => {
-      card.addEventListener("dragstart", handlePlanDragStart);
-      card.addEventListener("dragover", handlePlanDragOver);
-      card.addEventListener("dragend", handlePlanDragEnd);
-      card.addEventListener("drop", handlePlanDrop);
-    });
-  } else {
-    app.querySelectorAll("[data-plan-card]").forEach((card) => {
-      card.addEventListener("touchstart", handlePlanTouchStart, { passive: true });
-      card.addEventListener("touchmove", handlePlanTouchMove, { passive: false });
-      card.addEventListener("touchend", handlePlanTouchEnd);
-      card.addEventListener("touchcancel", handlePlanTouchEnd);
-    });
-  }
+  app.querySelectorAll("[data-plan-card]").forEach((card) => {
+    card.addEventListener("pointerdown", handlePlanPointerDown);
+    card.addEventListener("pointermove", handlePlanPointerMove);
+    card.addEventListener("pointerup", handlePlanPointerEnd);
+    card.addEventListener("pointercancel", handlePlanPointerEnd);
+    card.addEventListener("touchstart", handlePlanTouchStart, { passive: true });
+    card.addEventListener("touchmove", handlePlanTouchMove, { passive: false });
+    card.addEventListener("touchend", handlePlanTouchEnd);
+    card.addEventListener("touchcancel", handlePlanTouchEnd);
+  });
 
   app.querySelectorAll(".week-scroll").forEach((scroller) => {
     scroller.addEventListener("scroll", positionOpenPlanSwapMenu, { passive: true });
@@ -2833,12 +2846,8 @@ function bindEvents() {
 
   window.removeEventListener("scroll", positionOpenPlanSwapMenu);
   window.removeEventListener("resize", positionOpenPlanSwapMenu);
-  window.removeEventListener("mousemove", handleExampleMouseMove);
-  window.removeEventListener("mouseup", handleExampleMouseEnd);
   window.addEventListener("scroll", positionOpenPlanSwapMenu, { passive: true });
   window.addEventListener("resize", positionOpenPlanSwapMenu);
-  window.addEventListener("mousemove", handleExampleMouseMove);
-  window.addEventListener("mouseup", handleExampleMouseEnd);
 
   positionOpenPlanSwapMenu();
 }
@@ -2870,21 +2879,47 @@ function fitPaceZonePanel() {
 
 function handleFieldChange(event) {
   const field = event.currentTarget.dataset.field;
-  const value = event.currentTarget.value;
+  const input = event.currentTarget;
+  const value = input.value;
 
-  if (event.currentTarget.type === "range" && event.type === "input") {
+  if (input.type === "range" && event.type === "input") {
     syncRangeNumber(field, value);
     return;
   }
 
-  if (event.currentTarget.type === "number" && event.type === "input") {
-    updateFieldValue(field, value);
-    syncRangeSlider(field, value);
+  if (input.type === "number" && event.type === "input") {
+    if (value === "" || !Number.isFinite(Number(value))) return;
+    const normalizedValue = normalizeNumericInput(input, value);
+    updateFieldValue(field, normalizedValue);
+    syncRangeSlider(field, normalizedValue);
+    return;
+  }
+
+  if (input.type === "number") {
+    const fallbackValue = state[field];
+    const normalizedValue = normalizeNumericInput(input, value, fallbackValue);
+    input.value = normalizedValue;
+    updateFieldValue(field, normalizedValue);
+    syncRangeSlider(field, normalizedValue);
+    render();
     return;
   }
 
   updateFieldValue(field, value);
   render();
+}
+
+function normalizeNumericInput(input, value, fallbackValue = 0) {
+  const parsed = Number(value);
+  const fallback = Number.isFinite(Number(fallbackValue)) ? Number(fallbackValue) : 0;
+  let normalized = Number.isFinite(parsed) && value !== "" ? parsed : fallback;
+  const min = Number(input.min);
+  const max = Number(input.max);
+
+  if (input.min !== "" && Number.isFinite(min)) normalized = Math.max(min, normalized);
+  if (input.max !== "" && Number.isFinite(max)) normalized = Math.min(max, normalized);
+
+  return normalized;
 }
 
 function syncRangeNumber(field, value) {
@@ -3119,11 +3154,17 @@ async function loadCatalogItem(id, mode) {
 }
 
 async function handleGpxFieldChange(event) {
+  const input = event.currentTarget;
   const field = event.currentTarget.dataset.gpxField;
-  const value =
-    event.currentTarget.type === "checkbox"
-      ? event.currentTarget.checked
-      : event.currentTarget.value;
+  let value =
+    input.type === "checkbox"
+      ? input.checked
+      : input.value;
+
+  if (input.type === "number") {
+    value = normalizeNumericInput(input, value, state[field]);
+    input.value = value;
+  }
 
   if (
     field === "gpxSourceMode" ||
@@ -3293,6 +3334,101 @@ function exportGpxCsv() {
   URL.revokeObjectURL(url);
 }
 
+function handlePlanPointerDown(event) {
+  if (event.pointerType === "touch" || event.button !== 0) return;
+  if (event.target.closest("button, input, textarea, select, a")) return;
+
+  const card = event.currentTarget;
+  clearPlanPointerDragState();
+  state.planPointerDrag = {
+    pointerId: event.pointerId,
+    index: Number(card.dataset.planIndex),
+    startX: event.clientX,
+    startY: event.clientY,
+    startOrderPosition: state.planOrder.indexOf(Number(card.dataset.planIndex)),
+    startScrollLeft: card.closest(".week-scroll")?.scrollLeft ?? 0,
+    cardWidth: card.getBoundingClientRect().width,
+    active: false
+  };
+  card.setPointerCapture?.(event.pointerId);
+}
+
+function handlePlanPointerMove(event) {
+  const drag = state.planPointerDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+
+  const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+  if (!drag.active) {
+    if (distance < 8) return;
+    drag.active = true;
+    state.draggedPlanIndex = drag.index;
+    event.currentTarget.classList.add("is-dragging");
+  }
+
+  event.preventDefault();
+  autoScrollHorizontalContainer(
+    event.currentTarget.closest(".week-scroll"),
+    event.clientX
+  );
+
+  const target = findPlanCardAtPoint(
+    event.currentTarget.closest("[data-plan-grid]"),
+    event.clientX,
+    event.clientY,
+    event.currentTarget
+  );
+  if (!target || target === event.currentTarget) return;
+
+  swapPlanWithTarget(target, event.clientX);
+}
+
+function handlePlanPointerEnd(event) {
+  const drag = state.planPointerDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+
+  finishPlanDrag(drag, event.clientX, event.currentTarget);
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
+  clearPlanPointerDragState();
+}
+
+function finishPlanDrag(drag, endClientX, card) {
+  if (!drag.active) return;
+
+  const currentPosition = state.planOrder.indexOf(drag.index);
+  if (currentPosition < 0 || currentPosition !== drag.startOrderPosition) return;
+
+  const grid = card.closest("[data-plan-grid]");
+  const scroller = card.closest(".week-scroll");
+  if (!grid || !scroller) return;
+
+  const travelX =
+    endClientX - drag.startX + (scroller.scrollLeft - drag.startScrollLeft);
+  const cardWidth = Math.max(1, drag.cardWidth);
+  if (Math.abs(travelX) < cardWidth * 0.35) return;
+
+  const direction = Math.sign(travelX);
+  const slots = Math.max(1, Math.floor(Math.abs(travelX) / cardWidth));
+  const targetPosition = Math.max(
+    0,
+    Math.min(state.planOrder.length - 1, currentPosition + direction * slots)
+  );
+  if (targetPosition === currentPosition) return;
+
+  animatePlanReorder(grid, () => {
+    const [movedIndex] = state.planOrder.splice(currentPosition, 1);
+    state.planOrder.splice(targetPosition, 0, movedIndex);
+    reorderPlanCards(grid);
+  });
+}
+
+function clearPlanPointerDragState() {
+  app.querySelectorAll("[data-plan-card]").forEach((card) => {
+    card.classList.remove("is-dragging");
+  });
+  state.draggedPlanIndex = null;
+  state.planPointerDrag = null;
+}
+
 function handlePlanDragStart(event) {
   const card = event.currentTarget;
   state.draggedPlanIndex = Number(card.dataset.planIndex);
@@ -3306,6 +3442,8 @@ function handlePlanDragStart(event) {
 
 function handlePlanDragOver(event) {
   event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  autoScrollHorizontalContainer(event.currentTarget.closest(".week-scroll"), event.clientX);
   swapPlanWithTarget(event.currentTarget, event.clientX);
 }
 
@@ -3359,6 +3497,9 @@ function handlePlanTouchStart(event) {
     index: Number(card.dataset.planIndex),
     startX: touch.clientX,
     startY: touch.clientY,
+    startOrderPosition: state.planOrder.indexOf(Number(card.dataset.planIndex)),
+    startScrollLeft: card.closest(".week-scroll")?.scrollLeft ?? 0,
+    cardWidth: card.getBoundingClientRect().width,
     active: false,
     timerId: window.setTimeout(() => {
       touchDrag.active = true;
@@ -3391,12 +3532,54 @@ function handlePlanTouchMove(event) {
 
   event.preventDefault();
 
-  const target = document
-    .elementFromPoint(touch.clientX, touch.clientY)
-    ?.closest("[data-plan-card]");
+  autoScrollHorizontalContainer(
+    event.currentTarget.closest(".week-scroll"),
+    touch.clientX
+  );
+
+  const target = findPlanCardAtPoint(
+    event.currentTarget.closest("[data-plan-grid]"),
+    touch.clientX,
+    touch.clientY,
+    event.currentTarget
+  );
   if (!target || target === event.currentTarget) return;
 
   swapPlanWithTarget(target, touch.clientX);
+}
+
+function findPlanCardAtPoint(grid, clientX, clientY, excludedCard) {
+  if (!grid) return null;
+
+  return (
+    [...grid.querySelectorAll("[data-plan-card]")].find((card) => {
+      if (card === excludedCard) return false;
+      const rect = card.getBoundingClientRect();
+      return (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      );
+    }) ?? null
+  );
+}
+
+function autoScrollHorizontalContainer(container, clientX) {
+  if (!container) return;
+
+  const rect = container.getBoundingClientRect();
+  const edgeWidth = Math.min(64, rect.width * 0.2);
+  const maxStep = 18;
+  let delta = 0;
+
+  if (clientX < rect.left + edgeWidth) {
+    delta = -maxStep * (1 - Math.max(0, clientX - rect.left) / edgeWidth);
+  } else if (clientX > rect.right - edgeWidth) {
+    delta = maxStep * (1 - Math.max(0, rect.right - clientX) / edgeWidth);
+  }
+
+  if (delta !== 0) container.scrollLeft += delta;
 }
 
 function handlePlanTouchEnd(event) {
@@ -3408,6 +3591,12 @@ function handlePlanTouchEnd(event) {
   );
   if (!touchFinished) return;
 
+  const finishedTouch = [...event.changedTouches].find(
+    (item) => item.identifier === touchDrag.touchId
+  );
+  if (finishedTouch) {
+    finishPlanDrag(touchDrag, finishedTouch.clientX, event.currentTarget);
+  }
   clearPlanTouchDragState();
 }
 
@@ -3729,6 +3918,7 @@ function applyEasyRunRedistribution(schedule) {
           : "Rest",
         pace: "",
         base: "",
+        plannedDistanceKm: 0,
         isSkippedEasyRun: true
       };
     }
@@ -3745,6 +3935,10 @@ function applyEasyRunRedistribution(schedule) {
     return {
       ...day,
       distanceRangeKm: nextRangeKm,
+      plannedDistanceKm:
+        Math.abs(nextRangeKm.max - nextRangeKm.min) < 0.05
+          ? nextRangeKm.min
+          : day.plannedDistanceKm,
       zh: buildRedistributedEasyTitle(day, nextRangeKm, "zh"),
       en: buildRedistributedEasyTitle(day, nextRangeKm, "en")
     };
@@ -3775,6 +3969,9 @@ function formatPlanDistanceRange(rangeKm) {
     ? rangeKm.max / KM_PER_MILE
     : rangeKm.max;
   const suffix = state.unitSystem === UnitSystem.IMPERIAL ? "mi" : "km";
+  if (Math.abs(max - min) < 0.05) {
+    return `${formatPlanDistance(min)} ${suffix}`;
+  }
   return `${formatPlanDistance(min)}-${formatPlanDistance(max)} ${suffix}`;
 }
 

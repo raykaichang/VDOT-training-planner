@@ -184,37 +184,37 @@ const workoutCatalog = Object.freeze([
   t("T-E3", 163, null, "2 x（15 分鐘 T + 3 分鐘休息）+ 2 x（12 分鐘 T + 2 分鐘休息）+ 6 分鐘 T", "2 x (15 min T + 3 min rest) + 2 x (12 min T + 2 min rest) + 6 min T", "60 分鐘"),
   t("T-E4", 163, null, "3 x（20 分鐘 T + 4 分鐘休息）", "3 x (20 min T + 4 min rest)", "60 分鐘"),
 
-  i("I-A1", 0, 48, "5-6 x（2 分鐘 H + 1 分鐘慢跑）", "5-6 x (2 min H + 1 min jog)", "15-18 分鐘"),
-  i("I-A2", 0, 48, "4 x（3 分鐘 H + 2 分鐘慢跑）", "4 x (3 min H + 2 min jog)", "20 分鐘"),
-  i("I-A3", 0, 48, "3 x（4 分鐘 H + 3 分鐘慢跑）", "3 x (4 min H + 3 min jog)", "21 分鐘"),
+  i("I-A1", 0, 48, "5-6 x（2 分鐘 I + 1 分鐘慢跑）", "5-6 x (2 min I + 1 min jog)", "15-18 分鐘"),
+  i("I-A2", 0, 48, "4 x（3 分鐘 I + 2 分鐘慢跑）", "4 x (3 min I + 2 min jog)", "20 分鐘"),
+  i("I-A3", 0, 48, "3 x（4 分鐘 I + 3 分鐘慢跑）", "3 x (4 min I + 3 min jog)", "21 分鐘"),
   i("I-A4", 0, 48, "4-5 x（800 公尺 I 配速 + 2 分鐘慢跑）", "4-5 x (800 m I + 2 min jog)", "20-25 分鐘"),
-  i("I-B1", 48, 64, "7-8 x（2 分鐘 H + 1 分鐘慢跑）", "7-8 x (2 min H + 1 min jog)", "21-24 分鐘"),
-  i("I-B2", 48, 64, "5 x（3 分鐘 H + 2 分鐘慢跑）", "5 x (3 min H + 2 min jog)", "25 分鐘"),
-  i("I-B3", 48, 64, "4 x（4 分鐘 H + 3 分鐘慢跑）", "4 x (4 min H + 3 min jog)", "28 分鐘"),
+  i("I-B1", 48, 64, "7-8 x（2 分鐘 I + 1 分鐘慢跑）", "7-8 x (2 min I + 1 min jog)", "21-24 分鐘"),
+  i("I-B2", 48, 64, "5 x（3 分鐘 I + 2 分鐘慢跑）", "5 x (3 min I + 2 min jog)", "25 分鐘"),
+  i("I-B3", 48, 64, "4 x（4 分鐘 I + 3 分鐘慢跑）", "4 x (4 min I + 3 min jog)", "28 分鐘"),
   i("I-B4", 48, 64, "5-6 x（800 公尺 I 配速 + 2 分鐘慢跑）", "5-6 x (800 m I + 2 min jog)", "25-30 分鐘"),
   i("I-B5", 48, 64, "4-5 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "4-5 x (1,000 m I + 3 min jog)", "26-33 分鐘"),
   i("I-C1", 64, 74, "6 x（800 公尺 I 配速 + 2 分鐘慢跑）", "6 x (800 m I + 2 min jog)", "27 分鐘"),
-  i("I-C2", 64, 74, "6 x（3 分鐘 H + 2 分鐘慢跑）", "6 x (3 min H + 2 min jog)", "30 分鐘"),
+  i("I-C2", 64, 74, "6 x（3 分鐘 I + 2 分鐘慢跑）", "6 x (3 min I + 2 min jog)", "30 分鐘"),
   i("I-C3", 64, 74, "5 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "5 x (1,000 m I + 3 min jog)", "33 分鐘"),
   i("I-C4", 64, 74, "4-5 x（1,200 公尺 I 配速 + 3 分鐘慢跑）", "4-5 x (1,200 m I + 3 min jog)", "28-35 分鐘"),
-  i("I-C5", 64, 74, "3-4 x（5 分鐘 H + 4 分鐘慢跑）", "3-4 x (5 min H + 4 min jog)", "27-36 分鐘"),
+  i("I-C5", 64, 74, "3-4 x（5 分鐘 I + 4 分鐘慢跑）", "3-4 x (5 min I + 4 min jog)", "27-36 分鐘"),
   i("I-D1", 74, 90, "5-6 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "5-6 x (1,000 m I + 3 min jog)", "33-39 分鐘"),
-  i("I-D2", 74, 90, "4-5 x（1,200 公尺 I 配速 + 3 分鐘慢跑）；或 5 x（4 分鐘 H + 3 分鐘慢跑）", "4-5 x (1,200 m I + 3 min jog); or 5 x (4 min H + 3 min jog)", "28-35 分鐘"),
-  i("I-D3", 74, 90, "4 x（1,600 公尺 I 配速 + 4 分鐘慢跑）；或 4 x（5 分鐘 H + 4 分鐘慢跑）", "4 x (1,600 m I + 4 min jog); or 4 x (5 min H + 4 min jog)", "36 分鐘"),
-  i("I-D4", 74, 90, "5 x（4 分鐘 H + 3 分鐘慢跑）", "5 x (4 min H + 3 min jog)", "35 分鐘"),
-  i("I-D5", 74, 90, "7 x（3 分鐘 H + 2 分鐘慢跑）", "7 x (3 min H + 2 min jog)", "35 分鐘"),
-  i("I-D6", 74, 90, "10 x（2 分鐘 H + 1 分鐘慢跑）", "10 x (2 min H + 1 min jog)", "30 分鐘"),
+  i("I-D2", 74, 90, "4-5 x（1,200 公尺 I 配速 + 3 分鐘慢跑）；或 5 x（4 分鐘 I + 3 分鐘慢跑）", "4-5 x (1,200 m I + 3 min jog); or 5 x (4 min I + 3 min jog)", "28-35 分鐘"),
+  i("I-D3", 74, 90, "4 x（1,600 公尺 I 配速 + 4 分鐘慢跑）；或 4 x（5 分鐘 I + 4 分鐘慢跑）", "4 x (1,600 m I + 4 min jog); or 4 x (5 min I + 4 min jog)", "36 分鐘"),
+  i("I-D4", 74, 90, "5 x（4 分鐘 I + 3 分鐘慢跑）", "5 x (4 min I + 3 min jog)", "35 分鐘"),
+  i("I-D5", 74, 90, "7 x（3 分鐘 I + 2 分鐘慢跑）", "7 x (3 min I + 2 min jog)", "35 分鐘"),
+  i("I-D6", 74, 90, "10 x（2 分鐘 I + 1 分鐘慢跑）", "10 x (2 min I + 1 min jog)", "30 分鐘"),
   i("I-E1", 90, 114, "6-8 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "6-8 x (1,000 m I + 3 min jog)", "39-52 分鐘"),
   i("I-E2", 90, 114, "5-6 x（1,200 公尺 I 配速 + 3 分鐘慢跑）", "5-6 x (1,200 m I + 3 min jog)", "35-42 分鐘"),
-  i("I-E3", 90, 114, "5 x（5 分鐘 H + 4 分鐘慢跑）", "5 x (5 min H + 4 min jog)", "45 分鐘"),
-  i("I-E4", 90, 114, "4 x（3 分鐘 H + 2 分鐘慢跑）+ 4 x（2 分鐘 H + 1 分鐘慢跑）", "4 x (3 min H + 2 min jog) + 4 x (2 min H + 1 min jog)", "32 分鐘"),
-  i("I-E5", 90, 114, "3 x（3 分鐘 H + 2 分鐘慢跑）+ 4 x（2 分鐘 H + 1 分鐘慢跑）+ 5 x（1 分鐘 H + 30 秒慢跑）", "3 x (3 min H + 2 min jog) + 4 x (2 min H + 1 min jog) + 5 x (1 min H + 30 sec jog)", "35 分鐘"),
+  i("I-E3", 90, 114, "5 x（5 分鐘 I + 4 分鐘慢跑）", "5 x (5 min I + 4 min jog)", "45 分鐘"),
+  i("I-E4", 90, 114, "4 x（3 分鐘 I + 2 分鐘慢跑）+ 4 x（2 分鐘 I + 1 分鐘慢跑）", "4 x (3 min I + 2 min jog) + 4 x (2 min I + 1 min jog)", "32 分鐘"),
+  i("I-E5", 90, 114, "3 x（3 分鐘 I + 2 分鐘慢跑）+ 4 x（2 分鐘 I + 1 分鐘慢跑）+ 5 x（1 分鐘 I + 30 秒慢跑）", "3 x (3 min I + 2 min jog) + 4 x (2 min I + 1 min jog) + 5 x (1 min I + 30 sec jog)", "35 分鐘"),
   i("I-F1", 114, null, "7-10 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "7-10 x (1,000 m I + 3 min jog)", "45-65 分鐘"),
-  i("I-F2", 114, null, "3 x（5 分鐘 H + 4 分鐘慢跑）+ 4 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "3 x (5 min H + 4 min jog) + 4 x (1,000 m I + 3 min jog)", "54 分鐘"),
-  i("I-F3", 114, null, "6-8 x（4 分鐘 H + 3 分鐘慢跑）；或 6-8 x（1,200 公尺 I 配速 + 3 分鐘慢跑）", "6-8 x (4 min H + 3 min jog); or 6-8 x (1,200 m I + 3 min jog)", "42-56 分鐘"),
-  i("I-F4", 114, null, "5-6 x（5 分鐘 H + 4 分鐘慢跑）；或 5-6 x（1,600 公尺 I 配速 + 4 分鐘慢跑）", "5-6 x (5 min H + 4 min jog); or 5-6 x (1,600 m I + 4 min jog)", "45-54 分鐘"),
-  i("I-F5", 114, null, "2 x（5 分鐘 H + 4 分鐘慢跑）+ 3 x（3 分鐘 H + 3 分鐘慢跑）+ 4 x（2 分鐘 H + 1 分鐘慢跑）", "2 x (5 min H + 4 min jog) + 3 x (3 min H + 3 min jog) + 4 x (2 min H + 1 min jog)", "48 分鐘"),
-  i("I-F6", 114, null, "5 x（2 分鐘 H + 1 分鐘慢跑）+ 8 x（1 分鐘 H + 30 秒慢跑）+ 12 x（30 秒 H + 30 秒慢跑）", "5 x (2 min H + 1 min jog) + 8 x (1 min H + 30 sec jog) + 12 x (30 sec H + 30 sec jog)", "39 分鐘"),
+  i("I-F2", 114, null, "3 x（5 分鐘 I + 4 分鐘慢跑）+ 4 x（1,000 公尺 I 配速 + 3 分鐘慢跑）", "3 x (5 min I + 4 min jog) + 4 x (1,000 m I + 3 min jog)", "54 分鐘"),
+  i("I-F3", 114, null, "6-8 x（4 分鐘 I + 3 分鐘慢跑）；或 6-8 x（1,200 公尺 I 配速 + 3 分鐘慢跑）", "6-8 x (4 min I + 3 min jog); or 6-8 x (1,200 m I + 3 min jog)", "42-56 分鐘"),
+  i("I-F4", 114, null, "5-6 x（5 分鐘 I + 4 分鐘慢跑）；或 5-6 x（1,600 公尺 I 配速 + 4 分鐘慢跑）", "5-6 x (5 min I + 4 min jog); or 5-6 x (1,600 m I + 4 min jog)", "45-54 分鐘"),
+  i("I-F5", 114, null, "2 x（5 分鐘 I + 4 分鐘慢跑）+ 3 x（3 分鐘 I + 3 分鐘慢跑）+ 4 x（2 分鐘 I + 1 分鐘慢跑）", "2 x (5 min I + 4 min jog) + 3 x (3 min I + 3 min jog) + 4 x (2 min I + 1 min jog)", "48 分鐘"),
+  i("I-F6", 114, null, "5 x（2 分鐘 I + 1 分鐘慢跑）+ 8 x（1 分鐘 I + 30 秒慢跑）+ 12 x（30 秒 I + 30 秒慢跑）", "5 x (2 min I + 1 min jog) + 8 x (1 min I + 30 sec jog) + 12 x (30 sec I + 30 sec jog)", "39 分鐘"),
 
   r("R-A1", 0, 50, "8 x（200 公尺 R + 200 公尺慢跑）", "8 x (200 m R + 200 m jog)", "16 分鐘"),
   r("R-A2", 0, 50, "2 x（200 公尺 R + 200 公尺慢跑 + 200 公尺 R + 400 公尺慢跑 + 400 公尺 R + 200 公尺慢跑）", "2 x (200 m R + 200 m jog + 200 m R + 400 m jog + 400 m R + 200 m jog)", "16 分鐘"),
@@ -515,148 +515,255 @@ export function generateWeeklySchedule({
 } = {}) {
   const race = normalizeTargetRace(targetRace);
   const cycle = normalizeTrainingCycle(trainingCycle);
-  const mileage = Number(weeklyMileageKm);
-  const qualitySlots = mileage >= 48 ? 3 : mileage >= 32 ? 2 : 1;
+  const mileage = roundTo(clamp(Number(weeklyMileageKm), 0, 180), 1);
+  const mileageClass = getMileageClass(mileage);
+  const qualityCount = mileage >= 32 ? 2 : mileage > 0 ? 1 : 0;
   const zoneById = Object.fromEntries(zones.map((zone) => [zone.id, zone]));
-  const longRunRangeKm = {
-    min: Math.max(8, mileage * 0.2),
-    max: Math.max(10, mileage * 0.28)
-  };
-  const easyRunRangeKm = {
-    min: Math.max(5, mileage * 0.08),
-    max: Math.max(7, mileage * 0.12)
-  };
-  const recoveryRunRangeKm = {
-    min: Math.max(4, mileage * 0.06),
-    max: Math.max(6, mileage * 0.09)
-  };
-  const longRun = formatDistanceRange(longRunRangeKm.min, longRunRangeKm.max, unitSystem);
-  const reducedLongRun = formatDistanceRange(
-    longRunRangeKm.min * 0.67,
-    longRunRangeKm.max * 0.67,
-    unitSystem
+  const longRunDistanceKm = Math.min(
+    roundTo(mileage * 0.28, 1),
+    Math.floor(mileage * 0.3 * 10) / 10
   );
-  const easyRun = formatDistanceRange(easyRunRangeKm.min, easyRunRangeKm.max, unitSystem);
-  const recoveryRun = formatDistanceRange(recoveryRunRangeKm.min, recoveryRunRangeKm.max, unitSystem);
-
-  const week = buildDanielsWeek({
+  const qualityWorkouts = selectWeeklyQualityWorkouts(
     race,
     cycle,
-    qualitySlots,
+    qualityCount,
+    mileage
+  );
+  const qualityDistancesKm = allocateQualityMileage(
+    mileage,
+    mileageClass.id,
+    qualityWorkouts.length
+  );
+  const easyMileageKm = roundTo(
+    Math.max(0, mileage - longRunDistanceKm - sum(qualityDistancesKm)),
+    1
+  );
+  const easyDayKeys = qualityWorkouts.length >= 2
+    ? ["mon", "wed", "fri", "sat"]
+    : ["mon", "wed", "thu", "fri", "sat"];
+  const easyWeights = qualityWorkouts.length >= 2
+    ? [0.85, 1, 0.8, 0.85]
+    : [0.85, 1, 1, 0.8, 0.85];
+  const allocatedEasyDistances = allocateDistanceByWeight(easyMileageKm, easyWeights);
+  const easyDistances = Object.fromEntries(
+    easyDayKeys.map((key, index) => [
+      key,
+      allocatedEasyDistances[index]
+    ])
+  );
+
+  return buildMileageBalancedWeek({
+    race,
+    cycle,
     zoneById,
-    longRun,
-    reducedLongRun,
-    easyRun,
-    recoveryRun,
-    easyRunRangeKm,
-    recoveryRunRangeKm
+    unitSystem,
+    weeklyMileageKm: mileage,
+    longRunDistanceKm,
+    qualityWorkouts,
+    qualityDistancesKm,
+    easyDistances
   }).map((day) => addZonePace(day, zoneById));
-
-  if (!week.some((day) => day.zone === PaceZone.THRESHOLD)) {
-    week[1] = addZonePace(
-      buildQualityDay("Tue", "二", thresholdQuality(cycle), zoneById),
-      zoneById
-    );
-  }
-
-  return week;
 }
 
-function buildDanielsWeek({
-  race,
-  cycle,
-  qualitySlots,
-  zoneById,
-  longRun,
-  reducedLongRun,
-  easyRun,
-  recoveryRun,
-  easyRunRangeKm,
-  recoveryRunRangeKm
-}) {
-  const q = getDanielsQualitySequence(race, cycle, qualitySlots);
-  const qWithDistances = q.map((workout) =>
-    applyQualityDistance(workout, {
-      longRun,
-      reducedLongRun
-    })
+function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage) {
+  if (qualityCount <= 0) return [];
+
+  const candidates = getBaseDanielsSequence(race, cycle).filter(
+    (workout) =>
+      workout.distanceRole !== "longRun" &&
+      workout.distanceRole !== "reducedLongRun" &&
+      workout.zone !== PaceZone.EASY
   );
-  const q1 = qWithDistances[0] ?? thresholdQuality(cycle);
-  const q2 = qWithDistances[1];
-  const q3 = qWithDistances[2];
+  const threshold =
+    candidates.find((workout) => workout.zone === PaceZone.THRESHOLD) ??
+    thresholdQuality(cycle);
+  const secondary = candidates.find((workout) => workout !== threshold);
+
+  return [threshold, secondary]
+    .filter(Boolean)
+    .slice(0, qualityCount)
+    .map((workout) => adaptWorkoutToMileage(workout, mileage));
+}
+
+function adaptWorkoutToMileage(workout, mileage) {
+  const matchingExamples = workoutCatalog.filter(
+    (example) => example.zone === workout.zone && isMileageEligible(example, mileage)
+  );
+  if (matchingExamples.length === 0) return workout;
+
+  const selected = matchingExamples[Math.floor(matchingExamples.length / 2)];
+  return {
+    ...workout,
+    zh: selected.zh,
+    en: selected.en,
+    defaultWorkoutId: selected.id
+  };
+}
+
+function allocateQualityMileage(mileage, mileageClassId, qualityCount) {
+  if (qualityCount <= 0 || mileage <= 0) return [];
+
+  if (qualityCount === 1) return [roundTo(mileage * 0.18, 1)];
+
+  const ratiosByClass = {
+    A: [0.16, 0.14],
+    B: [0.16, 0.14],
+    C: [0.15, 0.14],
+    D: [0.14, 0.13],
+    E: [0.13, 0.12]
+  };
+  return (ratiosByClass[mileageClassId] ?? ratiosByClass.A)
+    .slice(0, qualityCount)
+    .map((ratio) => roundTo(mileage * ratio, 1));
+}
+
+function allocateDistanceByWeight(totalDistanceKm, weights) {
+  if (weights.length === 0) return [];
+
+  const totalTenths = Math.max(0, Math.round(totalDistanceKm * 10));
+  const weightTotal = sum(weights);
+  if (totalTenths === 0 || weightTotal <= 0) return weights.map(() => 0);
+
+  const rawShares = weights.map((weight) => (totalTenths * weight) / weightTotal);
+  const allocatedTenths = rawShares.map(Math.floor);
+  let remainder = totalTenths - sum(allocatedTenths);
+  const remainderOrder = rawShares
+    .map((raw, index) => ({ index, fraction: raw - allocatedTenths[index] }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
+
+  for (let index = 0; index < remainder; index += 1) {
+    allocatedTenths[remainderOrder[index % remainderOrder.length].index] += 1;
+  }
+
+  return allocatedTenths.map((value) => value / 10);
+}
+
+function buildMileageBalancedWeek({
+  cycle,
+  zoneById,
+  unitSystem,
+  weeklyMileageKm,
+  longRunDistanceKm,
+  qualityWorkouts,
+  qualityDistancesKm,
+  easyDistances
+}) {
+  const longRunDistance = formatDistanceValue(longRunDistanceKm, unitSystem);
+  const longRunPercentage = weeklyMileageKm > 0
+    ? roundTo((longRunDistanceKm / weeklyMileageKm) * 100, 1)
+    : 0;
+  const longRun = scheduleDay(
+    "Sun",
+    "日",
+    PaceZone.EASY,
+    `Q1 長跑 ${longRunDistance}：週跑量 ${longRunPercentage}%，以 E 配速完成`,
+    `Q1 long run ${longRunDistance}: ${longRunPercentage}% of weekly mileage at E pace`,
+    plannedDistanceMetadata(longRunDistanceKm, "long")
+  );
+  const primaryQuality = qualityWorkouts[0]
+    ? buildPlannedQualityDay(
+        "Tue",
+        "二",
+        qualityWorkouts[0],
+        qualityDistancesKm[0],
+        unitSystem,
+        zoneById
+      )
+    : buildEasyDistanceDay("Tue", "二", 0, unitSystem);
+  const secondaryQuality = qualityWorkouts[1]
+    ? buildPlannedQualityDay(
+        "Thu",
+        "四",
+        qualityWorkouts[1],
+        qualityDistancesKm[1],
+        unitSystem,
+        zoneById
+      )
+    : buildEasyDistanceDay(
+        "Thu",
+        "四",
+        easyDistances.thu ?? 0,
+        unitSystem,
+        { strides: true }
+      );
 
   return [
-    buildQualityDay("Sun", "日", q1, zoneById),
-    scheduleDay("Mon", "一", PaceZone.EASY, `E ${recoveryRun} + 6-8 次加速跑`, `E ${recoveryRun} + 6-8 strides`, {
-      distanceRangeKm: recoveryRunRangeKm,
-      easyDistributionEligible: true
+    longRun,
+    buildEasyDistanceDay("Mon", "一", easyDistances.mon ?? 0, unitSystem, {
+      recovery: true,
+      strides: true
     }),
-    q2
-      ? buildQualityDay("Tue", "二", q2, zoneById)
-      : scheduleDay("Tue", "二", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`, {
-          distanceRangeKm: easyRunRangeKm,
-          easyDistributionEligible: true
-        }),
-    scheduleDay("Wed", "三", PaceZone.EASY, `E ${easyRun}`, `E ${easyRun}`, {
-      distanceRangeKm: easyRunRangeKm,
-      easyDistributionEligible: true
-    }),
-    q3
-      ? buildQualityDay("Thu", "四", q3, zoneById)
-      : scheduleDay("Thu", "四", PaceZone.EASY, `E ${easyRun} + 4-6 次加速跑`, `E ${easyRun} + 4-6 strides`, {
-          distanceRangeKm: easyRunRangeKm,
-          easyDistributionEligible: true
-        }),
-    scheduleDay("Fri", "五", PaceZone.EASY, "休息或 30-40 分鐘 E", "Rest or 30-40 min E", {
-      easyDistributionEligible: true,
-      redistributeMileage: false
-    }),
-    scheduleDay(
-      "Sat",
-      "六",
-      PaceZone.EASY,
-      `恢復跑 ${recoveryRun} 或休息`,
-      `Recovery ${recoveryRun} or rest`,
-      {
-        distanceRangeKm: recoveryRunRangeKm,
-        easyDistributionEligible: true
-      }
-    )
+    primaryQuality,
+    buildEasyDistanceDay("Wed", "三", easyDistances.wed ?? 0, unitSystem),
+    secondaryQuality,
+    buildEasyDistanceDay("Fri", "五", easyDistances.fri ?? 0, unitSystem),
+    buildEasyDistanceDay("Sat", "六", easyDistances.sat ?? 0, unitSystem, {
+      recovery: true
+    })
   ];
 }
 
-function getDanielsQualitySequence(race, cycle, qualitySlots) {
-  const sequence = getBaseDanielsSequence(race, cycle);
-  const protectedSequence = ensureThresholdQuality(sequence, cycle);
-  const selected = protectedSequence.slice(0, qualitySlots);
-  if (!selected.some((workout) => workout.zone === PaceZone.THRESHOLD)) {
-    const threshold = protectedSequence.find(
-      (workout) => workout.zone === PaceZone.THRESHOLD
-    ) ?? thresholdQuality(cycle);
-    selected.splice(Math.max(0, selected.length - 1), 1, threshold);
-  }
-  return selected;
-}
-
-function applyQualityDistance(workout, distances) {
-  if (!workout?.distanceRole) return workout;
-
-  const distance = workout.distanceRole === "reducedLongRun"
-    ? distances.reducedLongRun
-    : distances.longRun;
-
+function buildPlannedQualityDay(
+  enDay,
+  zhDay,
+  workout,
+  distanceKm,
+  unitSystem,
+  zoneById
+) {
   return {
-    ...workout,
-    zh: workout.zh.replace("{distance}", distance),
-    en: workout.en.replace("{distance}", distance)
+    ...buildQualityDay(enDay, zhDay, workout, zoneById),
+    ...plannedDistanceMetadata(distanceKm, "quality"),
+    zhDistanceLabel: `課表總量 ${formatDistanceValue(distanceKm, unitSystem)}（含熱身與收操）`,
+    enDistanceLabel: `Session total ${formatDistanceValue(distanceKm, unitSystem)} including warm-up and cool-down`
   };
 }
 
-function ensureThresholdQuality(sequence, cycle) {
-  if (sequence.some((workout) => workout.zone === PaceZone.THRESHOLD)) {
-    return sequence;
-  }
-  return [thresholdQuality(cycle), ...sequence.slice(0, 2)];
+function buildEasyDistanceDay(
+  enDay,
+  zhDay,
+  distanceKm,
+  unitSystem,
+  { recovery = false, strides = false } = {}
+) {
+  const distance = formatDistanceValue(distanceKm, unitSystem);
+  const zhPrefix = recovery ? "恢復跑" : "E";
+  const enPrefix = recovery ? "Recovery run" : "E";
+  const zh = distanceKm <= 0
+    ? "休息（0 km）"
+    : `${zhPrefix} ${distance}${strides ? " + 6-8 次加速跑" : ""}`;
+  const en = distanceKm <= 0
+    ? "Rest (0 km)"
+    : `${enPrefix} ${distance}${strides ? " + 6-8 strides" : ""}`;
+
+  return scheduleDay(enDay, zhDay, PaceZone.EASY, zh, en, {
+    ...plannedDistanceMetadata(distanceKm, "easy"),
+    easyDistributionEligible: distanceKm > 0
+  });
+}
+
+function plannedDistanceMetadata(distanceKm, scheduleRole) {
+  return {
+    plannedDistanceKm: roundTo(distanceKm, 1),
+    distanceRangeKm: {
+      min: roundTo(distanceKm, 1),
+      max: roundTo(distanceKm, 1)
+    },
+    scheduleRole,
+    isLongRun: scheduleRole === "long",
+    isPrimaryWorkout: scheduleRole === "quality"
+  };
+}
+
+function formatDistanceValue(distanceKm, unitSystem) {
+  const distance = fromKilometers(distanceKm, unitSystem);
+  const suffix = normalizeUnitSystem(unitSystem) === UnitSystem.IMPERIAL ? "mi" : "km";
+  const rounded = roundTo(distance, 1);
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} ${suffix}`;
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + Number(value || 0), 0);
 }
 
 function getBaseDanielsSequence(race, cycle) {
@@ -784,7 +891,7 @@ function thresholdQuality(cycle, variant = "default") {
 function intervalQuality(cycle, variant = "default") {
   const contentByCycle = {
     [TrainingCycle.PHASE_I]: ["短丘或 6-8 x 1 分鐘快跑，充分恢復", "Short hills or 6-8 x 1 min fast, full recovery"],
-    [TrainingCycle.PHASE_II]: ["H/I：5-6 x 800 公尺，慢跑 2 分鐘", "H/I: 5-6 x 800 m, 2 min jog"],
+    [TrainingCycle.PHASE_II]: ["I/I：5-6 x 800 公尺，慢跑 2 分鐘", "I/I: 5-6 x 800 m, 2 min jog"],
     [TrainingCycle.PHASE_III]: ["I：4-6 x 1000-1200 公尺，慢跑 3 分鐘", "I: 4-6 x 1000-1200 m, 3 min jog"],
     [TrainingCycle.PHASE_IV]: ["維持 I：3-5 x 3-5 分鐘，量少不硬撐", "Maintenance I: 3-5 x 3-5 min, low volume"]
   };
@@ -843,9 +950,9 @@ function thresholdRepetitionQuality(cycle) {
 function hillQuality(cycle) {
   const contentByCycle = {
     [TrainingCycle.PHASE_I]: ["丘陵加速：6-8 x 20 秒，上坡輕快", "Hill strides: 6-8 x 20 sec, quick uphill"],
-    [TrainingCycle.PHASE_II]: ["H：6-8 x 1-2 分鐘，上坡或草地，慢跑恢復", "H: 6-8 x 1-2 min uphill/grass, jog recovery"],
-    [TrainingCycle.PHASE_III]: ["H/I：5-7 x 3 分鐘，慢跑 2 分鐘", "H/I: 5-7 x 3 min, 2 min jog"],
-    [TrainingCycle.PHASE_IV]: ["越野銳化：短 H + T，保持節奏感", "XC sharpening: short H + T, keep rhythm"]
+    [TrainingCycle.PHASE_II]: ["I：6-8 x 1-2 分鐘，上坡或草地，慢跑恢復", "I: 6-8 x 1-2 min uphill/grass, jog recovery"],
+    [TrainingCycle.PHASE_III]: ["I/I：5-7 x 3 分鐘，慢跑 2 分鐘", "I/I: 5-7 x 3 min, 2 min jog"],
+    [TrainingCycle.PHASE_IV]: ["越野銳化：短 I + T，保持節奏感", "XC sharpening: short I + T, keep rhythm"]
   };
   return quality(PaceZone.INTERVAL, contentByCycle[cycle]);
 }

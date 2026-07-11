@@ -1,4 +1,4 @@
-# VDOT Training Planner
+# runstrategy
 
 這是一個給跑者使用的靜態前端工具，包含 VDOT 配速、熱環境換算、訓練課表、GPX 坡度換算，以及 GPX 開源賽事庫。
 

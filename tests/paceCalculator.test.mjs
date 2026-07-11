@@ -116,30 +116,64 @@ assert.equal(
   true
 );
 
-const redistributableEasyDays = model.weeklySchedule.filter(
-  (day) => day.easyDistributionEligible
-);
-assert.ok(redistributableEasyDays.length > 0);
-assert.ok(
-  redistributableEasyDays.some(
-    (day) => day.zh.includes("休息或 30-40") && !day.distanceRangeKm
-  )
-);
-assert.ok(
-  redistributableEasyDays
-    .filter((day) => !day.zh.includes("休息或 30-40"))
-    .every((day) => day.distanceRangeKm?.min > 0)
-);
-assert.equal(
-  model.weeklySchedule.some(
-    (day) => day.zh.includes("長跑") && day.easyDistributionEligible
-  ),
-  false
-);
-assert.match(
-  model.weeklySchedule.find((day) => day.zh.includes("Q1 長跑"))?.zh ?? "",
-  /\d+-\d+ km/
-);
+for (const weeklyMileage of [1, 5, 20, 30, 40, 55, 70, 90, 120]) {
+  const scheduleModel = calculatePaceModel({
+    weeklyMileage,
+    targetRace: TargetRace.FIVE_TEN_K,
+    trainingCycle: TrainingCycle.PHASE_II
+  });
+  const schedule = scheduleModel.weeklySchedule;
+  const plannedTotal = schedule.reduce(
+    (total, day) => total + day.plannedDistanceKm,
+    0
+  );
+  const longRun = schedule.find((day) => day.isLongRun);
+  const qualityDays = schedule.filter((day) => day.isPrimaryWorkout);
+  const easyDays = schedule.filter((day) => day.scheduleRole === "easy");
+
+  assert.equal(schedule.length, 7);
+  assert.ok(Math.abs(plannedTotal - weeklyMileage) < 0.05);
+  assert.ok(longRun);
+  assert.ok(longRun.plannedDistanceKm / weeklyMileage <= 0.3);
+  assert.equal(qualityDays.length, weeklyMileage >= 32 ? 2 : 1);
+  assert.ok(qualityDays.some((day) => day.zone === PaceZone.THRESHOLD));
+  assert.ok(
+    easyDays.every(
+      (day) =>
+        day.distanceRangeKm?.min === day.plannedDistanceKm &&
+        day.distanceRangeKm?.max === day.plannedDistanceKm &&
+        !/分鐘|min/i.test(`${day.zh} ${day.en}`)
+    )
+  );
+}
+
+const lowMileageQuality = calculatePaceModel({ weeklyMileage: 30 })
+  .weeklySchedule.find((day) => day.isPrimaryWorkout);
+const highMileageQuality = calculatePaceModel({ weeklyMileage: 90 })
+  .weeklySchedule.find((day) => day.isPrimaryWorkout);
+assert.notEqual(lowMileageQuality.zh, highMileageQuality.zh);
+
+for (let weeklyMileage = 1; weeklyMileage <= 180; weeklyMileage += 1) {
+  const schedule = calculatePaceModel({ weeklyMileage }).weeklySchedule;
+  const total = schedule.reduce((sum, day) => sum + day.plannedDistanceKm, 0);
+  const longRun = schedule.find((day) => day.isLongRun);
+  assert.ok(Math.abs(total - weeklyMileage) < 0.05);
+  assert.ok(longRun.plannedDistanceKm / weeklyMileage <= 0.3);
+}
+
+for (const targetRace of Object.values(TargetRace)) {
+  for (const trainingCycle of Object.values(TrainingCycle)) {
+    const schedule = calculatePaceModel({
+      weeklyMileage: 70,
+      targetRace,
+      trainingCycle
+    }).weeklySchedule;
+    const total = schedule.reduce((sum, day) => sum + day.plannedDistanceKm, 0);
+    assert.ok(Math.abs(total - 70) < 0.05);
+    assert.ok(schedule.find((day) => day.isLongRun).plannedDistanceKm <= 21);
+    assert.ok(schedule.some((day) => day.zone === PaceZone.THRESHOLD));
+  }
+}
 
 const coolWeather = calculateHeatAdjustment(10, 40, 50);
 assert.equal(coolWeather.percentage, 0);
@@ -187,6 +221,14 @@ assert.equal(
   5
 );
 assert.ok(classBExamples.every((example) => example.recoveryExtensionPercentage > 0));
+const allMileageExamples = [30, 55, 70, 85, 100, 130].flatMap((mileage) =>
+  getWorkoutExamplesForMileage(mileage, 1.05, 50)
+);
+assert.ok(
+  allMileageExamples.every((example) =>
+    !/\bH\b/.test(`${example.zh} ${example.en}`)
+  )
+);
 assert.equal(
   classBExamples.find((example) => example.id === "T-A1").enRecoveryLabel,
   "As prescribed"

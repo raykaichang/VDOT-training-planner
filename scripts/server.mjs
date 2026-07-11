@@ -40,5 +40,5 @@ createServer(async (request, response) => {
     response.end("Not found");
   }
 }).listen(port, () => {
-  console.log(`VDOT planner available at http://localhost:${port}`);
+  console.log(`runstrategy available at http://localhost:${port}`);
 });
