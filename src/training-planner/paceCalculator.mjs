@@ -330,7 +330,6 @@ export function getMileageClass(weeklyMileage) {
 export function calculateHeatAdjustment(temperatureC, humidity, vdot = 45) {
   const temperature = clamp(Number(temperatureC), -5, 45);
   const relativeHumidity = clamp(Number(humidity), 0, 100);
-  const dewPoint = calculateDewPoint(temperature, relativeHumidity);
   const heatIndex = calculateHeatIndex(temperature, relativeHumidity);
   const logSpeedAdjust = interpolateRunningWritingsLogSpeedAdjust(
     temperature,
@@ -343,7 +342,6 @@ export function calculateHeatAdjustment(temperatureC, humidity, vdot = 45) {
   const recoveryPercentage = getHeatRecoveryPercentage(heatIndex);
 
   return {
-    dewPoint: roundTo(dewPoint, 1),
     heatIndex: roundTo(heatIndex, 1),
     logSpeedAdjust: roundTo(logSpeedAdjust, 4),
     speedLossPercentage: roundTo(speedLoss * 100, 1),
@@ -1056,15 +1054,6 @@ function secondsPerKmForIntensity(vdot, intensity) {
   const c = -4.6 - targetVo2;
   const metersPerMinute = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
   return 60000 / metersPerMinute;
-}
-
-function calculateDewPoint(temperatureC, humidity) {
-  if (humidity <= 0) return -40;
-  const a = 17.27;
-  const b = 237.7;
-  const alpha =
-    (a * temperatureC) / (b + temperatureC) + Math.log(humidity / 100);
-  return (b * alpha) / (a - alpha);
 }
 
 function formatPaceRange(fasterSeconds, slowerSeconds, unitSystem = UnitSystem.METRIC) {

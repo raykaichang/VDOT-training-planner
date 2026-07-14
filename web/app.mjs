@@ -99,6 +99,32 @@ const copy = {
       "四期週期用來決定本週品質課重點。以 24 週備賽為例，各期約 6 週；若只有 16-18 週，常壓縮為各 4-5 週。Phase I 基礎與防傷；Phase II 初始品質；Phase III 專項品質；Phase IV 保留關鍵刺激並降低疲勞。",
     temperature: "溫度",
     humidity: "濕度",
+    apparentTemperature: "體感溫度",
+    enableAutoWeather: "使用目前位置天氣",
+    disableAutoWeather: "改回手動調整",
+    retryAutoWeather: "重新偵測位置天氣",
+    weatherLocating: "正在取得位置與目前天氣…",
+    weatherRefreshing: "正在更新目前天氣…",
+    refreshWeather: "更新目前天氣",
+    weatherActive: "目前位置天氣已啟用",
+    weatherUnsupported: "此瀏覽器不支援位置偵測。",
+    weatherPermissionDenied: "未取得位置權限，請允許定位後再試一次。",
+    weatherPositionUnavailable: "目前無法取得位置，請稍後再試。",
+    weatherTimeout: "取得位置或天氣資料逾時，請再試一次。",
+    weatherFetchFailed: "目前無法取得天氣資料，請稍後再試。",
+    currentLocationWeather: "目前位置天氣",
+    weatherUpdatedAt: "更新於",
+    weatherConditions: {
+      clear: "晴朗",
+      partlyCloudy: "局部多雲",
+      cloudy: "多雲",
+      fog: "有霧",
+      drizzle: "毛毛雨",
+      rain: "下雨",
+      snow: "降雪",
+      showers: "陣雨",
+      thunderstorm: "雷雨"
+    },
     kmPerWeek: "km / 週",
     miPerWeek: "mi / 週",
     celsius: "°C",
@@ -124,7 +150,6 @@ const copy = {
     slowerBy: "配速增加",
     heatIndex: "Heat Index",
     speedLoss: "速度下降",
-    dewPoint: "露點",
     heatFormulaTitle: "熱環境估算式",
     heatFormula:
       "配速調整沿用 Running Writings / John Davis 2025 開源模型邏輯：以氣溫與相對濕度查詢二維 logspeed_adjust 表，並用雙線性插值估算熱環境下的速度變化。若 log 速度調整值為 a，熱環境調整後配速 = 原始配速 / exp(a)。本工具採用其 coarse v2025-09-04 溫濕度表；Heat Index 仍顯示為熱壓力輔助指標，但不再作為主要降速模型。此估算主要適用於馬拉松、M 配速長跑與長時間穩定跑；短 T/I/R 不宜完整照搬。恢復時間採安全規則：Heat Index 24-29°C 約 +10%，29-35°C 約 +15-25%，35°C 以上以 +25% 為上限並優先考慮減量、改課或移至較涼時段。R 不套用配速降速，只調整恢復或總量。每個人對熱的生理反應與熱適應程度不同，結果僅供參考。",
@@ -254,6 +279,32 @@ const copy = {
       "The four-phase cycle changes the weekly quality emphasis. In a 24-week build, each phase is roughly 6 weeks; a 16-18 week build often compresses phases to about 4-5 weeks. Phase I builds durability, Phase II adds initial quality, Phase III shifts event-specific, and Phase IV keeps key stimulus while reducing fatigue.",
     temperature: "Temperature",
     humidity: "Humidity",
+    apparentTemperature: "Feels like",
+    enableAutoWeather: "Use weather at my location",
+    disableAutoWeather: "Return to manual controls",
+    retryAutoWeather: "Retry location weather",
+    weatherLocating: "Getting your location and current weather…",
+    weatherRefreshing: "Refreshing current weather…",
+    refreshWeather: "Refresh current weather",
+    weatherActive: "Location weather is active",
+    weatherUnsupported: "This browser does not support location detection.",
+    weatherPermissionDenied: "Location access was denied. Allow it and try again.",
+    weatherPositionUnavailable: "Your location is currently unavailable. Try again shortly.",
+    weatherTimeout: "Location or weather lookup timed out. Please try again.",
+    weatherFetchFailed: "Current weather is unavailable. Please try again shortly.",
+    currentLocationWeather: "Weather at your location",
+    weatherUpdatedAt: "Updated",
+    weatherConditions: {
+      clear: "Clear",
+      partlyCloudy: "Partly cloudy",
+      cloudy: "Cloudy",
+      fog: "Foggy",
+      drizzle: "Drizzle",
+      rain: "Rain",
+      snow: "Snow",
+      showers: "Showers",
+      thunderstorm: "Thunderstorm"
+    },
     kmPerWeek: "km / week",
     miPerWeek: "mi / week",
     celsius: "°C",
@@ -279,7 +330,6 @@ const copy = {
     slowerBy: "Pace increase",
     heatIndex: "Heat Index",
     speedLoss: "Speed loss",
-    dewPoint: "Dew Point",
     heatFormulaTitle: "Heat Adjustment Formula",
     heatFormula:
       "Pace adjustment follows the open-source Running Writings / John Davis 2025 model logic: air temperature and relative humidity are looked up in a 2D logspeed_adjust table, then bilinearly interpolated. If the log-speed adjustment is a, heat-adjusted pace = base pace / exp(a). This app uses the coarse v2025-09-04 temperature/humidity table. Heat Index is still shown as a heat-stress context metric, but it is no longer the primary slowdown model. This estimate is most appropriate for marathon racing, M-pace long runs, and long steady running; short T/I/R work should not inherit the full marathon adjustment. Recovery uses a safety rule: Heat Index 24-29°C about +10%, 29-35°C about +15-25%, and 35°C+ capped at +25% while prioritizing lower volume, workout changes, or cooler timing. R pace is not slowed; adjust recovery or volume instead. Heat response and heat adaptation vary by runner, so use the estimate as a reference only.",
@@ -409,6 +459,12 @@ const state = {
   weeklyMileage: 58,
   temperatureC: 26,
   humidity: 70,
+  weatherAutoEnabled: false,
+  weatherStatus: "idle",
+  weatherError: "",
+  weatherCurrent: null,
+  manualTemperatureC: 26,
+  manualHumidity: 70,
   gpxFileName: "",
   gpxTrackPoints: null,
   gpxAnalysis: null,
@@ -808,9 +864,20 @@ function renderInputs(t) {
         -5,
         45,
         1,
-        t.celsius
+        t.celsius,
+        state.weatherAutoEnabled
       )}
-      ${renderRangeField(t.humidity, "humidity", state.humidity, 0, 100, 1, t.percent)}
+      ${renderRangeField(
+        t.humidity,
+        "humidity",
+        state.humidity,
+        0,
+        100,
+        1,
+        t.percent,
+        state.weatherAutoEnabled
+      )}
+      ${renderAutoWeatherControl(t)}
     </div>
   `;
 }
@@ -1119,16 +1186,67 @@ function getEquivalentAssumption(t) {
     : t.converterAssumption;
 }
 
-function renderRangeField(label, field, value, min, max, step, unit) {
+function renderRangeField(label, field, value, min, max, step, unit, disabled = false) {
+  const disabledAttribute = disabled ? "disabled" : "";
   return `
-    <label class="field range-field">
+    <label class="field range-field ${disabled ? "disabled" : ""}">
       <span>${label}</span>
       <div class="range-row">
-        <input data-field="${field}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" />
-        <input data-field="${field}" type="number" inputmode="decimal" min="${min}" max="${max}" step="${step}" value="${value}" />
+        <input data-field="${field}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" ${disabledAttribute} />
+        <input data-field="${field}" type="number" inputmode="decimal" min="${min}" max="${max}" step="${step}" value="${value}" ${disabledAttribute} />
         <b>${unit}</b>
       </div>
     </label>
+  `;
+}
+
+function renderAutoWeatherControl(t) {
+  const isLoading = state.weatherStatus === "loading";
+  const isRefreshing = state.weatherStatus === "refreshing";
+  const isBusy = isLoading || isRefreshing;
+  const isError = state.weatherStatus === "error" || state.weatherStatus === "refresh-error";
+  const label = state.weatherAutoEnabled
+    ? t.disableAutoWeather
+    : isError
+      ? t.retryAutoWeather
+      : t.enableAutoWeather;
+  const status = isLoading
+    ? t.weatherLocating
+    : isRefreshing
+      ? t.weatherRefreshing
+      : isError
+        ? getWeatherErrorMessage({ weatherType: state.weatherError })
+        : state.weatherAutoEnabled
+          ? t.weatherActive
+          : "";
+
+  return `
+    <div class="auto-weather-control">
+      <button
+        type="button"
+        class="weather-toggle-button ${state.weatherAutoEnabled ? "active" : ""}"
+        data-action="toggle-auto-weather"
+        aria-pressed="${state.weatherAutoEnabled}"
+        ${isBusy ? "disabled" : ""}
+      >
+        ${renderLocationIcon()}
+        <span>${label}</span>
+      </button>
+      ${
+        status
+          ? `<p class="weather-status ${isError ? "error" : ""}" ${isError ? 'role="alert"' : 'role="status"'}>${status}</p>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderLocationIcon() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z" />
+      <circle cx="12" cy="10" r="2" />
+    </svg>
   `;
 }
 
@@ -1928,7 +2046,7 @@ function renderEquivalentResults(model, t) {
       </div>
       <aside class="note-panel equivalent-note">
         <h2>${t.heatAdjustment}</h2>
-        <p>${t.slowerBy}: ${model.heatAdjustment.percentage}% · ${t.dewPoint}: ${model.heatAdjustment.dewPoint}${t.celsius}</p>
+        <p>${t.slowerBy}: ${model.heatAdjustment.percentage}%</p>
         <p>${state.converterType === "pace" ? t.paceConverter : t.raceConverter} · ${state.equivalentDirection === "hotToCool" ? t.hotToCool : t.coolToHot}</p>
       </aside>
     </section>
@@ -2325,6 +2443,7 @@ function renderEnvironmentSummary(model, t) {
   return `
     <section class="summary-card heat-card">
       <p class="eyebrow">${t.heatAdjustment}</p>
+      ${renderCurrentWeather(t)}
       <div class="metric-row">
         <div>
           <span>${t.heatIndex}</span>
@@ -2342,10 +2461,6 @@ function renderEnvironmentSummary(model, t) {
           <span>${t.recoveryHot}</span>
           <strong>+${model.heatAdjustment.recoveryPercentage}%</strong>
         </div>
-        <div>
-          <span>${t.dewPoint}</span>
-          <strong>${model.heatAdjustment.dewPoint}${t.celsius}</strong>
-        </div>
       </div>
       <div class="heat-formula">
         <h3>${t.heatFormulaTitle}</h3>
@@ -2357,6 +2472,130 @@ function renderEnvironmentSummary(model, t) {
       </div>
     </section>
   `;
+}
+
+function renderCurrentWeather(t) {
+  if (!state.weatherAutoEnabled || !state.weatherCurrent) return "";
+
+  const weather = state.weatherCurrent;
+  const condition = getWeatherCondition(weather.code);
+  const updatedTime = formatWeatherTime(weather.time);
+  const location = formatWeatherLocation(weather.location);
+  const isRefreshing = state.weatherStatus === "refreshing";
+
+  return `
+    <div class="current-weather" aria-label="${t.currentLocationWeather}">
+      <div class="current-weather-icon">
+        ${renderWeatherIcon(condition)}
+      </div>
+      <div class="current-weather-copy">
+        <div class="current-weather-meta">
+          <span>${t.currentLocationWeather}${updatedTime ? ` · ${t.weatherUpdatedAt} ${updatedTime}` : ""}</span>
+          <button
+            type="button"
+            class="weather-refresh-button ${isRefreshing ? "refreshing" : ""}"
+            data-action="refresh-auto-weather"
+            aria-label="${t.refreshWeather}"
+            title="${t.refreshWeather}"
+            ${isRefreshing ? "disabled" : ""}
+          >
+            ${renderRefreshIcon()}
+          </button>
+        </div>
+        ${location.region ? `<span class="current-weather-region">${location.region}</span>` : ""}
+        ${location.place ? `<strong class="current-weather-place">${location.place}</strong>` : ""}
+        <span class="current-weather-condition">${t.weatherConditions[condition]}</span>
+      </div>
+      <div class="current-weather-readings">
+        <div class="current-weather-reading">
+          <span>${t.temperature}</span>
+          <strong>${weather.temperatureC}${t.celsius}</strong>
+        </div>
+        <div class="current-weather-reading">
+          <span>${t.humidity}</span>
+          <strong>${weather.humidity}${t.percent}</strong>
+        </div>
+        <div class="current-weather-reading">
+          <span>${t.apparentTemperature}</span>
+          <strong>${weather.apparentTemperatureC}${t.celsius}</strong>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRefreshIcon() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+      <path d="M20 5v6h-6" />
+    </svg>
+  `;
+}
+
+function formatWeatherLocation(location) {
+  if (!location) return { region: "", place: "" };
+
+  const placeParts = [location.countyCity, location.district]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .filter((value, index, items) => {
+      const normalized = value.toLocaleLowerCase();
+      return items.findIndex((item) => item.toLocaleLowerCase() === normalized) === index;
+    });
+
+  return {
+    region: escapeHtml(String(location.region ?? "").trim()),
+    place: placeParts.map(escapeHtml).join(" ")
+  };
+}
+
+function getWeatherCondition(code) {
+  if (code === 0) return "clear";
+  if (code === 1 || code === 2) return "partlyCloudy";
+  if (code === 3) return "cloudy";
+  if (code === 45 || code === 48) return "fog";
+  if ([51, 53, 55, 56, 57].includes(code)) return "drizzle";
+  if ([61, 63, 65, 66, 67].includes(code)) return "rain";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+  if ([80, 81, 82].includes(code)) return "showers";
+  if ([95, 96, 99].includes(code)) return "thunderstorm";
+  return "cloudy";
+}
+
+function formatWeatherTime(value) {
+  if (typeof value !== "string" || !value.includes("T")) return "";
+  return value.split("T")[1]?.slice(0, 5) ?? "";
+}
+
+function renderWeatherIcon(condition) {
+  const cloud = '<path d="M7.2 17.5h9.2a4 4 0 0 0 .5-8 5.3 5.3 0 0 0-10.1 1.4A3.3 3.3 0 0 0 7.2 17.5Z" />';
+
+  if (condition === "clear") {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>';
+  }
+
+  if (condition === "partlyCloudy") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3" /><path d="M8 2v2M2 8h2M3.8 3.8l1.4 1.4" />${cloud}</svg>`;
+  }
+
+  if (condition === "fog") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${cloud}<path d="M5 20h14M7 23h10" /></svg>`;
+  }
+
+  if (["drizzle", "rain", "showers"].includes(condition)) {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${cloud}<path d="m8 20-1 2M13 20l-1 2M18 20l-1 2" /></svg>`;
+  }
+
+  if (condition === "snow") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${cloud}<path d="M8 20h.01M12 22h.01M16 20h.01" /></svg>`;
+  }
+
+  if (condition === "thunderstorm") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${cloud}<path d="m13 18-2 4h3l-2 4" /></svg>`;
+  }
+
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${cloud}</svg>`;
 }
 
 function renderVdotEquivalentResults(model, t) {
@@ -2992,6 +3231,16 @@ function updateUnitSystem(nextUnitSystem) {
 function handleAction(event) {
   const action = event.currentTarget.dataset.action;
 
+  if (action === "toggle-auto-weather") {
+    toggleAutoWeather();
+    return;
+  }
+
+  if (action === "refresh-auto-weather") {
+    refreshAutoWeather();
+    return;
+  }
+
   if (action === "toggle-menu") {
     const menu = event.currentTarget.dataset.menu;
     state.openMenu = state.openMenu === menu ? null : menu;
@@ -3057,6 +3306,192 @@ function handleAction(event) {
   }
 
   render();
+}
+
+async function refreshAutoWeather() {
+  if (!state.weatherAutoEnabled || state.weatherStatus === "refreshing") return;
+
+  state.weatherStatus = "refreshing";
+  state.weatherError = "";
+  render();
+
+  try {
+    applyAutoWeatherSnapshot(await loadAutoWeatherSnapshot());
+    state.weatherStatus = "active";
+  } catch (error) {
+    state.weatherStatus = "refresh-error";
+    state.weatherError = error?.weatherType ?? "fetch";
+  }
+
+  render();
+}
+
+async function toggleAutoWeather() {
+  if (state.weatherAutoEnabled) {
+    state.weatherAutoEnabled = false;
+    state.weatherStatus = "idle";
+    state.weatherError = "";
+    state.weatherCurrent = null;
+    state.temperatureC = state.manualTemperatureC;
+    state.humidity = state.manualHumidity;
+    render();
+    return;
+  }
+
+  state.manualTemperatureC = state.temperatureC;
+  state.manualHumidity = state.humidity;
+  state.weatherStatus = "loading";
+  state.weatherError = "";
+  render();
+
+  try {
+    applyAutoWeatherSnapshot(await loadAutoWeatherSnapshot());
+    state.weatherAutoEnabled = true;
+    state.weatherStatus = "active";
+  } catch (error) {
+    state.weatherAutoEnabled = false;
+    state.weatherCurrent = null;
+    state.weatherStatus = "error";
+    state.weatherError = error?.weatherType ?? "fetch";
+  }
+
+  render();
+}
+
+async function loadAutoWeatherSnapshot() {
+  const coordinates = await getCurrentCoordinates();
+  const [weather, location] = await Promise.all([
+    fetchCurrentWeather(coordinates.latitude, coordinates.longitude),
+    fetchCurrentLocation(coordinates.latitude, coordinates.longitude).catch(() => null)
+  ]);
+  return { ...weather, location };
+}
+
+function applyAutoWeatherSnapshot(weather) {
+  state.weatherCurrent = weather;
+  state.temperatureC = weather.temperatureC;
+  state.humidity = weather.humidity;
+}
+
+function getCurrentCoordinates() {
+  if (!("geolocation" in navigator)) {
+    return Promise.reject(createWeatherError("unsupported"));
+  }
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position.coords),
+      (error) => {
+        const type = error.code === 1 ? "permission" : error.code === 3 ? "timeout" : "position";
+        reject(createWeatherError(type));
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  });
+}
+
+async function fetchCurrentWeather(latitude, longitude) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.search = new URLSearchParams({
+    latitude: latitude.toFixed(4),
+    longitude: longitude.toFixed(4),
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code",
+    timezone: "auto",
+    forecast_days: "1"
+  });
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw createWeatherError("fetch");
+    const data = await response.json();
+    const temperatureC = Number(data.current?.temperature_2m);
+    const humidity = Number(data.current?.relative_humidity_2m);
+    const apparentTemperatureC = Number(data.current?.apparent_temperature);
+    const code = Number(data.current?.weather_code);
+
+    if (
+      !Number.isFinite(temperatureC) ||
+      !Number.isFinite(humidity) ||
+      !Number.isFinite(apparentTemperatureC) ||
+      !Number.isFinite(code)
+    ) {
+      throw createWeatherError("fetch");
+    }
+
+    return {
+      temperatureC: Math.round(temperatureC),
+      humidity: Math.round(humidity),
+      apparentTemperatureC: Math.round(apparentTemperatureC),
+      code,
+      time: data.current?.time ?? ""
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") throw createWeatherError("timeout");
+    if (error?.weatherType) throw error;
+    throw createWeatherError("fetch");
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function fetchCurrentLocation(latitude, longitude) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+  url.search = new URLSearchParams({
+    latitude: latitude.toFixed(5),
+    longitude: longitude.toFixed(5),
+    localityLanguage: state.locale === "en" ? "en" : "zh"
+  });
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error("location-fetch-failed");
+    const data = await response.json();
+
+    return normalizeWeatherLocation(data);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function normalizeWeatherLocation(data) {
+  const country = String(data?.countryName ?? "").trim();
+  const countryCode = String(data?.countryCode ?? "").trim().toUpperCase();
+  const isTaiwan =
+    countryCode === "TW" || /^(台灣|臺灣|中華民國|taiwan)/i.test(country);
+  const region = isTaiwan ? (state.locale === "en" ? "Taiwan" : "台灣") : country;
+  const countyCity = String(data?.principalSubdivision || data?.city || "").trim();
+  const districtCandidates = [data?.locality, data?.city]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
+  const district =
+    districtCandidates.find(
+      (value) => value.toLocaleLowerCase() !== countyCity.toLocaleLowerCase()
+    ) ?? "";
+
+  if (!region && !countyCity && !district) return null;
+  return { region, countyCity, district };
+}
+
+function createWeatherError(weatherType) {
+  const error = new Error(weatherType);
+  error.weatherType = weatherType;
+  return error;
+}
+
+function getWeatherErrorMessage(error) {
+  const t = copy[state.locale];
+  const messages = {
+    unsupported: t.weatherUnsupported,
+    permission: t.weatherPermissionDenied,
+    position: t.weatherPositionUnavailable,
+    timeout: t.weatherTimeout,
+    fetch: t.weatherFetchFailed
+  };
+  return messages[error?.weatherType] ?? t.weatherFetchFailed;
 }
 
 async function loadCatalogItemAsGpxAnalysis(id) {
