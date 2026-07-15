@@ -35,9 +35,16 @@ import { parseGpxText } from "../src/gpx-catalog/parser.mjs";
 const copy = {
   "zh-TW": {
     brandEyebrow: "RUNSTRATEGY",
-    appTitle: "RUNSTRATEGY 跑者的配速與賽事策略工具",
+    appTitle: "跑者配速與賽事策略",
     subtitle:
-      "輸入 VDOT、週跑量、溫度與濕度，取得能力對應的訓練配速與熱環境調整。",
+      "設定跑力與當日天氣，查看 E、M、T、I、R 配速及熱環境修正。",
+    settingsTitle: "條件設定",
+    runnerAbilitySection: "跑者能力",
+    runnerAbilityHelp: "設定單位與目前跑力，所有結果會同步更新。",
+    conversionSettings: "換算設定",
+    conversionSettingsHelp: "選擇換算方式並輸入基準配速或成績。",
+    environmentSection: "環境條件",
+    environmentHelp: "輸入當日溫度與相對濕度，套用既有熱環境模型。",
     language: "語言",
     inputs: "跑者資料",
     toolMode: "功能模式",
@@ -215,9 +222,16 @@ const copy = {
   },
   en: {
     brandEyebrow: "RUNSTRATEGY",
-    appTitle: "RUNSTRATEGY Pace and Race Strategy Tools for Runners",
+    appTitle: "Pace & Race Strategy",
     subtitle:
-      "Enter VDOT, mileage, temperature, and humidity to estimate training paces with heat adjustment.",
+      "Set current ability and conditions to view E, M, T, I, and R paces with heat adjustment.",
+    settingsTitle: "Inputs",
+    runnerAbilitySection: "Runner ability",
+    runnerAbilityHelp: "Set units and current ability. Results update from the same model.",
+    conversionSettings: "Conversion settings",
+    conversionSettingsHelp: "Choose a conversion and enter a baseline pace or result.",
+    environmentSection: "Conditions",
+    environmentHelp: "Enter temperature and relative humidity for the existing heat model.",
     language: "Language",
     inputs: "Runner Inputs",
     toolMode: "Tool Mode",
@@ -436,7 +450,7 @@ const trainingCycleOptions = [
 const state = {
   locale: "zh-TW",
   toolMode: "pace",
-  sidebarOpen: true,
+  sidebarOpen: window.matchMedia("(min-width: 621px)").matches,
   theme: "light",
   abilityMode: "vdot",
   converterType: "pace",
@@ -749,28 +763,20 @@ function render() {
             <h1>${t.appTitle}</h1>
             <p class="subtitle">${t.subtitle}</p>
           </div>
-          <div class="topbar-controls">
-            ${renderThemeSwitch(t)}
-            ${renderMenuField(t.language, "locale", state.locale, [
-              { value: "zh-TW", label: "中文" },
-              { value: "en", label: "EN" }
-            ], "language-toggle")}
-            ${renderFeedbackLink()}
-          </div>
+          ${renderCompactToolbar(t)}
         </header>
 
         <main class="pace-layout">
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
-              <p class="eyebrow">Runner</p>
-              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.inputs}</h2>
+              <p class="section-index">01</p>
+              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.settingsTitle}</h2>
             </div>
             ${
               isGpx
                 ? renderGpxInputs()
                 : `
                   ${renderInputs(t)}
-                  ${renderEnvironmentSummary(model, t)}
                   ${isPlan ? renderMileageClass(model, t) : ""}
                 `
             }
@@ -781,15 +787,17 @@ function render() {
               isGpx
                 ? renderGpxResults()
                 : isConverter
-                ? renderEquivalentResults(model, t)
+                ? `${renderEquivalentResults(model, t)}${renderEnvironmentSummary(model, t)}`
                 : isPlan
-                  ? renderTrainingPlanResults(model, t)
+                  ? `${renderTrainingPlanResults(model, t)}${renderEnvironmentSummary(model, t)}`
                   : `
                   <div class="section-heading">
-                    <p class="eyebrow">VDOT ${model.vdot}</p>
+                    <p class="section-index">02</p>
                     <h2>${t.vdotPaces}</h2>
+                    <strong class="section-value">VDOT ${model.vdot}</strong>
                   </div>
                   ${renderPaceZonePanel(model, t, true)}
+                  ${renderEnvironmentSummary(model, t)}
                   ${renderVdotEquivalentResults(model, t)}
                 `
             }
@@ -810,74 +818,118 @@ function renderInputs(t) {
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
 
+  const sectionTitle = isConverter ? t.conversionSettings : t.runnerAbilitySection;
+  const sectionHelp = isConverter ? t.conversionSettingsHelp : t.runnerAbilityHelp;
+
   return `
-    <div class="field-grid">
-      ${renderMenuField(t.unitSystem, "unitSystem", state.unitSystem, [
-        { value: UnitSystem.METRIC, label: t.metricUnit },
-        { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
-      ])}
-      ${
-        isConverter
-          ? renderEquivalentInputs(t)
-          : `
-            ${renderAbilityInput(t)}
-            ${
-              isPlan
-                ? `
-                  ${renderMenuField(
-                    t.targetRace,
-                    "targetRace",
-                    state.targetRace,
-                    targetRaceOptions.map((value) => ({
-                      value,
-                      label: t.targetRaceNames[value]
-                    }))
-                  )}
-                  ${renderMenuField(
-                    t.trainingCycle,
-                    "trainingCycle",
-                    state.trainingCycle,
-                    trainingCycleOptions.map((value) => ({
-                      value,
-                      label: t.cycleNames[value]
-                    }))
-                  )}
-                  <p class="field-note">${t.trainingCycleHelp}</p>
-                  ${renderRangeField(
-                    t.weeklyMileage,
-                    "weeklyMileage",
-                    state.weeklyMileage,
-                    0,
-                    mileageMax,
-                    1,
-                    mileageUnit
-                  )}
-                `
-                : ""
-            }
-          `
-      }
-      ${renderRangeField(
-        t.temperature,
-        "temperatureC",
-        state.temperatureC,
-        -5,
-        45,
-        1,
-        t.celsius,
-        state.weatherAutoEnabled
-      )}
-      ${renderRangeField(
-        t.humidity,
-        "humidity",
-        state.humidity,
-        0,
-        100,
-        1,
-        t.percent,
-        state.weatherAutoEnabled
-      )}
+    <section class="input-section runner-input-section" aria-labelledby="runner-input-title">
+      <div class="input-section-head">
+        <h3 id="runner-input-title">${sectionTitle}</h3>
+        <p>${sectionHelp}</p>
+      </div>
+      <div class="field-grid runner-input-grid">
+        ${renderMenuField(t.unitSystem, "unitSystem", state.unitSystem, [
+          { value: UnitSystem.METRIC, label: t.metricUnit },
+          { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+        ])}
+        ${
+          isConverter
+            ? renderEquivalentInputs(t)
+            : `
+              ${renderAbilityInput(t)}
+              ${
+                isPlan
+                  ? `
+                    ${renderMenuField(
+                      t.targetRace,
+                      "targetRace",
+                      state.targetRace,
+                      targetRaceOptions.map((value) => ({
+                        value,
+                        label: t.targetRaceNames[value]
+                      }))
+                    )}
+                    ${renderMenuField(
+                      t.trainingCycle,
+                      "trainingCycle",
+                      state.trainingCycle,
+                      trainingCycleOptions.map((value) => ({
+                        value,
+                        label: t.cycleNames[value]
+                      }))
+                    )}
+                    <p class="field-note">${t.trainingCycleHelp}</p>
+                    ${renderRangeField(
+                      t.weeklyMileage,
+                      "weeklyMileage",
+                      state.weeklyMileage,
+                      0,
+                      mileageMax,
+                      1,
+                      mileageUnit
+                    )}
+                  `
+                  : ""
+              }
+            `
+        }
+      </div>
+    </section>
+    <section class="input-section environment-input-section" aria-labelledby="environment-input-title">
+      <div class="input-section-head">
+        <h3 id="environment-input-title">${t.environmentSection}</h3>
+        <p>${t.environmentHelp}</p>
+      </div>
+      <div class="environment-input-grid">
+        ${renderRangeField(
+          t.temperature,
+          "temperatureC",
+          state.temperatureC,
+          -5,
+          45,
+          1,
+          t.celsius,
+          state.weatherAutoEnabled
+        )}
+        ${renderRangeField(
+          t.humidity,
+          "humidity",
+          state.humidity,
+          0,
+          100,
+          1,
+          t.percent,
+          state.weatherAutoEnabled
+        )}
+      </div>
       ${renderAutoWeatherControl(t)}
+    </section>
+  `;
+}
+
+function renderCompactToolbar(t) {
+  const nextTheme = state.theme === "dark" ? "light" : "dark";
+  const themeLabel = nextTheme === "dark" ? t.darkTheme : t.lightTheme;
+  return `
+    <div class="topbar-controls compact-toolbar" aria-label="${state.locale === "en" ? "Page tools" : "頁面工具"}">
+      <label class="toolbar-language">
+        <span class="visually-hidden">${t.language}</span>
+        <select data-field="locale" aria-label="${t.language}">
+          <option value="zh-TW" ${state.locale === "zh-TW" ? "selected" : ""}>中文</option>
+          <option value="en" ${state.locale === "en" ? "selected" : ""}>EN</option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="toolbar-icon-button"
+        data-action="set-theme"
+        data-theme="${nextTheme}"
+        aria-label="${themeLabel}"
+        title="${themeLabel}"
+      >
+        <span aria-hidden="true">${state.theme === "dark" ? "☼" : "☾"}</span>
+      </button>
+      ${renderFeedbackLink()}
     </div>
   `;
 }
@@ -1188,15 +1240,67 @@ function getEquivalentAssumption(t) {
 
 function renderRangeField(label, field, value, min, max, step, unit, disabled = false) {
   const disabledAttribute = disabled ? "disabled" : "";
+  const midpoint = min + (max - min) / 2;
+  const formatTick = (tick) => Number.isInteger(tick) ? String(tick) : tick.toFixed(1);
+  const numberId = `${field}-number`;
   return `
-    <label class="field range-field ${disabled ? "disabled" : ""}">
-      <span>${label}</span>
-      <div class="range-row">
-        <input data-field="${field}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" ${disabledAttribute} />
-        <input data-field="${field}" type="number" inputmode="decimal" min="${min}" max="${max}" step="${step}" value="${value}" ${disabledAttribute} />
-        <b>${unit}</b>
+    <div class="field range-field precision-field ${disabled ? "disabled" : ""}">
+      <label for="${numberId}">${label}</label>
+      <div class="precision-number-row">
+        <button
+          type="button"
+          class="number-stepper"
+          data-action="step-number"
+          data-field="${field}"
+          data-delta="-${step}"
+          data-min="${min}"
+          data-max="${max}"
+          aria-label="${label} -${step}"
+          ${disabledAttribute}
+        >−</button>
+        <input
+          id="${numberId}"
+          data-field="${field}"
+          type="number"
+          inputmode="decimal"
+          min="${min}"
+          max="${max}"
+          step="${step}"
+          value="${value}"
+          aria-label="${label}"
+          ${disabledAttribute}
+        />
+        <button
+          type="button"
+          class="number-stepper"
+          data-action="step-number"
+          data-field="${field}"
+          data-delta="${step}"
+          data-min="${min}"
+          data-max="${max}"
+          aria-label="${label} +${step}"
+          ${disabledAttribute}
+        >+</button>
+        ${unit ? `<b>${unit}</b>` : ""}
       </div>
-    </label>
+      <div class="range-track-wrap">
+        <input
+          data-field="${field}"
+          type="range"
+          min="${min}"
+          max="${max}"
+          step="${step}"
+          value="${value}"
+          aria-label="${label}"
+          ${disabledAttribute}
+        />
+        <div class="range-ticks" aria-hidden="true">
+          <span>${formatTick(min)}</span>
+          <span>${formatTick(midpoint)}</span>
+          <span>${formatTick(max)}</span>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -1221,22 +1325,25 @@ function renderAutoWeatherControl(t) {
           : "";
 
   return `
-    <div class="auto-weather-control">
-      <button
-        type="button"
-        class="weather-toggle-button ${state.weatherAutoEnabled ? "active" : ""}"
-        data-action="toggle-auto-weather"
-        aria-pressed="${state.weatherAutoEnabled}"
-        ${isBusy ? "disabled" : ""}
-      >
-        ${renderLocationIcon()}
-        <span>${label}</span>
-      </button>
-      ${
-        status
-          ? `<p class="weather-status ${isError ? "error" : ""}" ${isError ? 'role="alert"' : 'role="status"'}>${status}</p>`
-          : ""
-      }
+    <div class="auto-weather-block">
+      <div class="auto-weather-control">
+        <button
+          type="button"
+          class="weather-toggle-button ${state.weatherAutoEnabled ? "active" : ""}"
+          data-action="toggle-auto-weather"
+          aria-pressed="${state.weatherAutoEnabled}"
+          ${isBusy ? "disabled" : ""}
+        >
+          ${renderLocationIcon()}
+          <span>${label}</span>
+        </button>
+        ${
+          status
+            ? `<p class="weather-status ${isError ? "error" : ""}" ${isError ? 'role="alert"' : 'role="status"'}>${status}</p>`
+            : ""
+        }
+      </div>
+      ${renderCurrentWeather(t)}
     </div>
   `;
 }
@@ -2035,7 +2142,7 @@ function renderEquivalentResults(model, t) {
         ${result.cards
           .map(
             (card) => `
-              <article class="equivalent-card ${card.highlight ? "highlight" : ""}">
+              <article class="equivalent-card data-tile ${card.highlight ? "highlight" : ""}">
                 <span>${card.label}</span>
                 <strong>${card.value}</strong>
                 ${card.meta ? `<small>${card.meta}</small>` : ""}
@@ -2044,11 +2151,11 @@ function renderEquivalentResults(model, t) {
           )
           .join("")}
       </div>
-      <aside class="note-panel equivalent-note">
-        <h2>${t.heatAdjustment}</h2>
-        <p>${t.slowerBy}: ${model.heatAdjustment.percentage}%</p>
-        <p>${state.converterType === "pace" ? t.paceConverter : t.raceConverter} · ${state.equivalentDirection === "hotToCool" ? t.hotToCool : t.coolToHot}</p>
-      </aside>
+      <div class="conversion-context" aria-label="${t.heatAdjustment}">
+        <span>${t.heatAdjustment}</span>
+        <strong>${t.slowerBy}: ${model.heatAdjustment.percentage}%</strong>
+        <small>${state.converterType === "pace" ? t.paceConverter : t.raceConverter} · ${state.equivalentDirection === "hotToCool" ? t.hotToCool : t.coolToHot}</small>
+      </div>
     </section>
   `;
 }
@@ -2441,9 +2548,8 @@ function renderMenuOption(field, value, label, selectedValue) {
 
 function renderEnvironmentSummary(model, t) {
   return `
-    <section class="summary-card heat-card">
+    <section class="summary-card surface-card heat-card">
       <p class="eyebrow">${t.heatAdjustment}</p>
-      ${renderCurrentWeather(t)}
       <div class="metric-row">
         <div>
           <span>${t.heatIndex}</span>
@@ -2462,14 +2568,17 @@ function renderEnvironmentSummary(model, t) {
           <strong>+${model.heatAdjustment.recoveryPercentage}%</strong>
         </div>
       </div>
-      <div class="heat-formula">
-        <h3>${t.heatFormulaTitle}</h3>
-        <p>${t.heatFormula}</p>
-        <h3>${t.heatReferencesTitle}</h3>
-        <ul>
-          ${t.heatReferences.map((reference) => `<li>${reference}</li>`).join("")}
-        </ul>
-      </div>
+      <details class="method-details" open>
+        <summary>${t.heatFormulaTitle} · ${t.heatReferencesTitle}</summary>
+        <div class="heat-formula">
+          <h3>${t.heatFormulaTitle}</h3>
+          <p>${t.heatFormula}</p>
+          <h3>${t.heatReferencesTitle}</h3>
+          <ul>
+            ${t.heatReferences.map((reference) => `<li>${reference}</li>`).join("")}
+          </ul>
+        </div>
+      </details>
     </section>
   `;
 }
@@ -2602,7 +2711,7 @@ function renderVdotEquivalentResults(model, t) {
   const results = getVdotEquivalentRaceResults(model.vdot);
 
   return `
-    <section class="summary-card vdot-equivalent-card">
+    <section class="summary-card surface-card vdot-equivalent-card">
       <p class="eyebrow">${t.vdotEquivalentTitle}</p>
       <div class="vdot-equivalent-grid">
         ${results
@@ -2645,7 +2754,7 @@ function renderMileageClass(model, t) {
     .join(" / ");
 
   return `
-    <section class="summary-card">
+    <section class="summary-card surface-card mileage-card">
       <p class="eyebrow">${t.mileageClass}</p>
       <h2>${t.classNames[model.mileageClass.id]}</h2>
       <p>${model.mileageClass.min}-${model.mileageClass.max ?? "120+"} km</p>
@@ -2667,7 +2776,7 @@ function renderTrainingPlanResults(model, t) {
     </div>
     ${renderWeeklySchedule(model, t)}
     ${renderWorkoutExamples(model, t)}
-    <aside class="note-panel">
+    <aside class="note-panel surface-card info-card">
       <h2>${t.noteTitle}</h2>
       <p>${t.note}</p>
       <h3>${t.sourceTitle}</h3>
@@ -2681,7 +2790,7 @@ function renderPaceZonePanel(model, t, embedded = false, options = {}) {
   return `
     <section class="${embedded ? "" : "summary-card"} pace-zone-panel ${embedded ? "embedded" : ""} ${state.locale === "en" ? "english" : ""}">
       ${embedded ? "" : `<p class="eyebrow">${t.paceZones}</p>`}
-      <div class="pace-zone-grid">
+      <div class="pace-data-list">
         ${model.zones.map((zone) => renderPaceZone(zone, t, { showAdjusted })).join("")}
       </div>
     </section>
@@ -2967,37 +3076,46 @@ function renderPaceZone(zone, t, options = {}) {
     zone.id === "R" || !showAdjusted ? "pace-values single" : "pace-values";
 
   return `
-    <article class="pace-card ${zoneTone[zone.id]}">
-      <div class="pace-card-header">
+    <article class="pace-data-row ${zoneTone[zone.id]}">
+      <div class="pace-zone-label">
         <span>${zone.id}</span>
         <h3>${t.zoneNames[zone.id]}</h3>
       </div>
-      <div class="${paceValuesClass}">
+      <dl class="${paceValuesClass}">
         <div>
           <dt>${t.basePace}</dt>
-          <dd>${zone.base.label}</dd>
+          <dd>${renderPaceValue(zone.base.label)}</dd>
         </div>
         ${
           zone.id === "R" || !showAdjusted
-            ? ""
+              ? ""
             : `<div class="adjusted">
                 <dt>${adjustedLabel}</dt>
-                <dd>${zone.adjusted.label}</dd>
+                <dd>${renderPaceValue(zone.adjusted.label)}</dd>
               </div>`
         }
+      </dl>
+      <div class="pace-row-detail">
+        ${
+          zone.id === "I" && showAdjusted
+            ? `<div class="split-row">
+                ${renderSplitComparison(t.split400, zone.adjustedSplit400m, zone.baseSplit400m, t, zone.id)}
+                ${renderSplitComparison(t.split200, zone.adjustedSplit200m, zone.baseSplit200m, t, zone.id)}
+              </div>`
+            : ""
+        }
+        ${zone.id === "E" && showAdjusted ? renderEasyPaceNote(t) : ""}
+        ${zone.id === "R" && showAdjusted ? renderRepetitionHeatNote(t) : ""}
       </div>
-      ${
-        zone.id === "I" && showAdjusted
-          ? `<div class="split-row">
-              ${renderSplitComparison(t.split400, zone.adjustedSplit400m, zone.baseSplit400m, t, zone.id)}
-              ${renderSplitComparison(t.split200, zone.adjustedSplit200m, zone.baseSplit200m, t, zone.id)}
-            </div>`
-          : ""
-      }
-      ${zone.id === "E" && showAdjusted ? renderEasyPaceNote(t) : ""}
-      ${zone.id === "R" && showAdjusted ? renderRepetitionHeatNote(t) : ""}
     </article>
   `;
+}
+
+function renderPaceValue(label) {
+  const value = String(label);
+  const match = value.match(/^(.*?)(\s*\/\s*(?:km|mi))$/i);
+  if (!match) return escapeHtml(value);
+  return `${escapeHtml(match[1])}<small>${escapeHtml(match[2])}</small>`;
 }
 
 function renderEasyPaceNote(t) {
@@ -3230,6 +3348,19 @@ function updateUnitSystem(nextUnitSystem) {
 
 function handleAction(event) {
   const action = event.currentTarget.dataset.action;
+
+  if (action === "step-number") {
+    const control = event.currentTarget;
+    const field = control.dataset.field;
+    const delta = Number(control.dataset.delta);
+    const min = Number(control.dataset.min);
+    const max = Number(control.dataset.max);
+    const current = Number(state[field]);
+    const next = Math.min(max, Math.max(min, current + delta));
+    updateFieldValue(field, next);
+    render();
+    return;
+  }
 
   if (action === "toggle-auto-weather") {
     toggleAutoWeather();
