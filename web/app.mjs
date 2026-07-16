@@ -48,6 +48,9 @@ const copy = {
     language: "語言",
     inputs: "跑者資料",
     toolMode: "功能模式",
+    sidebarPaceLabel: "算我的配速",
+    sidebarHeatLabel: "熱天怎麼跑",
+    sidebarPlanLabel: "這週怎麼練",
     plannerMode: "VDOT 配速",
     trainingPlanMode: "訓練課表",
     heatEquivalentMode: "熱適應換算",
@@ -235,6 +238,9 @@ const copy = {
     language: "Language",
     inputs: "Runner Inputs",
     toolMode: "Tool Mode",
+    sidebarPaceLabel: "Find My Pace",
+    sidebarHeatLabel: "Run in the Heat",
+    sidebarPlanLabel: "Plan My Week",
     plannerMode: "VDOT Paces",
     trainingPlanMode: "Training Plan",
     heatEquivalentMode: "Heat Adaptation Converter",
@@ -553,7 +559,7 @@ const popularGpxRoutes = [
 function getGpxCopy() {
   if (state.locale === "en") {
     return {
-      sidebarLabel: "GPX Grade Pace",
+      sidebarLabel: "Plan This Race",
       inputsTitle: "GPX Route Inputs",
       resultsTitle: "GPX Grade-Adjusted Pace",
       sourceMode: "GPX source",
@@ -647,7 +653,7 @@ function getGpxCopy() {
   }
 
   return {
-    sidebarLabel: "GPX 坡度換算",
+    sidebarLabel: "這場怎麼跑",
     inputsTitle: "GPX 路線設定",
     resultsTitle: "GPX 坡度代謝等效配速",
     sourceMode: "GPX 來源",
@@ -938,17 +944,17 @@ function renderToolSidebar(t) {
   const items = [
     {
       value: "pace",
-      label: t.plannerMode,
+      label: t.sidebarPaceLabel,
       icon: renderSidebarIcon("pace")
     },
     {
       value: "equivalent",
-      label: t.heatEquivalentMode,
+      label: t.sidebarHeatLabel,
       icon: renderSidebarIcon("heat")
     },
     {
       value: "plan",
-      label: t.trainingPlanMode,
+      label: t.sidebarPlanLabel,
       icon: renderSidebarIcon("plan")
     },
     {
@@ -2144,8 +2150,8 @@ function renderEquivalentResults(model, t) {
             (card) => `
               <article class="equivalent-card data-tile ${card.highlight ? "highlight" : ""}">
                 <span>${card.label}</span>
-                <strong>${card.value}</strong>
-                ${card.meta ? `<small>${card.meta}</small>` : ""}
+                <strong>${renderPaceValue(card.value)}</strong>
+                ${card.meta ? `<small class="equivalent-meta">${card.meta}</small>` : ""}
               </article>
             `
           )
@@ -2858,8 +2864,8 @@ function renderPlanDay(day, t, index, model) {
       : day.zh;
   const paceBlock = day.pace
     ? `<div class="plan-pace">
-        <strong><small>${day.zone === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</small>${day.pace}</strong>
-        <em><small>${t.basePaceShort}</small>${day.base}</em>
+        <strong><small class="pace-tag">${day.zone === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</small>${renderPaceValue(day.pace)}</strong>
+        <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(day.base)}</em>
       </div>`
     : "";
   const easyRestControl = renderEasyRestControl(day, index, t);
@@ -3025,8 +3031,8 @@ function renderWorkoutExample(example, t, zone) {
         <div class="example-zone">
           <span>${example.zone}</span>
           <div class="example-pace-pair">
-            <strong><small>${primaryPaceLabel}</small>${adjustedPace}</strong>
-            <em><small>${t.basePaceShort}</small>${basePace}</em>
+            <strong><small class="pace-tag">${primaryPaceLabel}</small>${renderPaceValue(adjustedPace)}</strong>
+            <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(basePace)}</em>
           </div>
         </div>
       </div>
@@ -3115,7 +3121,7 @@ function renderPaceValue(label) {
   const value = String(label);
   const match = value.match(/^(.*?)(\s*\/\s*(?:km|mi))$/i);
   if (!match) return escapeHtml(value);
-  return `${escapeHtml(match[1])}<small>${escapeHtml(match[2])}</small>`;
+  return `${escapeHtml(match[1])}<small class="pace-unit">${escapeHtml(match[2])}</small>`;
 }
 
 function renderEasyPaceNote(t) {

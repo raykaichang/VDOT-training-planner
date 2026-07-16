@@ -2067,7 +2067,7 @@ html[lang="en"] .tool-sidebar-head span {
   font-size: 0.95rem;
 }
 
-.plan-pace small {
+.plan-pace .pace-tag {
   border-radius: 999px;
   background: var(--surface-soft);
   color: var(--muted);
@@ -2766,8 +2766,8 @@ body {
   font-size: 0.88rem;
 }
 
-.plan-pace small,
-.example-pace-pair small {
+.plan-pace .pace-tag,
+.example-pace-pair .pace-tag {
   border-radius: 4px;
   font-size: 0.74rem;
   font-weight: 600;
@@ -4722,6 +4722,12 @@ body {
 }
 
 #app {
+  --card-display-size: clamp(1.05rem, 1.7vw, 1.42rem);
+  --card-heading-size: 1rem;
+  --card-value-size: 1rem;
+  --card-body-size: 0.88rem;
+  --card-label-size: 0.8rem;
+  --card-unit-size: 0.65rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4759,6 +4765,17 @@ body {
   letter-spacing: 0;
 }
 
+#app :where(.input-section-head h3, .gpx-panel-head h3) {
+  font-size: var(--card-heading-size);
+  line-height: 1.5;
+}
+
+#app .pace-zone-label h3 {
+  font-size: var(--card-body-size);
+  font-weight: var(--font-semibold);
+  line-height: 1.5;
+}
+
 #app :where(
   .subtitle,
   .input-section-head p,
@@ -4773,6 +4790,18 @@ body {
   font-family: var(--font-body);
   font-weight: var(--font-regular);
   letter-spacing: 0;
+}
+
+#app :where(
+  .input-section-head p,
+  .field-note,
+  .source-note,
+  .weather-status,
+  .pace-card-note,
+  .summary-card > p:not(.eyebrow)
+) {
+  font-size: var(--card-label-size);
+  line-height: 1.45;
 }
 
 #app :where(
@@ -4792,6 +4821,18 @@ body {
 ) {
   font-family: var(--font-body);
   font-weight: var(--font-semibold);
+}
+
+#app :where(
+  .field > span,
+  .field > label,
+  .precision-field > label,
+  .time-fieldset legend,
+  .time-fieldset label > span,
+  .pace-data-row .pace-values dt
+) {
+  font-size: var(--card-label-size);
+  line-height: 1.45;
 }
 
 #app :where(
@@ -4842,19 +4883,27 @@ body {
   letter-spacing: 0;
 }
 
-#app .pace-data-row .pace-values dd small {
+#app .pace-unit {
   font-family: var(--font-body);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  margin-left: 5px;
+  padding: 0;
+  font-size: var(--card-unit-size);
   font-weight: var(--font-regular);
   letter-spacing: 0;
+  line-height: 1.15;
 }
 
 /* Training cards use one shared type scale -------------------------------- */
 
 #app :where(.weekly-plan, .example-list, .note-panel) {
-  --training-title-size: 1rem;
-  --training-value-size: 1rem;
-  --training-secondary-size: 0.88rem;
-  --training-label-size: 0.78rem;
+  --training-title-size: var(--card-heading-size);
+  --training-value-size: var(--card-display-size);
+  --training-secondary-size: var(--card-label-size);
+  --training-label-size: var(--card-label-size);
   font-family: var(--font-body);
 }
 
@@ -4872,17 +4921,17 @@ body {
 }
 
 #app .weekly-plan-head h3 {
-  font-size: 1.2rem;
+  font-size: var(--training-title-size);
   font-weight: var(--font-bold);
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 #app .weekly-plan-head > p,
 #app .weekly-plan-head .eyebrow {
-  font-size: 0.9rem;
+  font-size: var(--card-label-size);
   font-weight: var(--font-regular);
   letter-spacing: 0;
-  line-height: 1.6;
+  line-height: 1.45;
 }
 
 #app .weekly-plan-head .eyebrow {
@@ -4897,9 +4946,9 @@ body {
 }
 
 #app .week-volume-summary strong {
-  font-size: 1.45rem;
-  font-weight: var(--font-bold);
-  line-height: 1.15;
+  font-size: 0.84rem;
+  font-weight: var(--font-medium);
+  line-height: 1.55;
 }
 
 #app :where(.drag-hint, .week-day-row span) {
@@ -4909,8 +4958,8 @@ body {
 }
 
 #app :where(.plan-day p, .example-card h3) {
-  font-size: var(--training-title-size);
-  font-weight: var(--font-bold);
+  font-size: var(--card-body-size);
+  font-weight: var(--font-semibold);
   letter-spacing: 0;
   line-height: 1.5;
 }
@@ -4924,19 +4973,19 @@ body {
 #app :where(.plan-pace strong, .example-pace-pair strong) {
   font-size: var(--training-value-size);
   font-weight: var(--font-bold);
-  line-height: 1.4;
+  line-height: 1.15;
 }
 
 #app :where(.plan-pace em, .example-pace-pair em) {
   font-size: var(--training-secondary-size);
-  font-weight: var(--font-medium);
-  line-height: 1.4;
+  font-weight: var(--font-regular);
+  line-height: 1.45;
 }
 
-#app :where(.plan-pace small, .example-pace-pair small) {
-  font-size: 0.72rem;
+#app :where(.plan-pace .pace-tag, .example-pace-pair .pace-tag) {
+  font-size: var(--training-label-size);
   font-weight: var(--font-semibold);
-  line-height: 1.3;
+  line-height: 1.45;
 }
 
 #app :where(.plan-distance-label, .easy-rest-toggle, .plan-swap-trigger, .plan-swap-option) {
@@ -4946,15 +4995,15 @@ body {
 }
 
 #app .example-group-heading h3 {
-  font-size: var(--training-title-size);
-  font-weight: var(--font-bold);
-  line-height: 1.4;
+  font-size: var(--card-body-size);
+  font-weight: var(--font-semibold);
+  line-height: 1.5;
 }
 
 #app .example-group-heading p {
   font-size: var(--training-secondary-size);
-  font-weight: var(--font-medium);
-  line-height: 1.4;
+  font-weight: var(--font-regular);
+  line-height: 1.45;
 }
 
 #app .example-meta dt {
@@ -4964,39 +5013,32 @@ body {
 }
 
 #app .example-meta dd {
-  font-size: 0.95rem;
+  font-size: var(--card-body-size);
   font-weight: var(--font-semibold);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 #app .example-meta dd em {
-  font-size: 0.84rem;
-  font-weight: var(--font-medium);
+  font-size: var(--training-secondary-size);
+  font-weight: var(--font-regular);
   line-height: 1.45;
 }
 
 #app .note-panel :where(h2, h3) {
-  font-weight: var(--font-bold);
+  font-size: var(--card-label-size);
+  font-weight: var(--font-semibold);
   letter-spacing: 0;
+  line-height: 1.45;
 }
 
 #app .note-panel :where(p, li) {
+  font-size: var(--card-label-size);
   font-weight: var(--font-regular);
   letter-spacing: 0;
-  line-height: 1.7;
+  line-height: 1.45;
 }
 
 /* Shared card typography -------------------------------------------------- */
-
-#app {
-  /* Use the pace table as the single result-card type scale. */
-  --card-display-size: clamp(1.05rem, 1.7vw, 1.42rem);
-  --card-title-size: 1.2rem;
-  --card-heading-size: 1rem;
-  --card-value-size: 1rem;
-  --card-label-size: 0.8rem;
-  --card-body-size: 0.88rem;
-}
 
 #app .equivalent-card strong,
 #app .metric-row strong {
@@ -5008,19 +5050,8 @@ body {
   line-height: 1.15;
 }
 
-/* Match the training-summary total to the training focus selector. */
-#app .week-volume-summary strong {
-  font-family: var(--font-body);
-  font-size: 0.84rem;
-  font-weight: var(--font-medium);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  line-height: 1.55;
-}
-
 #app .equivalent-card > span,
-#app .metric-row > div > span,
-#app .week-volume-summary > span {
+#app .metric-row > div > span {
   font-family: var(--font-body);
   font-size: var(--card-label-size);
   font-weight: var(--font-semibold);
@@ -5028,32 +5059,28 @@ body {
   line-height: 1.45;
 }
 
-#app .equivalent-card small {
+#app .equivalent-card > .equivalent-meta {
   font-family: var(--font-body);
   font-size: var(--card-label-size);
-  font-weight: var(--font-medium);
+  font-weight: var(--font-regular);
   letter-spacing: 0;
   line-height: 1.45;
 }
 
 #app .equivalent-lead,
-#app .weekly-plan-head > p,
 #app .heat-formula :where(p, li) {
   font-family: var(--font-body);
-  font-size: var(--card-body-size);
+  font-size: var(--card-label-size);
   font-weight: var(--font-regular);
   letter-spacing: 0;
-  line-height: 1.7;
+  line-height: 1.45;
 }
 
 #app :where(
   .conversion-context span,
   .conversion-context small,
   .heat-card > .eyebrow,
-  .method-details summary,
-  .weekly-plan-head > .eyebrow,
-  .drag-hint,
-  .week-day-row span
+  .method-details summary
 ) {
   font-family: var(--font-body);
   font-size: var(--card-label-size);
@@ -5065,18 +5092,10 @@ body {
 #app .conversion-context strong,
 #app .heat-formula h3 {
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: var(--card-label-size);
   font-weight: var(--font-semibold);
   letter-spacing: 0;
   line-height: 1.45;
-}
-
-#app .weekly-plan-head h3 {
-  font-family: var(--font-body);
-  font-size: var(--card-heading-size);
-  font-weight: var(--font-bold);
-  letter-spacing: 0;
-  line-height: 1.5;
 }
 
 #app .mileage-card > h2 {
@@ -5103,75 +5122,6 @@ body {
   line-height: 1.5;
 }
 
-/* Keep explanatory notes aligned with the heat-method typography. */
-#app .heat-formula h3,
-#app .note-panel.info-card > h2,
-#app .note-panel.info-card > h3 {
-  font-family: var(--font-body);
-  font-size: var(--card-heading-size);
-  font-weight: var(--font-bold);
-  letter-spacing: 0;
-  line-height: 1.5;
-  text-transform: none;
-}
-
-#app .heat-formula p,
-#app .note-panel.info-card > p {
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  font-weight: var(--font-regular);
-  letter-spacing: 0;
-  line-height: 1.7;
-}
-
-/* One typography contract for every content card ------------------------- */
-
-#app .content-shell,
-#app .content-shell :where(
-  h1,
-  h2,
-  h3,
-  h4,
-  p,
-  span,
-  strong,
-  small,
-  em,
-  b,
-  dt,
-  dd,
-  label,
-  button,
-  input,
-  select,
-  option,
-  summary,
-  a,
-  li
-) {
-  font-family: var(--font-body);
-  font-synthesis: none;
-  letter-spacing: 0;
-}
-
-#app .weekly-plan-head h3,
-#app .mileage-card > h2,
-#app .heat-formula h3,
-#app .note-panel.info-card > h2,
-#app .note-panel.info-card > h3 {
-  font-size: var(--card-heading-size);
-  font-weight: var(--font-bold);
-  line-height: 1.5;
-}
-
-#app .plan-day p,
-#app .example-group-heading h3,
-#app .example-card h3,
-#app .example-meta dd {
-  font-size: var(--training-secondary-size);
-  font-weight: var(--font-semibold);
-  line-height: 1.5;
-}
 
 #app .plan-day {
   align-content: start;
@@ -5183,20 +5133,4 @@ body {
   min-height: 30px;
   padding: 4px 10px;
   border-radius: 6px;
-}
-
-#app .plan-pace strong,
-#app .example-pace-pair strong,
-#app .mileage-card .simple-list dd {
-  font-size: var(--card-value-size);
-  font-weight: var(--font-bold);
-  line-height: 1.45;
-}
-
-#app .plan-pace em,
-#app .example-pace-pair em,
-#app .example-meta dd em {
-  font-size: var(--training-secondary-size);
-  font-weight: var(--font-medium);
-  line-height: 1.45;
 }
