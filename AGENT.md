@@ -51,12 +51,12 @@ Alternating T+I / T+R
 Odd Weeks:
 
 * Threshold
-* Interval
+* Repetition
 
 Even Weeks:
 
 * Threshold
-* Repetition
+* Interval
 
 Purpose:
 
@@ -184,4 +184,6 @@ Maintenance
 * Repetition
 
 Long Run progression is the highest priority.
+
+Use the marathon-specific weekly generator rather than the generic fixed-day quality template. Phase I must remain E/L/strides only; Phase II introduces R; Phase III combines M/T long work with I; Phase IV retains M/T while automatically reducing peak mileage. Keep Q1 on Sunday and Q2 on Wednesday, enforce 2-3 E days between Q sessions, cap long runs by both weekly share and 150 minutes, and validate actual M/T/I/R work against Daniels volume limits.
 

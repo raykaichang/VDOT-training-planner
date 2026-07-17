@@ -1102,6 +1102,53 @@ html[lang="en"] .tool-sidebar-head span {
   line-height: 1.45;
 }
 
+.half-week-field {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.half-week-field legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.half-week-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.half-week-toggle button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised, var(--bg));
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.half-week-toggle button:hover,
+.half-week-toggle button.active {
+  border-color: var(--teal);
+  background: rgba(57, 208, 180, 0.12);
+  color: var(--text);
+}
+
+.half-week-field > p {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 .ability-select {
   position: relative;
 }
@@ -1755,9 +1802,13 @@ html[lang="en"] .tool-sidebar-head span {
 
 .weekly-plan-head {
   display: grid;
-  grid-template-columns: minmax(180px, auto) minmax(0, 1fr);
-  gap: 16px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.weekly-plan-head > * {
+  min-width: 0;
 }
 
 .weekly-plan-head h3 {
@@ -1792,6 +1843,36 @@ html[lang="en"] .tool-sidebar-head span {
 .week-volume-summary strong {
   color: var(--text);
   font-size: 0.86rem;
+}
+
+.taper-recommendation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border-left: 4px solid var(--amber);
+  padding: 12px 14px;
+}
+
+.taper-recommendation div {
+  display: grid;
+  gap: 4px;
+}
+
+.taper-recommendation strong {
+  color: var(--text);
+}
+
+.taper-recommendation span {
+  color: var(--amber);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.taper-recommendation p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .week-scroll {
@@ -2042,6 +2123,33 @@ html[lang="en"] .tool-sidebar-head span {
   gap: 5px;
   margin-top: 10px;
   min-width: 0;
+}
+
+.plan-pace-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 3px 6px;
+  align-items: baseline;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+}
+
+.plan-pace-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.plan-zone-tag {
+  grid-row: 1 / span 2;
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .plan-pace strong,

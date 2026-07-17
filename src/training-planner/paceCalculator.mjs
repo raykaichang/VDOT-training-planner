@@ -20,6 +20,13 @@ export const TargetRace = Object.freeze({
   MARATHON: "Marathon"
 });
 
+export const HalfMarathonWeek = Object.freeze({
+  ODD: "odd",
+  EVEN: "even"
+});
+
+export const MARATHON_PHASE_WEEKS = 6;
+
 export const TrainingCycle = Object.freeze({
   PHASE_I: "phaseI",
   PHASE_II: "phaseII",
@@ -269,6 +276,8 @@ export function calculatePaceModel(input = {}) {
   const weeklyMileageKm = roundTo(clamp(toKilometers(weeklyMileage, unitSystem), 0, 180), 1);
   const targetRace = normalizeTargetRace(input.targetRace);
   const trainingCycle = normalizeTrainingCycle(input.trainingCycle);
+  const halfMarathonWeek = normalizeHalfMarathonWeek(input.halfMarathonWeek);
+  const marathonPhaseWeek = normalizeMarathonPhaseWeek(input.marathonPhaseWeek);
   const temperatureC = clamp(Number(input.temperatureC ?? 22), -5, 45);
   const humidity = clamp(Number(input.humidity ?? 60), 0, 100);
   const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity, vdot);
@@ -279,6 +288,24 @@ export function calculatePaceModel(input = {}) {
     return buildZonePace(zone, vdot, heatMultiplier, unitSystem);
   });
 
+  const weeklySchedule = generateWeeklySchedule({
+    targetRace,
+    trainingCycle,
+    halfMarathonWeek,
+    marathonPhaseWeek,
+    weeklyMileageKm,
+    unitSystem,
+    zones
+  });
+  const marathonPlan = targetRace === TargetRace.MARATHON
+    ? getMarathonWeekPlan(trainingCycle, marathonPhaseWeek, weeklyMileageKm)
+    : null;
+  const taperRecommendation = getTaperRecommendation(
+    targetRace,
+    trainingCycle,
+    marathonPlan
+  );
+
   return {
     vdot,
     weeklyMileage,
@@ -286,6 +313,8 @@ export function calculatePaceModel(input = {}) {
     unitSystem,
     targetRace,
     trainingCycle,
+    halfMarathonWeek,
+    marathonPhaseWeek,
     temperatureC,
     humidity,
     heatAdjustment,
@@ -295,13 +324,9 @@ export function calculatePaceModel(input = {}) {
       heatAdjustment,
       vdot
     ),
-    weeklySchedule: generateWeeklySchedule({
-      targetRace,
-      trainingCycle,
-      weeklyMileageKm,
-      unitSystem,
-      zones
-    }),
+    weeklySchedule,
+    marathonPlan,
+    taperRecommendation,
     zones
   };
 }
@@ -507,16 +532,31 @@ export function getWorkoutExamplesForMileage(
 export function generateWeeklySchedule({
   targetRace = TargetRace.FIVE_TEN_K,
   trainingCycle = TrainingCycle.PHASE_II,
+  halfMarathonWeek = HalfMarathonWeek.ODD,
+  marathonPhaseWeek = 1,
   weeklyMileageKm = 55,
   unitSystem = UnitSystem.METRIC,
   zones = []
 } = {}) {
   const race = normalizeTargetRace(targetRace);
   const cycle = normalizeTrainingCycle(trainingCycle);
+  const weekParity = normalizeHalfMarathonWeek(halfMarathonWeek);
+  const phaseWeek = normalizeMarathonPhaseWeek(marathonPhaseWeek);
   const mileage = roundTo(clamp(Number(weeklyMileageKm), 0, 180), 1);
+  const zoneById = Object.fromEntries(zones.map((zone) => [zone.id, zone]));
+
+  if (race === TargetRace.MARATHON) {
+    return generateMarathonWeeklySchedule({
+      cycle,
+      phaseWeek,
+      peakMileageKm: mileage,
+      unitSystem,
+      zoneById
+    }).map((day) => addZonePace(day, zoneById));
+  }
+
   const mileageClass = getMileageClass(mileage);
   const qualityCount = mileage >= 32 ? 2 : mileage > 0 ? 1 : 0;
-  const zoneById = Object.fromEntries(zones.map((zone) => [zone.id, zone]));
   const longRunDistanceKm = Math.min(
     roundTo(mileage * 0.28, 1),
     Math.floor(mileage * 0.3 * 10) / 10
@@ -525,7 +565,8 @@ export function generateWeeklySchedule({
     race,
     cycle,
     qualityCount,
-    mileage
+    mileage,
+    weekParity
   );
   const qualityDistancesKm = allocateQualityMileage(
     mileage,
@@ -563,10 +604,653 @@ export function generateWeeklySchedule({
   }).map((day) => addZonePace(day, zoneById));
 }
 
-function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage) {
+const marathonMileageFractions = Object.freeze({
+  [TrainingCycle.PHASE_I]: [0.8, 0.8, 0.85, 0.85, 0.9, 0.9],
+  [TrainingCycle.PHASE_II]: [0.8, 0.8, 0.9, 0.9, 0.9, 0.9],
+  [TrainingCycle.PHASE_III]: [1, 0.9, 1, 1, 0.9, 0.9],
+  [TrainingCycle.PHASE_IV]: [1, 1, 0.9, 0.9, 0.9, 0.75]
+});
+
+export function getMarathonTrainingLimits(weeklyMileageKm) {
+  const mileage = Math.max(0, Number(weeklyMileageKm) || 0);
+  return {
+    T: roundTo(Math.min(mileage * 0.1, 24), 1),
+    I: roundTo(Math.min(mileage * 0.08, 10), 1),
+    R: roundTo(Math.min(mileage * 0.05, 8), 1),
+    M: roundTo(Math.min(mileage * (mileage > 64 ? 0.2 : 0.3), 29), 1)
+  };
+}
+
+function getMarathonWeekPlan(cycle, phaseWeek, peakMileageKm) {
+  const normalizedCycle = normalizeTrainingCycle(cycle);
+  const normalizedWeek = normalizeMarathonPhaseWeek(phaseWeek);
+  const fraction = marathonMileageFractions[normalizedCycle][normalizedWeek - 1];
+  const plannedWeeklyMileageKm = roundTo(
+    Math.max(0, Number(peakMileageKm) || 0) * fraction,
+    1
+  );
+
+  return {
+    phaseWeek: normalizedWeek,
+    fraction,
+    plannedWeeklyMileageKm,
+    peakWeeklyMileageKm: roundTo(Math.max(0, Number(peakMileageKm) || 0), 1),
+    reductionPercentage: Math.round((1 - fraction) * 100),
+    isTaper: normalizedCycle === TrainingCycle.PHASE_IV
+  };
+}
+
+function getTaperRecommendation(targetRace, cycle, marathonPlan) {
+  if (cycle !== TrainingCycle.PHASE_IV) return null;
+
+  if (targetRace === TargetRace.MARATHON && marathonPlan) {
+    const isRaceWeek = marathonPlan.phaseWeek === MARATHON_PHASE_WEEKS;
+    return {
+      automatic: true,
+      zh: isRaceWeek
+        ? `本週是馬拉松比賽週。書中未列單一峰值比例，網站依表內日量保守換算為峰值的 ${Math.round(marathonPlan.fraction * 100)}%。Q1 改為不超過 90 分鐘 E，Q2 保留短量 T，其餘以 E 或休息完成。`
+        : `本週依 Daniels 2Q 最後六週採峰值跑量的 ${Math.round(marathonPlan.fraction * 100)}%（減少 ${marathonPlan.reductionPercentage}%），並保留該週的兩堂 Q；主要賽前調整集中在第 6 週。`,
+      en: isRaceWeek
+        ? `This is marathon race week. The table gives no single peak-mileage fraction, so the planner conservatively estimates ${Math.round(marathonPlan.fraction * 100)}% from its daily volumes. Q1 becomes no more than 90 minutes E, Q2 retains a brief T stimulus, and the remaining days are E running or rest.`
+        : `This week follows the final six weeks of the Daniels 2Q plan at ${Math.round(marathonPlan.fraction * 100)}% of peak mileage (${marathonPlan.reductionPercentage}% reduction) while retaining both scheduled Q sessions. The main prerace adjustment is concentrated in week 6.`
+    };
+  }
+
+  const raceWeekGuidance = {
+    [TargetRace.EIGHT_HUNDRED]: {
+      zh: "Phase IV 並非整期減量。遇到重要比賽週，只保留一堂時間受限的 T＋短 R，排在賽前 3–4 天；其餘日改為 E 或休息，比賽取代下一堂 Q。",
+      en: "Phase IV is not a full-phase taper. For an important race week, keep one time-limited T session with short R work 3-4 days before the race; use E running or rest otherwise, and let the race replace the next Q session."
+    },
+    [TargetRace.MILE_TO_TWO_MILE]: {
+      zh: "Phase IV 並非整期減量。遇到重要比賽週，刪除會妨礙恢復的 Q 課，只保留賽前 3–4 天的一堂短量 T＋R；其餘日以 E 為主，比賽本身視為 Q。",
+      en: "Phase IV is not a full-phase taper. For an important race week, remove Q sessions that would impair recovery and keep one short T + R session 3-4 days before the race; run E otherwise, with the race itself counting as Q."
+    },
+    [TargetRace.FIVE_TEN_K]: {
+      zh: "Phase IV 並非整期減量。無比賽週維持原課表；重要週末賽前，長跑縮至最多 90 分鐘，週二做 3×1T（組間 2 分鐘），之後以 E 為主並取消原本的 I 課，比賽取代 Q3。",
+      en: "Phase IV is not a full-phase taper. Keep the normal plan in a non-race week; before an important weekend race, shorten the long run to no more than 90 minutes, run 3 x 1T with 2-minute recoveries on Tuesday, then use E running and remove the usual I session, with the race replacing Q3."
+    },
+    [TargetRace.CROSS_COUNTRY]: {
+      zh: "Phase IV 並非整期減量。重要週末賽前，長跑縮至 50–60 分鐘，週二做 3×1T（組間 2 分鐘）再加 4×200R，其餘日以 E 為主，比賽取代下一堂 Q。",
+      en: "Phase IV is not a full-phase taper. Before an important weekend race, shorten the long run to 50-60 minutes, run 3 x 1T with 2-minute recoveries plus 4 x 200R on Tuesday, use E running otherwise, and let the race replace the next Q session."
+    },
+    [TargetRace.ROAD_15K_30K]: {
+      zh: "Phase IV 並非整期減量；正常單雙週循環照舊，只有進入比賽前一週才切換。賽前 6 天跑正常 L 的 2/3，賽前 3 天做 3×1T（組間 2 分鐘），其餘日跑 E 或休息，比賽為 Q3。半馬賽後安排 7 個 E 日再恢復循環。",
+      en: "Phase IV is not a full-phase taper; keep the normal odd/even cycle until race week. Six days before the race, run two-thirds of the normal L; three days before, run 3 x 1T with 2-minute recoveries; use E running or rest otherwise, with the race as Q3. After a half marathon, use 7 E days before resuming the cycle."
+    }
+  };
+
+  return {
+    automatic: false,
+    ...(raceWeekGuidance[targetRace] ?? raceWeekGuidance[TargetRace.FIVE_TEN_K])
+  };
+}
+
+function generateMarathonWeeklySchedule({
+  cycle,
+  phaseWeek,
+  peakMileageKm,
+  unitSystem,
+  zoneById
+}) {
+  const plan = getMarathonWeekPlan(cycle, phaseWeek, peakMileageKm);
+  const mileage = plan.plannedWeeklyMileageKm;
+  const longRunShareLimit = mileage > 64 ? 0.25 : 0.3;
+  const longRunTimeLimitMinutes =
+    cycle === TrainingCycle.PHASE_IV && phaseWeek === MARATHON_PHASE_WEEKS
+      ? 90
+      : 150;
+  const easySecondsPerKm = Number(zoneById[PaceZone.EASY]?.adjusted?.slower);
+  const timeCapDistanceKm = easySecondsPerKm > 0
+    ? (longRunTimeLimitMinutes * 60) / easySecondsPerKm
+    : Number.POSITIVE_INFINITY;
+  const longRunDistanceKm =
+    Math.floor(Math.min(mileage * longRunShareLimit, timeCapDistanceKm) * 10) / 10;
+  const q1 = buildMarathonQ1({
+    cycle,
+    phaseWeek,
+    weeklyMileageKm: mileage,
+    distanceKm: longRunDistanceKm,
+    longRunShareLimit,
+    longRunTimeLimitMinutes,
+    easySecondsPerKm,
+    unitSystem
+  });
+  const hasMarathonQ2 =
+    mileage >= 32 || (cycle === TrainingCycle.PHASE_IV && mileage >= 20);
+  const q2 = hasMarathonQ2 && cycle !== TrainingCycle.PHASE_I
+    ? buildMarathonQ2({ cycle, phaseWeek, weeklyMileageKm: mileage, unitSystem })
+    : null;
+  const qualityMileageKm = Number(q2?.plannedDistanceKm ?? 0);
+  const easyMileageKm = roundTo(
+    Math.max(0, mileage - longRunDistanceKm - qualityMileageKm),
+    1
+  );
+  const easyDayKeys = q2
+    ? ["mon", "tue", "thu", "fri", "sat"]
+    : ["mon", "tue", "wed", "thu", "fri", "sat"];
+  const easyDistances = Object.fromEntries(
+    easyDayKeys.map((key, index) => [
+      key,
+      allocateDistanceByWeight(easyMileageKm, easyDayKeys.map(() => 1))[index]
+    ])
+  );
+  const phaseIStrides = cycle === TrainingCycle.PHASE_I && phaseWeek >= 3;
+
+  return [
+    q1,
+    buildEasyDistanceDay("Mon", "一", easyDistances.mon ?? 0, unitSystem, {
+      recovery: true,
+      strides: phaseIStrides || cycle !== TrainingCycle.PHASE_I
+    }),
+    buildEasyDistanceDay("Tue", "二", easyDistances.tue ?? 0, unitSystem),
+    q2 ?? buildEasyDistanceDay("Wed", "三", easyDistances.wed ?? 0, unitSystem, {
+      strides: phaseIStrides
+    }),
+    buildEasyDistanceDay("Thu", "四", easyDistances.thu ?? 0, unitSystem),
+    buildEasyDistanceDay("Fri", "五", easyDistances.fri ?? 0, unitSystem, {
+      strides: phaseIStrides || cycle !== TrainingCycle.PHASE_I
+    }),
+    buildEasyDistanceDay("Sat", "六", easyDistances.sat ?? 0, unitSystem, {
+      recovery: true
+    })
+  ];
+}
+
+function buildMarathonQ1({
+  cycle,
+  phaseWeek,
+  weeklyMileageKm,
+  distanceKm,
+  longRunShareLimit,
+  longRunTimeLimitMinutes,
+  easySecondsPerKm,
+  unitSystem
+}) {
+  const caps = getMarathonTrainingLimits(weeklyMileageKm);
+  const mode = getMarathonQ1Mode(cycle, phaseWeek);
+  const isMixed = mode === "mixed" || mode === "marathon";
+  const includeThreshold = mode === "mixed";
+  const isThresholdSession = mode === "threshold";
+  const availableQualityKm = Math.max(0, distanceKm - Math.min(4, distanceKm * 0.35));
+  const marathonFraction = mode === "marathon"
+    ? 0.72
+    : 0.48 + Math.min(phaseWeek, 4) * 0.025;
+  const thresholdKm = isThresholdSession
+    ? roundTo(Math.min(caps.T, distanceKm * 0.3, availableQualityKm * 0.55), 1)
+    : isMixed && includeThreshold
+      ? roundTo(Math.min(caps.T, distanceKm * 0.08, availableQualityKm * 0.16), 1)
+      : 0;
+  const marathonKm = isMixed
+    ? roundTo(
+        Math.min(caps.M, distanceKm * marathonFraction, availableQualityKm - thresholdKm),
+        1
+      )
+    : 0;
+  const easyKm = roundTo(Math.max(0, distanceKm - marathonKm - thresholdKm), 1);
+  const warmupKm = roundTo(easyKm / 2, 1);
+  const cooldownKm = roundTo(Math.max(0, easyKm - warmupKm), 1);
+  const distance = formatDistanceValue(distanceKm, unitSystem);
+  const predictedMinutes = easySecondsPerKm > 0
+    ? roundTo((distanceKm * easySecondsPerKm) / 60, 0)
+    : null;
+  let zh;
+  let en;
+  let zone = PaceZone.EASY;
+  let paceZoneIds = [PaceZone.EASY];
+
+  if (isThresholdSession && thresholdKm > 0) {
+    zone = PaceZone.THRESHOLD;
+    paceZoneIds = [PaceZone.EASY, PaceZone.THRESHOLD];
+    const bridgeKm = roundTo(Math.min(3, easyKm * 0.3), 1);
+    const outerEasyKm = roundTo(Math.max(0, easyKm - bridgeKm), 1);
+    const thresholdFirstKm = roundTo(thresholdKm / 2, 1);
+    const thresholdSecondKm = roundTo(Math.max(0, thresholdKm - thresholdFirstKm), 1);
+    const thresholdWarmupKm = roundTo(outerEasyKm / 2, 1);
+    const thresholdCooldownKm = roundTo(
+      Math.max(0, outerEasyKm - thresholdWarmupKm),
+      1
+    );
+    zh = `Q1 T 中長課：${formatDistanceValue(thresholdWarmupKm, unitSystem)} E + ${formatDistanceValue(thresholdFirstKm, unitSystem)} T（2 分鐘慢跑）+ ${formatDistanceValue(bridgeKm, unitSystem)} E + ${formatDistanceValue(thresholdSecondKm, unitSystem)} T（1 分鐘慢跑）+ ${formatDistanceValue(thresholdCooldownKm, unitSystem)} E`;
+    en = `Q1 T medium-long session: ${formatDistanceValue(thresholdWarmupKm, unitSystem)} E + ${formatDistanceValue(thresholdFirstKm, unitSystem)} T (2 min jog) + ${formatDistanceValue(bridgeKm, unitSystem)} E + ${formatDistanceValue(thresholdSecondKm, unitSystem)} T (1 min jog) + ${formatDistanceValue(thresholdCooldownKm, unitSystem)} E`;
+  } else if (isMixed && marathonKm > 0) {
+    zone = PaceZone.MARATHON;
+    paceZoneIds = includeThreshold && thresholdKm > 0
+      ? [PaceZone.EASY, PaceZone.MARATHON, PaceZone.THRESHOLD]
+      : [PaceZone.EASY, PaceZone.MARATHON];
+    const thresholdZh = thresholdKm > 0
+      ? ` + ${formatDistanceValue(thresholdKm, unitSystem)} T（M 後不停下）`
+      : "";
+    const thresholdEn = thresholdKm > 0
+      ? ` + ${formatDistanceValue(thresholdKm, unitSystem)} T without stopping after M`
+      : "";
+    const sessionNameZh = mode === "marathon" ? "Q1 M 長課" : "Q1 混合長課";
+    const sessionNameEn = mode === "marathon" ? "Q1 M long session" : "Q1 mixed long session";
+    zh = `${sessionNameZh}：${formatDistanceValue(warmupKm, unitSystem)} E + ${formatDistanceValue(marathonKm, unitSystem)} M${thresholdZh} + ${formatDistanceValue(cooldownKm, unitSystem)} E`;
+    en = `${sessionNameEn}: ${formatDistanceValue(warmupKm, unitSystem)} E + ${formatDistanceValue(marathonKm, unitSystem)} M${thresholdEn} + ${formatDistanceValue(cooldownKm, unitSystem)} E`;
+  } else {
+    const strideNote = cycle === TrainingCycle.PHASE_I && phaseWeek >= 3
+      ? "，結尾可加 6–8 次 15–20 秒加速跑，每次恢復 45–60 秒"
+      : "";
+    const raceWeekLabelZh = mode === "race" ? "Q1 賽前 E 跑" : "Q1 E 長跑";
+    const raceWeekLabelEn = mode === "race" ? "Q1 prerace E run" : "Q1 E long run";
+    zh = `${raceWeekLabelZh} ${distance}${strideNote}`;
+    en = `${raceWeekLabelEn} ${distance}${strideNote ? "; optionally finish with 6-8 × 15-20 sec strides with 45-60 sec recovery" : ""}`;
+  }
+
+  return scheduleDay("Sun", "日", zone, zh, en, {
+    ...plannedDistanceMetadata(distanceKm, "long"),
+    isPrimaryWorkout: true,
+    workoutType: `marathon-q1-${mode}`,
+    paceZoneIds,
+    intensityKm: {
+      [PaceZone.MARATHON]: marathonKm,
+      [PaceZone.THRESHOLD]: thresholdKm,
+      [PaceZone.INTERVAL]: 0,
+      [PaceZone.REPETITION]: 0
+    },
+    longRunLimitPercentage: Math.round(longRunShareLimit * 100),
+    longRunTimeLimitMinutes,
+    estimatedMaxMinutes: predictedMinutes,
+    zhDistanceLabel: `本課總量 ${distance}；不超過週跑量 ${Math.round(longRunShareLimit * 100)}% 與 ${longRunTimeLimitMinutes} 分鐘上限`,
+    enDistanceLabel: `Session total ${distance}; capped by ${Math.round(longRunShareLimit * 100)}% of weekly mileage and ${longRunTimeLimitMinutes} minutes`
+  });
+}
+
+function getMarathonQ1Mode(cycle, phaseWeek) {
+  const modes = {
+    [TrainingCycle.PHASE_I]: ["easy", "easy", "easy", "easy", "easy", "easy"],
+    [TrainingCycle.PHASE_II]: ["mixed", "threshold", "easy", "mixed", "threshold", "easy"],
+    [TrainingCycle.PHASE_III]: ["mixed", "threshold", "easy", "mixed", "marathon", "easy"],
+    [TrainingCycle.PHASE_IV]: ["marathon", "threshold", "easy", "marathon", "threshold", "race"]
+  };
+  return modes[cycle]?.[phaseWeek - 1] ?? "easy";
+}
+
+function buildMarathonQ2({ cycle, phaseWeek, weeklyMileageKm, unitSystem }) {
+  const caps = getMarathonTrainingLimits(weeklyMileageKm);
+  const sessionTargetKm = roundTo(Math.min(weeklyMileageKm * 0.18, 18), 1);
+  const mode = getMarathonQ2Mode(cycle, phaseWeek);
+  let zone;
+  let zh;
+  let en;
+  let intensityKm;
+  let paceZoneIds;
+
+  if (mode === "intervalRepetition") {
+    zone = PaceZone.INTERVAL;
+    const intervalKm = roundTo(Math.min(caps.I, weeklyMileageKm * 0.05), 1);
+    const repetitionKm = roundTo(Math.min(caps.R, weeklyMileageKm * 0.02), 1);
+    zh = "Q2 I＋R 轉換：6 x 2 分鐘 I，每趟 2 分鐘慢跑；再做 4 x 1 分鐘 R，每趟 2 分鐘慢跑";
+    en = "Q2 I + R transition: 6 x 2 min I with 2 min jogs; then 4 x 1 min R with 2 min jogs";
+    intensityKm = { M: 0, T: 0, I: intervalKm, R: repetitionKm };
+    paceZoneIds = [PaceZone.INTERVAL, PaceZone.REPETITION];
+  } else if (mode === "interval") {
+    zone = PaceZone.INTERVAL;
+    const intervalKm = roundTo(Math.min(caps.I, weeklyMileageKm * 0.06), 1);
+    zh = "Q2 I 有氧能力：5 x 3 分鐘 I，每趟 2 分鐘慢跑恢復";
+    en = "Q2 aerobic power: 5 x 3 min I with 2 min jog recoveries";
+    intensityKm = { M: 0, T: 0, I: intervalKm, R: 0 };
+    paceZoneIds = [PaceZone.INTERVAL];
+  } else if (mode === "marathon") {
+    zone = PaceZone.MARATHON;
+    const marathonKm = roundTo(Math.min(caps.M, weeklyMileageKm * 0.15), 1);
+    zh = `Q2 M 穩定跑：${formatDistanceValue(marathonKm, unitSystem)} M，前後以 E 熱身與收操`;
+    en = `Q2 steady M run: ${formatDistanceValue(marathonKm, unitSystem)} M with E warm-up and cool-down`;
+    intensityKm = { M: marathonKm, T: 0, I: 0, R: 0 };
+    paceZoneIds = [PaceZone.EASY, PaceZone.MARATHON];
+  } else if (mode === "marathonThreshold") {
+    zone = PaceZone.MARATHON;
+    const thresholdKm = roundTo(Math.min(caps.T, weeklyMileageKm * 0.04), 1);
+    const marathonKm = roundTo(Math.min(caps.M, weeklyMileageKm * 0.1), 1);
+    zh = `Q2 M＋T 混合：${formatDistanceValue(thresholdKm, unitSystem)} T（2 分鐘慢跑）+ ${formatDistanceValue(marathonKm, unitSystem)} M，前後以 E 完成`;
+    en = `Q2 M + T mix: ${formatDistanceValue(thresholdKm, unitSystem)} T (2 min jog) + ${formatDistanceValue(marathonKm, unitSystem)} M, with E running before and after`;
+    intensityKm = { M: marathonKm, T: thresholdKm, I: 0, R: 0 };
+    paceZoneIds = [PaceZone.EASY, PaceZone.THRESHOLD, PaceZone.MARATHON];
+  } else if (mode === "intervalThreshold") {
+    zone = PaceZone.INTERVAL;
+    const intervalKm = roundTo(Math.min(caps.I, weeklyMileageKm * 0.05), 1);
+    const thresholdKm = roundTo(Math.min(caps.T, weeklyMileageKm * 0.02), 1);
+    zh = `Q2 I＋T：5 x 3 分鐘 I，每趟 3 分鐘慢跑；最後 ${formatDistanceValue(thresholdKm, unitSystem)} T`;
+    en = `Q2 I + T: 5 x 3 min I with 3 min jogs; finish with ${formatDistanceValue(thresholdKm, unitSystem)} T`;
+    intensityKm = { M: 0, T: thresholdKm, I: intervalKm, R: 0 };
+    paceZoneIds = [PaceZone.INTERVAL, PaceZone.THRESHOLD];
+  } else if (mode === "raceThreshold") {
+    zone = PaceZone.THRESHOLD;
+    const repetitions = Math.max(3, Math.min(5, Math.floor(caps.T / 0.8)));
+    const thresholdKm = roundTo(Math.min(caps.T, repetitions * 0.8), 1);
+    zh = `Q2 賽前刺激：${repetitions} x 800 公尺 T，每趟 2 分鐘 E 慢跑恢復`;
+    en = `Q2 prerace stimulus: ${repetitions} x 800 m T with 2 min E jog recoveries`;
+    intensityKm = { M: 0, T: thresholdKm, I: 0, R: 0 };
+    paceZoneIds = [PaceZone.THRESHOLD];
+  } else {
+    zone = PaceZone.THRESHOLD;
+    const thresholdKm = roundTo(
+      Math.min(caps.T, weeklyMileageKm * 0.07),
+      1
+    );
+    const thresholdRepetitions = Math.max(2, Math.floor(thresholdKm));
+    const actualThresholdKm = roundTo(
+      Math.min(caps.T, thresholdRepetitions),
+      1
+    );
+    zh = `Q2 T 主課：${thresholdRepetitions} x 1 km T，每趟 1 分鐘慢跑恢復`;
+    en = `Q2 threshold session: ${thresholdRepetitions} x 1 km T with 1 min jog recoveries`;
+    intensityKm = { M: 0, T: actualThresholdKm, I: 0, R: 0 };
+    paceZoneIds = [PaceZone.THRESHOLD];
+  }
+
+  const intensityTotalKm = sum(Object.values(intensityKm));
+  const distanceKm = roundTo(
+    Math.max(intensityTotalKm, Math.min(sessionTargetKm, intensityTotalKm + 5)),
+    1
+  );
+  const distance = formatDistanceValue(distanceKm, unitSystem);
+
+  return scheduleDay("Wed", "三", zone, zh, en, {
+    ...plannedDistanceMetadata(distanceKm, "quality"),
+    workoutType: `marathon-q2-${mode}`,
+    paceZoneIds,
+    intensityKm,
+    zhDistanceLabel: `本課總量 ${distance}（含 E 熱身、恢復與收操）`,
+    enDistanceLabel: `Session total ${distance}, including E warm-up, recovery, and cool-down`
+  });
+}
+
+function getMarathonQ2Mode(cycle, phaseWeek) {
+  const modes = {
+    [TrainingCycle.PHASE_II]: [
+      "threshold",
+      "intervalRepetition",
+      "threshold",
+      "threshold",
+      "interval",
+      "threshold"
+    ],
+    [TrainingCycle.PHASE_III]: [
+      "threshold",
+      "intervalRepetition",
+      "marathon",
+      "threshold",
+      "interval",
+      "marathonThreshold"
+    ],
+    [TrainingCycle.PHASE_IV]: [
+      "threshold",
+      "intervalRepetition",
+      "intervalThreshold",
+      "threshold",
+      "marathonThreshold",
+      "raceThreshold"
+    ]
+  };
+  return modes[cycle]?.[phaseWeek - 1] ?? "threshold";
+}
+
+export function getMarathonSwapCandidates(
+  day,
+  unitSystem = UnitSystem.METRIC
+) {
+  const type = day?.workoutType;
+  if (typeof type !== "string" || !type.startsWith("marathon-")) return [];
+  if (type === "marathon-q1-race") return [];
+
+  const totalKm = roundTo(Math.max(0, Number(day.plannedDistanceKm) || 0), 1);
+  const intensity = day.intensityKm ?? {};
+  const marathonKm = roundTo(Math.max(0, Number(intensity.M) || 0), 1);
+  const thresholdKm = roundTo(Math.max(0, Number(intensity.T) || 0), 1);
+  const intervalKm = roundTo(Math.max(0, Number(intensity.I) || 0), 1);
+  const repetitionKm = roundTo(Math.max(0, Number(intensity.R) || 0), 1);
+  const easyKm = roundTo(
+    Math.max(0, totalKm - marathonKm - thresholdKm - intervalKm - repetitionKm),
+    1
+  );
+  const distanceLabel = formatDistanceValue(totalKm, unitSystem);
+  const candidate = (suffix, zone, paceZoneIds, zh, en) => ({
+    id: `${type}-${suffix}`,
+    zone,
+    paceZoneIds,
+    zh,
+    en,
+    zhDistanceLabel: `本課總量 ${distanceLabel}；各段距離與恢復如上`,
+    enDistanceLabel: `Session total ${distanceLabel}; segment distances and recoveries are listed above`
+  });
+  const split = (value) => {
+    const first = roundTo(value / 2, 1);
+    return [first, roundTo(Math.max(0, value - first), 1)];
+  };
+  const [easyFirstKm, easySecondKm] = split(easyKm);
+  const [marathonFirstKm, marathonSecondKm] = split(marathonKm);
+  const [thresholdFirstKm, thresholdSecondKm] = split(thresholdKm);
+  const d = (value) => formatDistanceValue(value, unitSystem);
+
+  if (type === "marathon-q1-easy") {
+    const [firstHalfKm, secondHalfKm] = split(totalKm);
+    return [
+      candidate(
+        "progression",
+        PaceZone.EASY,
+        [PaceZone.EASY],
+        `漸進 E 長跑：${d(firstHalfKm)} 舒適 E + ${d(secondHalfKm)} 較快 E，中間不停`,
+        `Progression E long run: ${d(firstHalfKm)} comfortable E + ${d(secondHalfKm)} quicker E, nonstop`
+      ),
+      candidate(
+        "strides",
+        PaceZone.EASY,
+        [PaceZone.EASY],
+        `E 長跑 ${distanceLabel}；結束加 6 x 20 秒加速跑，每趟慢跑或步行 60 秒`,
+        `E long run ${distanceLabel}; finish with 6 x 20 sec strides with 60 sec jog or walk recovery`
+      )
+    ];
+  }
+
+  if (type === "marathon-q1-mixed") {
+    return [
+      candidate(
+        "split-m",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON, PaceZone.THRESHOLD],
+        `Q1 分段混合：${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + ${d(thresholdKm)} T（2 分鐘慢跑）+ ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`,
+        `Q1 split mix: ${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + ${d(thresholdKm)} T (2 min jog) + ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`
+      ),
+      candidate(
+        "t-first",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.THRESHOLD, PaceZone.MARATHON],
+        `Q1 T 後接 M：${d(easyFirstKm)} E + ${d(thresholdKm)} T（2 分鐘慢跑）+ ${d(marathonKm)} M + ${d(easySecondKm)} E`,
+        `Q1 T into M: ${d(easyFirstKm)} E + ${d(thresholdKm)} T (2 min jog) + ${d(marathonKm)} M + ${d(easySecondKm)} E`
+      )
+    ];
+  }
+
+  if (type === "marathon-q1-threshold") {
+    return [
+      candidate(
+        "two-blocks",
+        PaceZone.THRESHOLD,
+        [PaceZone.EASY, PaceZone.THRESHOLD],
+        `Q1 雙段 T：${d(easyFirstKm)} E + ${d(thresholdFirstKm)} T（2 分鐘慢跑）+ ${d(thresholdSecondKm)} T + ${d(easySecondKm)} E`,
+        `Q1 two-block T: ${d(easyFirstKm)} E + ${d(thresholdFirstKm)} T (2 min jog) + ${d(thresholdSecondKm)} T + ${d(easySecondKm)} E`
+      ),
+      candidate(
+        "continuous",
+        PaceZone.THRESHOLD,
+        [PaceZone.EASY, PaceZone.THRESHOLD],
+        `Q1 連續 T：${d(easyFirstKm)} E + ${d(thresholdKm)} T（不停）+ ${d(easySecondKm)} E`,
+        `Q1 continuous T: ${d(easyFirstKm)} E + ${d(thresholdKm)} T nonstop + ${d(easySecondKm)} E`
+      )
+    ];
+  }
+
+  if (type === "marathon-q1-marathon") {
+    return [
+      candidate(
+        "two-blocks",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON],
+        `Q1 雙段 M：${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + 2 分鐘 E 慢跑 + ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`,
+        `Q1 two-block M: ${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + 2 min E jog + ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`
+      ),
+      candidate(
+        "continuous",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON],
+        `Q1 連續 M：${d(easyFirstKm)} E + ${d(marathonKm)} M（不停）+ ${d(easySecondKm)} E`,
+        `Q1 continuous M: ${d(easyFirstKm)} E + ${d(marathonKm)} M nonstop + ${d(easySecondKm)} E`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-threshold") {
+    const repetitions = Math.max(2, Math.round(thresholdKm));
+    return [
+      candidate(
+        "one-k",
+        PaceZone.THRESHOLD,
+        [PaceZone.THRESHOLD],
+        `T 間歇：${repetitions} x 1 km T，每趟 1 分鐘慢跑恢復`,
+        `T intervals: ${repetitions} x 1 km T with 1 min jog recoveries`
+      ),
+      candidate(
+        "two-blocks",
+        PaceZone.THRESHOLD,
+        [PaceZone.THRESHOLD],
+        `T 長間歇：${d(thresholdFirstKm)} T + 2 分鐘慢跑 + ${d(thresholdSecondKm)} T`,
+        `Long T intervals: ${d(thresholdFirstKm)} T + 2 min jog + ${d(thresholdSecondKm)} T`
+      ),
+      candidate(
+        "continuous",
+        PaceZone.THRESHOLD,
+        [PaceZone.THRESHOLD],
+        `連續 T：${d(thresholdKm)} T，不安排中途恢復`,
+        `Continuous T: ${d(thresholdKm)} T with no mid-session recovery`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-intervalRepetition") {
+    const intervalRepetitions = Math.max(3, Math.floor(intervalKm / 0.8));
+    const repetitionRepetitions = Math.max(4, Math.floor(repetitionKm / 0.2));
+    return [
+      candidate(
+        "distance",
+        PaceZone.INTERVAL,
+        [PaceZone.INTERVAL, PaceZone.REPETITION],
+        `I＋R 距離版：${intervalRepetitions} x 800 公尺 I（2 分鐘慢跑）+ ${repetitionRepetitions} x 200 公尺 R（200 公尺慢跑）`,
+        `I + R distance version: ${intervalRepetitions} x 800 m I (2 min jog) + ${repetitionRepetitions} x 200 m R (200 m jog)`
+      ),
+      candidate(
+        "r-first",
+        PaceZone.INTERVAL,
+        [PaceZone.REPETITION, PaceZone.INTERVAL],
+        `R 後接 I：${repetitionRepetitions} x 200 公尺 R（200 公尺慢跑）+ ${intervalRepetitions} x 800 公尺 I（3 分鐘慢跑）`,
+        `R into I: ${repetitionRepetitions} x 200 m R (200 m jog) + ${intervalRepetitions} x 800 m I (3 min jog)`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-interval") {
+    const reps800 = Math.max(3, Math.floor(intervalKm / 0.8));
+    const reps1k = Math.max(3, Math.floor(intervalKm));
+    return [
+      candidate(
+        "800m",
+        PaceZone.INTERVAL,
+        [PaceZone.INTERVAL],
+        `I 距離課：${reps800} x 800 公尺 I，每趟 2 分鐘慢跑恢復`,
+        `I distance session: ${reps800} x 800 m I with 2 min jog recoveries`
+      ),
+      candidate(
+        "1k",
+        PaceZone.INTERVAL,
+        [PaceZone.INTERVAL],
+        `I 長間歇：${reps1k} x 1 km I，每趟 3 分鐘慢跑恢復`,
+        `Long I intervals: ${reps1k} x 1 km I with 3 min jog recoveries`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-marathon") {
+    return [
+      candidate(
+        "continuous",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON],
+        `M 穩定跑：${d(easyFirstKm)} E + ${d(marathonKm)} M（不停）+ ${d(easySecondKm)} E`,
+        `Steady M run: ${d(easyFirstKm)} E + ${d(marathonKm)} M nonstop + ${d(easySecondKm)} E`
+      ),
+      candidate(
+        "two-blocks",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON],
+        `M 分段跑：${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + 1 km E + ${d(marathonSecondKm)} M + ${d(Math.max(0, easySecondKm - 1))} E`,
+        `Split M run: ${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + 1 km E + ${d(marathonSecondKm)} M + ${d(Math.max(0, easySecondKm - 1))} E`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-marathonThreshold") {
+    return [
+      candidate(
+        "m-first",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON, PaceZone.THRESHOLD],
+        `M 後接 T：${d(easyFirstKm)} E + ${d(marathonKm)} M + ${d(thresholdKm)} T（不停）+ ${d(easySecondKm)} E`,
+        `M into T: ${d(easyFirstKm)} E + ${d(marathonKm)} M + ${d(thresholdKm)} T nonstop + ${d(easySecondKm)} E`
+      ),
+      candidate(
+        "split-m",
+        PaceZone.MARATHON,
+        [PaceZone.EASY, PaceZone.MARATHON, PaceZone.THRESHOLD],
+        `雙段 M＋T：${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + ${d(thresholdKm)} T（2 分鐘慢跑）+ ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`,
+        `Two-block M + T: ${d(easyFirstKm)} E + ${d(marathonFirstKm)} M + ${d(thresholdKm)} T (2 min jog) + ${d(marathonSecondKm)} M + ${d(easySecondKm)} E`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-intervalThreshold") {
+    return [
+      candidate(
+        "t-first",
+        PaceZone.INTERVAL,
+        [PaceZone.THRESHOLD, PaceZone.INTERVAL],
+        `T 後接 I：${d(thresholdKm)} T（3 分鐘慢跑）+ 5 x 3 分鐘 I，每趟 3 分鐘慢跑`,
+        `T into I: ${d(thresholdKm)} T (3 min jog) + 5 x 3 min I with 3 min jogs`
+      ),
+      candidate(
+        "split-i",
+        PaceZone.INTERVAL,
+        [PaceZone.INTERVAL, PaceZone.THRESHOLD],
+        `I 分段＋T：3 x 4 分鐘 I（3 分鐘慢跑）+ ${d(thresholdKm)} T（2 分鐘慢跑）+ 3 x 2 分鐘 I（2 分鐘慢跑）`,
+        `Split I + T: 3 x 4 min I (3 min jog) + ${d(thresholdKm)} T (2 min jog) + 3 x 2 min I (2 min jog)`
+      )
+    ];
+  }
+
+  if (type === "marathon-q2-raceThreshold") {
+    return [3, 4]
+      .filter((repetitions) => repetitions * 0.8 <= thresholdKm + 0.01)
+      .map((repetitions) =>
+        candidate(
+          `${repetitions}x800`,
+          PaceZone.THRESHOLD,
+          [PaceZone.THRESHOLD],
+          `賽前短 T：${repetitions} x 800 公尺 T，每趟 2 分鐘 E 慢跑恢復`,
+          `Short prerace T: ${repetitions} x 800 m T with 2 min E jog recoveries`
+        )
+      );
+  }
+
+  return [];
+}
+
+function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage, weekParity) {
   if (qualityCount <= 0) return [];
 
-  const candidates = getBaseDanielsSequence(race, cycle).filter(
+  const baseSequence =
+    race === TargetRace.ROAD_15K_30K && cycle !== TrainingCycle.PHASE_I
+      ? halfMarathonAlternatingSequence(cycle, weekParity)
+      : getBaseDanielsSequence(race, cycle);
+  const candidates = baseSequence.filter(
     (workout) =>
       workout.distanceRole !== "longRun" &&
       workout.distanceRole !== "reducedLongRun" &&
@@ -581,6 +1265,13 @@ function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage) {
     .filter(Boolean)
     .slice(0, qualityCount)
     .map((workout) => adaptWorkoutToMileage(workout, mileage));
+}
+
+function halfMarathonAlternatingSequence(cycle, weekParity) {
+  const secondary = weekParity === HalfMarathonWeek.EVEN
+    ? intervalQuality(cycle)
+    : repetitionQuality(cycle);
+  return [longRunQuality(cycle), thresholdQuality(cycle), secondary];
 }
 
 function adaptWorkoutToMileage(workout, mileage) {
@@ -1183,6 +1874,16 @@ function normalizeTrainingCycle(trainingCycle) {
   return Object.values(TrainingCycle).includes(trainingCycle)
     ? trainingCycle
     : TrainingCycle.PHASE_II;
+}
+
+function normalizeHalfMarathonWeek(value) {
+  return Object.values(HalfMarathonWeek).includes(value)
+    ? value
+    : HalfMarathonWeek.ODD;
+}
+
+function normalizeMarathonPhaseWeek(value) {
+  return Math.round(clamp(Number(value) || 1, 1, MARATHON_PHASE_WEEKS));
 }
 
 function clamp(value, min, max) {

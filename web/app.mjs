@@ -1,10 +1,13 @@
 import {
+  HalfMarathonWeek,
   KM_PER_MILE,
+  MARATHON_PHASE_WEEKS,
   TargetRace,
   TrainingCycle,
   UnitSystem,
   calculatePaceModel,
-  calculateVdotFromRaceResult
+  calculateVdotFromRaceResult,
+  getMarathonSwapCandidates
 } from "../src/training-planner/paceCalculator.mjs";
 import { segmentsToCsv } from "../src/gpx-effort/csv.mjs";
 import { parseGpxTrackPoints } from "../src/gpx-effort/gpxParser.mjs";
@@ -100,6 +103,7 @@ const copy = {
     estimatedPace: "平均配速",
     invalidRaceTime: "請輸入有效的時分秒。",
     weeklyMileage: "週跑量",
+    peakWeeklyMileage: "峰值週跑量",
     unitSystem: "單位",
     metricUnit: "公制 km",
     imperialUnit: "英制 mile",
@@ -107,6 +111,20 @@ const copy = {
     trainingCycle: "訓練週期",
     trainingCycleHelp:
       "四期週期用來決定本週品質課重點。以 24 週備賽為例，各期約 6 週；若只有 16-18 週，常壓縮為各 4-5 週。Phase I 基礎與防傷；Phase II 初始品質；Phase III 專項品質；Phase IV 保留關鍵刺激並降低疲勞。",
+    halfMarathonWeek: "半馬兩週循環",
+    halfMarathonOddWeek: "單數週 · T＋R",
+    halfMarathonEvenWeek: "雙數週 · T＋I",
+    halfMarathonWeekHelp: "依 Daniels 第 4 版 Alien Program：單數週安排 T＋R，雙數週安排 T＋I。",
+    marathonPhaseWeek: "本期週次",
+    marathonPhaseWeekHelp:
+      "馬拉松每一期以 6 週呈現。週次會改變當週跑量、混合型 Q 課與 Phase IV 減量；輸入的跑量視為本週期峰值。",
+    marathonPhaseWeekOption: "第 {week} 週",
+    peakMileageFraction: "峰值跑量比例",
+    longRunTimeCap: "長跑時間上限",
+    taperTitle: "馬拉松最後六週",
+    taperAutomatic: "已自動套用",
+    raceWeekAdjustmentTitle: "Phase IV 賽前調整",
+    raceWeekOnly: "僅重要比賽週",
     temperature: "溫度",
     humidity: "濕度",
     apparentTemperature: "體感溫度",
@@ -176,9 +194,9 @@ const copy = {
     weeklyPlan: "本週建議安排",
     plannedWeeklyTotal: "本週規劃總量",
     longRunShare: "長跑占比",
-    weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；T 閾值訓練固定保留。",
+    weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；馬拉松另採 2Q 間隔、混合長課與減量規則。",
     switchWorkout: "換堂課",
-    coachPick: "教練建議",
+    coachPick: "課表建議",
     skipEasyRun: "今天不跑",
     restoreEasyRun: "恢復跑步",
     workoutExamples: "跑量可用課表",
@@ -193,7 +211,7 @@ const copy = {
       "Daniels VDOT 表通常把 M/T/I/R 顯示為單一目標配速；本分支也改用單點配速。E 保留範圍，因為 E 跑的目的在於用可恢復、可交談的強度累積有氧跑量，而不是精準刺激單一生理門檻，所以能依疲勞、天氣與地形在一段配速範圍內調整。",
     sourceTitle: "資料來源與計算方式",
     sourceNote:
-      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構、E/M/T/I/R 訓練強度概念與四期週期。先前用強度比例帶呈現 E/M/T/I/R 區間時，相鄰區間可能因比例帶接近、四捨五入與熱天降速後看起來重合；這不是 Daniels VDOT 表本身有多個 T/I/R 配速，而是區間呈現造成的視覺結果。現在 E 仍以 59-74% VDOT 的範圍估算；M/T/I/R 改用單點目標強度，並以跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度後換算成配速。熱天配速調整保留在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。課量上限以 Daniels 原則估算：T 上限為週跑量 10%，但不超過 24 km（15 mi）；I 上限為週跑量 8%，但不超過 10 km；R 上限為週跑量 5%，但不超過 8 km（5 mi）。",
+      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構、E/M/T/I/R 訓練強度概念與四期週期。先前用強度比例帶呈現 E/M/T/I/R 區間時，相鄰區間可能因比例帶接近、四捨五入與熱天降速後看起來重合；這不是 Daniels VDOT 表本身有多個 T/I/R 配速，而是區間呈現造成的視覺結果。現在 E 仍以 59-74% VDOT 的範圍估算；M/T/I/R 改用單點目標強度，並以跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度後換算成配速。熱天配速調整保留在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。馬拉松課量上限：T 為 min(週量 10%, 24 km)、I 為 min(8%, 10 km)、R 為 min(5%, 8 km)、M 在週量超過 64 km 時為 min(20%, 29 km)，較低週量則為 min(30%, 29 km)。長跑在 64 km 以下採 30%、以上採 25%，並與 150 分鐘取較小值。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -290,6 +308,7 @@ const copy = {
     estimatedPace: "Average Pace",
     invalidRaceTime: "Enter a valid race time.",
     weeklyMileage: "Weekly Mileage",
+    peakWeeklyMileage: "Peak Weekly Mileage",
     unitSystem: "Units",
     metricUnit: "Metric km",
     imperialUnit: "Imperial mile",
@@ -297,6 +316,20 @@ const copy = {
     trainingCycle: "Training Cycle",
     trainingCycleHelp:
       "The four-phase cycle changes the weekly quality emphasis. In a 24-week build, each phase is roughly 6 weeks; a 16-18 week build often compresses phases to about 4-5 weeks. Phase I builds durability, Phase II adds initial quality, Phase III shifts event-specific, and Phase IV keeps key stimulus while reducing fatigue.",
+    halfMarathonWeek: "Half-marathon two-week cycle",
+    halfMarathonOddWeek: "Odd week · T + R",
+    halfMarathonEvenWeek: "Even week · T + I",
+    halfMarathonWeekHelp: "Daniels 4th ed. Alien Program: odd weeks use T + R; even weeks use T + I.",
+    marathonPhaseWeek: "Week in phase",
+    marathonPhaseWeekHelp:
+      "Each marathon phase is shown as six weeks. The selected week changes volume, mixed Q sessions, and the Phase IV taper; entered mileage is treated as peak mileage.",
+    marathonPhaseWeekOption: "Week {week}",
+    peakMileageFraction: "Fraction of peak",
+    longRunTimeCap: "Long-run time cap",
+    taperTitle: "Final six marathon weeks",
+    taperAutomatic: "Applied automatically",
+    raceWeekAdjustmentTitle: "Phase IV race adjustment",
+    raceWeekOnly: "Important race week only",
     temperature: "Temperature",
     humidity: "Humidity",
     apparentTemperature: "Feels like",
@@ -366,9 +399,9 @@ const copy = {
     weeklyPlan: "Suggested Week",
     plannedWeeklyTotal: "Planned weekly total",
     longRunShare: "Long-run share",
-    weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Threshold stays in every plan.",
+    weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Marathon plans add 2Q spacing, mixed long sessions, and taper rules.",
     switchWorkout: "Swap Workout",
-    coachPick: "Coach Pick",
+    coachPick: "Plan recommendation",
     skipEasyRun: "Skip Run",
     restoreEasyRun: "Restore Run",
     workoutExamples: "Mileage-Based Workouts",
@@ -383,7 +416,7 @@ const copy = {
       "Daniels VDOT tables generally present M/T/I/R as point target paces, so this branch now displays them as point targets. E remains a range because easy running is meant to accumulate aerobic volume at a recoverable, conversational effort rather than hit one precise physiological threshold; it can flex with fatigue, weather, and terrain.",
     sourceTitle: "Source & Calculation",
     sourceNote:
-      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework, E/M/T/I/R intensity concepts, and four-phase planning. The earlier range-based display could make adjacent zones appear to overlap because intensity bands were close, values were rounded, and heat adjustment slowed E/M/T/I paces. That overlap was a display choice, not a claim that the VDOT table has multiple T/I/R paces for one VDOT. E is still estimated as a 59-74% VDOT range; M/T/I/R now use point target intensities and the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² to solve velocity and convert it to pace. Heat/humidity pace adjustment is still applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Daniels-style volume guardrails: T is capped at 10% of weekly mileage and not more than 24 km (15 mi); I is capped at 8% and not more than 10 km; R is capped at 5% and not more than 8 km (5 mi).",
+      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework, E/M/T/I/R intensity concepts, and four-phase planning. The earlier range-based display could make adjacent zones appear to overlap because intensity bands were close, values were rounded, and heat adjustment slowed E/M/T/I paces. That overlap was a display choice, not a claim that the VDOT table has multiple T/I/R paces for one VDOT. E is still estimated as a 59-74% VDOT range; M/T/I/R now use point target intensities and the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² to solve velocity and convert it to pace. Heat/humidity pace adjustment is still applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Marathon guardrails: T is min(10% of weekly mileage, 24 km), I is min(8%, 10 km), R is min(5%, 8 km), and M is min(20%, 29 km) above 64 km per week or min(30%, 29 km) below that threshold. Long runs use 30% below 64 km, 25% above it, and are also capped at 150 minutes.",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -465,6 +498,8 @@ const state = {
   unitSystem: UnitSystem.METRIC,
   targetRace: TargetRace.FIVE_TEN_K,
   trainingCycle: TrainingCycle.PHASE_II,
+  halfMarathonWeek: HalfMarathonWeek.ODD,
+  marathonPhaseWeek: 1,
   vdot: 50,
   raceDistanceMeters: 5000,
   raceHours: 0,
@@ -823,6 +858,12 @@ function renderInputs(t) {
     state.unitSystem === UnitSystem.IMPERIAL ? t.miPerWeek : t.kmPerWeek;
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
+  const showHalfMarathonWeek =
+    isPlan &&
+    state.targetRace === TargetRace.ROAD_15K_30K &&
+    state.trainingCycle !== TrainingCycle.PHASE_I;
+  const showMarathonPhaseWeek =
+    isPlan && state.targetRace === TargetRace.MARATHON;
 
   const sectionTitle = isConverter ? t.conversionSettings : t.runnerAbilitySection;
   const sectionHelp = isConverter ? t.conversionSettingsHelp : t.runnerAbilityHelp;
@@ -864,9 +905,23 @@ function renderInputs(t) {
                         label: t.cycleNames[value]
                       }))
                     )}
+                    ${showHalfMarathonWeek ? renderHalfMarathonWeekToggle(t) : ""}
+                    ${
+                      showMarathonPhaseWeek
+                        ? `${renderMenuField(
+                            t.marathonPhaseWeek,
+                            "marathonPhaseWeek",
+                            state.marathonPhaseWeek,
+                            Array.from({ length: MARATHON_PHASE_WEEKS }, (_, index) => ({
+                              value: index + 1,
+                              label: t.marathonPhaseWeekOption.replace("{week}", index + 1)
+                            }))
+                          )}<p class="field-note">${t.marathonPhaseWeekHelp}</p>`
+                        : ""
+                    }
                     <p class="field-note">${t.trainingCycleHelp}</p>
                     ${renderRangeField(
-                      t.weeklyMileage,
+                      showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage,
                       "weeklyMileage",
                       state.weeklyMileage,
                       0,
@@ -910,6 +965,32 @@ function renderInputs(t) {
       </div>
       ${renderAutoWeatherControl(t)}
     </section>
+  `;
+}
+
+function renderHalfMarathonWeekToggle(t) {
+  const isOdd = state.halfMarathonWeek === HalfMarathonWeek.ODD;
+  return `
+    <fieldset class="field half-week-field">
+      <legend>${t.halfMarathonWeek}</legend>
+      <div class="half-week-toggle" role="group" aria-label="${t.halfMarathonWeek}">
+        <button
+          type="button"
+          class="${isOdd ? "active" : ""}"
+          data-action="set-half-marathon-week"
+          data-value="${HalfMarathonWeek.ODD}"
+          aria-pressed="${isOdd}"
+        >${t.halfMarathonOddWeek}</button>
+        <button
+          type="button"
+          class="${isOdd ? "" : "active"}"
+          data-action="set-half-marathon-week"
+          data-value="${HalfMarathonWeek.EVEN}"
+          aria-pressed="${!isOdd}"
+        >${t.halfMarathonEvenWeek}</button>
+      </div>
+      <p>${t.halfMarathonWeekHelp}</p>
+    </fieldset>
   `;
 }
 
@@ -2810,7 +2891,8 @@ function renderWeeklySchedule(model, t) {
     (total, day) => total + Number(day.plannedDistanceKm ?? 0),
     0
   );
-  const longRunKm = Number(schedule.find((day) => day.isLongRun)?.plannedDistanceKm ?? 0);
+  const longRunDay = schedule.find((day) => day.isLongRun);
+  const longRunKm = Number(longRunDay?.plannedDistanceKm ?? 0);
   const longRunShare = plannedTotalKm > 0
     ? Math.round((longRunKm / plannedTotalKm) * 1000) / 10
     : 0;
@@ -2823,20 +2905,40 @@ function renderWeeklySchedule(model, t) {
   );
   const hasOpenSwapMenu = typeof state.openMenu === "string" &&
     state.openMenu.startsWith("plan-workout-");
+  const halfWeekLabel =
+    model.targetRace === TargetRace.ROAD_15K_30K &&
+    model.trainingCycle !== TrainingCycle.PHASE_I
+      ? ` · ${model.halfMarathonWeek === HalfMarathonWeek.EVEN
+        ? t.halfMarathonEvenWeek
+        : t.halfMarathonOddWeek}`
+      : "";
+  const marathonWeekLabel = model.targetRace === TargetRace.MARATHON
+    ? ` · ${t.marathonPhaseWeekOption.replace("{week}", model.marathonPhaseWeek)}`
+    : "";
+  const longRunLimit = Number(longRunDay?.longRunLimitPercentage ?? 30);
+  const longRunTimeSummary = model.targetRace === TargetRace.MARATHON
+    ? `<span>${t.longRunTimeCap}<strong>${Math.round(Number(longRunDay?.estimatedMaxMinutes ?? 0))} / ${Number(longRunDay?.longRunTimeLimitMinutes ?? 150)} min</strong></span>`
+    : "";
+  const peakFractionSummary = model.marathonPlan
+    ? `<span>${t.peakMileageFraction}<strong>${Math.round(model.marathonPlan.fraction * 100)}%</strong></span>`
+    : "";
 
   return `
     <section class="weekly-plan ${hasOpenSwapMenu ? "swap-open" : ""}">
       <div class="weekly-plan-head">
         <div>
-          <p class="eyebrow">${t.targetRaceNames[model.targetRace]} · ${t.cycleNames[model.trainingCycle]}</p>
+          <p class="eyebrow">${t.targetRaceNames[model.targetRace]} · ${t.cycleNames[model.trainingCycle]}${halfWeekLabel}${marathonWeekLabel}</p>
           <h3>${t.weeklyPlan}</h3>
         </div>
         <p>${t.weeklyPlanNote}</p>
       </div>
       <div class="week-volume-summary">
         <span>${t.plannedWeeklyTotal}<strong>${plannedTotal}</strong></span>
-        <span>${t.longRunShare}<strong>${longRunShare}% ≤ 30%</strong></span>
+        ${peakFractionSummary}
+        <span>${t.longRunShare}<strong>${longRunShare}% ≤ ${longRunLimit}%</strong></span>
+        ${longRunTimeSummary}
       </div>
+      ${renderTaperRecommendation(model, t)}
       <p class="drag-hint schedule-drag-hint">${t.scheduleDragHint}</p>
       <div class="week-scroll">
         <div class="week-day-row" aria-hidden="true">
@@ -2852,9 +2954,41 @@ function renderWeeklySchedule(model, t) {
   `;
 }
 
+function renderTaperRecommendation(model, t) {
+  if (!model.taperRecommendation) return "";
+  const recommendation = state.locale === "en"
+    ? model.taperRecommendation.en
+    : model.taperRecommendation.zh;
+  const status = model.taperRecommendation.automatic
+    ? t.taperAutomatic
+    : t.raceWeekOnly;
+  const title = model.taperRecommendation.automatic
+    ? t.taperTitle
+    : t.raceWeekAdjustmentTitle;
+
+  return `
+    <aside class="taper-recommendation surface-card">
+      <div>
+        <strong>${title}</strong>
+        <span>${status}</span>
+      </div>
+      <p>${recommendation}</p>
+    </aside>
+  `;
+}
+
 function renderPlanDay(day, t, index, model) {
   const candidates = getPlanWorkoutCandidates(day, model);
   const selectedWorkout = getSelectedPlanWorkout(index, candidates);
+  const displayDay = selectedWorkout
+    ? {
+        ...day,
+        zone: selectedWorkout.zone ?? day.zone,
+        paceZoneIds: selectedWorkout.paceZoneIds ?? day.paceZoneIds,
+        zhDistanceLabel: selectedWorkout.zhDistanceLabel ?? day.zhDistanceLabel,
+        enDistanceLabel: selectedWorkout.enDistanceLabel ?? day.enDistanceLabel
+      }
+    : day;
   const title = selectedWorkout
     ? state.locale === "en"
       ? selectedWorkout.en
@@ -2862,20 +2996,15 @@ function renderPlanDay(day, t, index, model) {
     : state.locale === "en"
       ? day.en
       : day.zh;
-  const paceBlock = day.pace
-    ? `<div class="plan-pace">
-        <strong><small class="pace-tag">${day.zone === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</small>${renderPaceValue(day.pace)}</strong>
-        <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(day.base)}</em>
-      </div>`
-    : "";
+  const paceBlock = renderPlanPaceBlock(displayDay, model, t);
   const easyRestControl = renderEasyRestControl(day, index, t);
   const plannedDistanceLabel = state.locale === "en"
-    ? day.enDistanceLabel
-    : day.zhDistanceLabel;
+    ? displayDay.enDistanceLabel
+    : displayDay.zhDistanceLabel;
 
   return `
     <article
-      class="plan-day ${zoneTone[day.zone]} ${day.isSkippedEasyRun ? "is-rest" : ""}"
+      class="plan-day ${zoneTone[displayDay.zone]} ${day.isSkippedEasyRun ? "is-rest" : ""}"
       draggable="false"
       data-plan-card
       data-plan-index="${index}"
@@ -2884,13 +3013,34 @@ function renderPlanDay(day, t, index, model) {
       ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t)}
       ${easyRestControl}
       <div>
-        <b>${day.zone}</b>
+        <b>${displayDay.zone}</b>
         <p>${title}</p>
         ${plannedDistanceLabel ? `<span class="plan-distance-label">${plannedDistanceLabel}</span>` : ""}
         ${paceBlock}
       </div>
     </article>
   `;
+}
+
+function renderPlanPaceBlock(day, model, t) {
+  const zoneIds = Array.isArray(day.paceZoneIds) && day.paceZoneIds.length > 0
+    ? day.paceZoneIds
+    : day.pace
+      ? [day.zone]
+      : [];
+  const rows = zoneIds
+    .map((zoneId) => model.zones.find((zone) => zone.id === zoneId))
+    .filter(Boolean)
+    .map((zone) => `
+      <div class="plan-pace-row">
+        <span class="plan-zone-tag">${zone.id}</span>
+        <strong><small class="pace-tag">${zone.id === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</small>${renderPaceValue(zone.adjusted.label)}</strong>
+        <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(zone.base.label)}</em>
+      </div>
+    `)
+    .join("");
+
+  return rows ? `<div class="plan-pace">${rows}</div>` : "";
 }
 
 function renderEasyRestControl(day, index, t) {
@@ -3300,6 +3450,12 @@ function syncRangeSlider(field, value) {
 function updateFieldValue(field, value) {
   state.openMenu = null;
 
+  if (["targetRace", "trainingCycle", "marathonPhaseWeek"].includes(field)) {
+    state.planWorkoutOverrides = {};
+    state.planOrder = [];
+    state.skippedEasyDays = {};
+  }
+
   if (field === "unitSystem") {
     updateUnitSystem(value);
     return;
@@ -3398,6 +3554,15 @@ function handleAction(event) {
       event.currentTarget.dataset.field,
       event.currentTarget.dataset.value
     );
+  }
+
+  if (action === "set-half-marathon-week") {
+    const nextWeek = event.currentTarget.dataset.value;
+    if (Object.values(HalfMarathonWeek).includes(nextWeek)) {
+      state.halfMarathonWeek = nextWeek;
+      state.planWorkoutOverrides = {};
+      state.openMenu = null;
+    }
   }
 
   if (action === "toggle-plan-workout-menu") {
@@ -4553,6 +4718,9 @@ function formatPlanDistance(value) {
 }
 
 function getPlanWorkoutCandidates(day, model) {
+  if (model.targetRace === TargetRace.MARATHON) {
+    return getMarathonSwapCandidates(day, model.unitSystem);
+  }
   if (!["T", "I", "R"].includes(day.zone)) return [];
   return model.workoutExamples.filter((example) => example.zone === day.zone);
 }
