@@ -486,8 +486,10 @@ const trainingCycleOptions = [
   TrainingCycle.PHASE_IV
 ];
 
+const initialLocale = document.documentElement.lang.startsWith("en") ? "en" : "zh-TW";
+
 const state = {
-  locale: "zh-TW",
+  locale: initialLocale,
   toolMode: "pace",
   sidebarOpen: window.matchMedia("(min-width: 621px)").matches,
   theme: "light",
@@ -3450,6 +3452,13 @@ function syncRangeSlider(field, value) {
 function updateFieldValue(field, value) {
   state.openMenu = null;
 
+  if (field === "locale") {
+    const nextLocale = value === "en" ? "en" : "zh-TW";
+    const nextPath = nextLocale === "en" ? "/en" : "/";
+    if (state.locale !== nextLocale) window.location.assign(nextPath);
+    return;
+  }
+
   if (["targetRace", "trainingCycle", "marathonPhaseWeek"].includes(field)) {
     state.planWorkoutOverrides = {};
     state.planOrder = [];
@@ -3462,7 +3471,6 @@ function updateFieldValue(field, value) {
   }
 
   if (
-    field === "locale" ||
     field === "toolMode" ||
     field === "converterType" ||
     field === "equivalentDirection" ||

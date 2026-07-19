@@ -17,8 +17,7 @@ const mimeTypes = {
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
-    const requestedPath =
-      url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+    const requestedPath = resolvePagePath(decodeURIComponent(url.pathname));
     const staticPath = requestedPath.startsWith("/gpx/")
       ? `/public${requestedPath}`
       : requestedPath;
@@ -42,3 +41,9 @@ createServer(async (request, response) => {
 }).listen(port, () => {
   console.log(`runstrategy available at http://localhost:${port}`);
 });
+
+function resolvePagePath(pathname) {
+  if (pathname === "/") return "/index.html";
+  if (pathname === "/en" || pathname === "/en/") return "/en/index.html";
+  return pathname;
+}
