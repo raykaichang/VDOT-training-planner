@@ -3193,6 +3193,19 @@ input[type="text"],
     transform 150ms ease;
 }
 
+.gpx-static-value {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-raised);
+  color: var(--text);
+  padding-inline: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 select:hover,
 input[type="number"]:hover,
 input[type="text"]:hover,

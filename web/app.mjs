@@ -1454,15 +1454,22 @@ function renderGpxInputs() {
   const gpx = getGpxCopy();
   return `
     <div class="field-grid gpx-control-grid">
-      ${renderNativeSelect(
-        gpx.sourceMode,
-        "gpxSourceMode",
-        state.gpxSourceMode,
-        [
-          { value: "upload", label: gpx.uploadSource },
-          { value: "preset", label: gpx.presetSource }
-        ]
-      )}
+      ${
+        state.locale === "en"
+          ? `<div class="field">
+              <span>${gpx.sourceMode}</span>
+              <div class="gpx-static-value">${gpx.uploadSource}</div>
+            </div>`
+          : renderNativeSelect(
+              gpx.sourceMode,
+              "gpxSourceMode",
+              state.gpxSourceMode,
+              [
+                { value: "upload", label: gpx.uploadSource },
+                { value: "preset", label: gpx.presetSource }
+              ]
+            )
+      }
       ${renderGpxSourceInput(gpx)}
       ${renderNativeSelect(
         gpx.targetInputMode,
@@ -1548,7 +1555,7 @@ function renderGpxHeatSettings(gpx) {
 }
 
 function renderGpxSourceInput(gpx) {
-  if (state.gpxSourceMode === "preset") {
+  if (state.locale !== "en" && state.gpxSourceMode === "preset") {
     const loadedName = getGpxDisplayName();
     return `
       ${renderNativeSelect(
