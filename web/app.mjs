@@ -1121,11 +1121,15 @@ function renderThemeSwitch(t) {
 }
 
 function renderFeedbackLink() {
-  const label = state.locale === "en" ? "Feedback" : "意見回饋";
+  const isEnglish = state.locale === "en";
+  const label = isEnglish ? "Feedback" : "意見回饋";
+  const href = isEnglish
+    ? "https://forms.gle/8bDPiFySHkMdXfrw8"
+    : "https://forms.gle/g9of21FT8VwgfoYF8";
   return `
     <a
       class="feedback-link"
-      href="https://forms.gle/g9of21FT8VwgfoYF8"
+      href="${href}"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="${label}"
