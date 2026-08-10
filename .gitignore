@@ -9,6 +9,8 @@ server.err.log
 Thumbs.db
 
 # Android / Gradle
+/android/
+/tests/androidApp.test.mjs
 .gradle/
 .gradle-cache/
 .gradle-dist/
