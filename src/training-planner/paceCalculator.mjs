@@ -1,3 +1,18 @@
+import {
+  HANSONS_PLAN_LENGTHS,
+  HansonsLevel,
+  TrainingMethod,
+  getHansonsDefaultWeek,
+  generateHansonsWeeklySchedule
+} from "./hansonsPlanner.mjs";
+
+export {
+  HANSONS_PLAN_LENGTHS,
+  HansonsLevel,
+  TrainingMethod,
+  getHansonsDefaultWeek
+} from "./hansonsPlanner.mjs";
+
 export const PaceZone = Object.freeze({
   EASY: "E",
   MARATHON: "M",
@@ -15,8 +30,11 @@ export const TargetRace = Object.freeze({
   EIGHT_HUNDRED: "800m",
   MILE_TO_TWO_MILE: "1500m-2mi",
   FIVE_TEN_K: "5K-10K",
+  FIVE_K: "5K",
+  TEN_K: "10K",
   CROSS_COUNTRY: "Cross Country",
   ROAD_15K_30K: "15K-30K",
+  HALF_MARATHON: "Half Marathon",
   MARATHON: "Marathon"
 });
 
@@ -275,9 +293,14 @@ export function calculatePaceModel(input = {}) {
   const weeklyMileage = clamp(Number(input.weeklyMileage ?? 55), 0, weeklyMileageMax);
   const weeklyMileageKm = roundTo(clamp(toKilometers(weeklyMileage, unitSystem), 0, 180), 1);
   const targetRace = normalizeTargetRace(input.targetRace);
+  const trainingMethod = normalizeTrainingMethod(input.trainingMethod);
   const trainingCycle = normalizeTrainingCycle(input.trainingCycle);
   const halfMarathonWeek = normalizeHalfMarathonWeek(input.halfMarathonWeek);
   const marathonPhaseWeek = normalizeMarathonPhaseWeek(input.marathonPhaseWeek);
+  const hansonsWeek = Math.max(1, Math.round(Number(input.hansonsWeek) || 1));
+  const hansonsLevel = Object.values(HansonsLevel).includes(input.hansonsLevel)
+    ? input.hansonsLevel
+    : HansonsLevel.BEGINNER;
   const temperatureC = clamp(Number(input.temperatureC ?? 22), -5, 45);
   const humidity = clamp(Number(input.humidity ?? 60), 0, 100);
   const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity, vdot);
@@ -288,23 +311,37 @@ export function calculatePaceModel(input = {}) {
     return buildZonePace(zone, vdot, heatMultiplier, unitSystem);
   });
 
-  const weeklySchedule = generateWeeklySchedule({
-    targetRace,
-    trainingCycle,
-    halfMarathonWeek,
-    marathonPhaseWeek,
-    weeklyMileageKm,
-    unitSystem,
-    zones
-  });
-  const marathonPlan = targetRace === TargetRace.MARATHON
+  const hansonsResult = trainingMethod === TrainingMethod.HANSONS
+    ? generateHansonsWeeklySchedule({
+        targetRace,
+        planWeek: hansonsWeek,
+        level: hansonsLevel,
+        peakMileageKm: weeklyMileageKm,
+        unitSystem,
+        zones,
+        vdot,
+        heatMultiplier: heatAdjustment.multiplier
+      })
+    : null;
+  const weeklySchedule = hansonsResult?.schedule ?? generateWeeklySchedule({
+      targetRace,
+      trainingCycle,
+      halfMarathonWeek,
+      marathonPhaseWeek,
+      weeklyMileageKm,
+      unitSystem,
+      zones
+    });
+  const marathonPlan = trainingMethod === TrainingMethod.DANIELS && targetRace === TargetRace.MARATHON
     ? getMarathonWeekPlan(trainingCycle, marathonPhaseWeek, weeklyMileageKm)
     : null;
-  const taperRecommendation = getTaperRecommendation(
-    targetRace,
-    trainingCycle,
-    marathonPlan
-  );
+  const taperRecommendation = trainingMethod === TrainingMethod.HANSONS
+    ? hansonsResult?.taperRecommendation ?? null
+    : getTaperRecommendation(
+        targetRace,
+        trainingCycle,
+        marathonPlan
+      );
 
   return {
     vdot,
@@ -312,9 +349,12 @@ export function calculatePaceModel(input = {}) {
     weeklyMileageKm,
     unitSystem,
     targetRace,
+    trainingMethod,
     trainingCycle,
     halfMarathonWeek,
     marathonPhaseWeek,
+    hansonsWeek: hansonsResult?.plan.week ?? hansonsWeek,
+    hansonsLevel,
     temperatureC,
     humidity,
     heatAdjustment,
@@ -326,6 +366,7 @@ export function calculatePaceModel(input = {}) {
     ),
     weeklySchedule,
     marathonPlan,
+    hansonsPlan: hansonsResult?.plan ?? null,
     taperRecommendation,
     zones
   };
@@ -341,6 +382,24 @@ export function fromKilometers(distanceKm, unitSystem = UnitSystem.METRIC) {
   return normalizeUnitSystem(unitSystem) === UnitSystem.IMPERIAL
     ? Number(distanceKm) / KM_PER_MILE
     : Number(distanceKm);
+}
+
+export function calculateAveragePaceSeconds(
+  totalSeconds,
+  distanceMeters,
+  unitSystem = UnitSystem.METRIC
+) {
+  const seconds = Number(totalSeconds);
+  const meters = Number(distanceMeters);
+
+  if (!Number.isFinite(seconds) || !Number.isFinite(meters) || seconds <= 0 || meters <= 0) {
+    return null;
+  }
+
+  const secondsPerKm = seconds / (meters / 1000);
+  return normalizeUnitSystem(unitSystem) === UnitSystem.IMPERIAL
+    ? secondsPerKm * KM_PER_MILE
+    : secondsPerKm;
 }
 
 export function getMileageClass(weeklyMileage) {
@@ -1456,7 +1515,7 @@ function sum(values) {
 }
 
 function getBaseDanielsSequence(race, cycle) {
-  if (race === TargetRace.ROAD_15K_30K) {
+  if (race === TargetRace.ROAD_15K_30K || race === TargetRace.HALF_MARATHON) {
     return road15K30KSequence(cycle);
   }
 
@@ -1862,6 +1921,12 @@ function normalizeUnitSystem(unitSystem) {
   return Object.values(UnitSystem).includes(unitSystem)
     ? unitSystem
     : UnitSystem.METRIC;
+}
+
+function normalizeTrainingMethod(trainingMethod) {
+  return Object.values(TrainingMethod).includes(trainingMethod)
+    ? trainingMethod
+    : TrainingMethod.DANIELS;
 }
 
 function normalizeTargetRace(targetRace) {

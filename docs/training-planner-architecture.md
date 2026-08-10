@@ -60,6 +60,25 @@ Non-marathon Phase IV guidance is event-specific rather than a generic percentag
 
 These are weights, not rigid templates. The scoring engine may rotate the secondary workout when the same stimulus has appeared too often recently.
 
+## Hansons Plans
+
+The planner exposes Hansons as a separate training system rather than mixing Hansons workouts into the Daniels phase engine.
+
+- 5K and 10K plans span 12 weeks; half-marathon and marathon plans span 18 weeks.
+- Half-marathon and marathon Beginner/Advanced plans reproduce the official Luke Humphrey Running schedule structure, weekly totals, long-run progression, Speed-to-Strength transition, goal-pace tempo progression, taper, and race week.
+- After the official introductory weeks, every formal quality week follows the Hansons SOS pattern: Tuesday Speed or Strength intervals, Thursday goal-pace Tempo, Sunday long run, with easy or rest days between them. Beginner half marathon adds Tempo in week 5 and the Tuesday interval in week 6; Beginner marathon adds both in week 6. Advanced half marathon starts both in week 2, while Advanced marathon adds Tuesday Speed in week 2 and Thursday Tempo in week 3.
+- Tuesday Speed follows the exact distance-specific Classic sequence instead of cycling one generic five-workout list. Half-marathon 1,000 m and 1,200 m workouts use the longer recoveries shown in its PDFs; Advanced half-marathon and marathon each use their own nine-week Speed progression.
+- Tuesday changes at week 11 from 5K-10K Speed to Strength pace: Beginner half marathon uses HMP minus 10 seconds per mile, Advanced half marathon uses 10K pace, and marathon uses MP minus 10 seconds per mile. Thursday remains goal HMP or MP Tempo and grows according to the published table.
+- Workout totals include every prescribed recovery jog plus the full published warm-up and cooldown: three miles total around interval/Strength sessions, three miles around half-marathon Tempo, and two miles around marathon Tempo.
+- At the published Classic peak, each Monday, Tuesday, Thursday, Friday, Saturday, and Sunday distance follows the official daily table instead of evenly redistributing the weekly remainder. Wednesday remains Rest/Cross-Train, and the planner does not add strides that are absent from the Classic PDFs.
+- The mileage input is the athlete's peak weekly mileage. From 75% of the published Classic peak upward, quality work uses a conservative nonlinear reduction while preserving prescribed pace. Below 75%, a separate generated low-volume adaptation replaces direct table scaling. Speed weeks reduce repetitions while retaining pace. In Strength weeks at or below 42 km peak mileage, late-cycle weeks use the selected peak where possible, the long run is held near 30%, Tempo retains roughly 4-6 km of work, and a distance progression preserves roughly 3-6 km of Strength work. At 32-35 km per week the central Strength session is `3 x 1.5 km`; recovery is counted between repetitions only, and compact warm-up/cooldown prevents session totals from being padded. Remaining mileage is distributed to Easy days. This adaptation is explicitly labeled as generated logic rather than an official Hansons table.
+- A zero-mile peak produces rest days outside race week; it no longer leaves an artificial minimum long run behind.
+- 5K and 10K use the official Hansons short-distance principles publicly described by Luke Humphrey Running: accumulated fatigue, easy volume, race-specific work, and a final taper. These are distance-specific generated plans, not a claimed transcription of a published Classic table.
+- Hansons mode intentionally offers only 5K, 10K, half marathon, and marathon. It does not include the Daniels-style 10K completion plan.
+- Hansons paces are exposed as session-specific rows, including 5K/10K race pace, goal HMP/MP, Strength pace, and long-run pace where applicable.
+
+Official source links, checksums, and implementation notes are stored under `docs/research/hansons-official/`. Downloaded PDFs remain local research files and are not redistributed through the repository.
+
 ## Localization
 
 The planner UI model defaults to Traditional Chinese (`zh-TW`) and exposes an English (`en`) option. The planner response includes localized labels and workout names so a UI can render Chinese by default while offering an EN switch.

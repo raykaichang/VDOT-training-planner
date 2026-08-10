@@ -8,6 +8,16 @@ server.err.log
 .DS_Store
 Thumbs.db
 
+# Android / Gradle
+.gradle/
+.gradle-cache/
+.gradle-dist/
+.android-sdk/
+**/build/
+local.properties
+*.iml
+
 class/*.pdf
+docs/research/hansons-official/*.pdf
 
 class/

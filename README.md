@@ -30,6 +30,12 @@ npm run build
 
 Build 會輸出到 `dist/`，內容可部署到 GitHub Pages、Vercel Static 或 Netlify Static。
 
+## Android App
+
+Android 專案位於 `android/`，會在建置時自動同步目前網站的配速、熱環境換算與訓練課表；Android 版採用相同品牌色與 Noto Sans TC、使用底部三分頁導覽，且每項工具都能使用目前位置天氣。Android 版不包含 GPX 功能與路線檔。
+
+完整的 Android Studio、模擬器、實機與命令列測試步驟請看 [`android/README.md`](android/README.md)。
+
 ## GitHub Pages 部署
 
 1. 執行 `npm run build`。

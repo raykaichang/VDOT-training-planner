@@ -1,12 +1,17 @@
 import {
+  HANSONS_PLAN_LENGTHS,
   HalfMarathonWeek,
+  HansonsLevel,
   KM_PER_MILE,
   MARATHON_PHASE_WEEKS,
   TargetRace,
+  TrainingMethod,
   TrainingCycle,
   UnitSystem,
+  calculateAveragePaceSeconds,
   calculatePaceModel,
   calculateVdotFromRaceResult,
+  getHansonsDefaultWeek,
   getMarathonSwapCandidates
 } from "../src/training-planner/paceCalculator.mjs";
 import { segmentsToCsv } from "../src/gpx-effort/csv.mjs";
@@ -104,6 +109,16 @@ const copy = {
     invalidRaceTime: "請輸入有效的時分秒。",
     weeklyMileage: "週跑量",
     peakWeeklyMileage: "峰值週跑量",
+    trainingMethod: "課表系統",
+    danielsMethod: "Daniels 丹尼爾斯",
+    hansonsMethod: "Hansons 漢森",
+    hansonsLevel: "漢森課表級別",
+    hansonsBeginner: "Beginner 入門",
+    hansonsAdvanced: "Advanced 進階",
+    hansonsPlanWeek: "漢森計畫週次",
+    hansonsPlanWeekOption: "第 {week} / {total} 週",
+    hansonsPlanHelp:
+      "5K／10K 使用 12 週公開訓練邏輯；半馬／馬拉松使用官方 Classic 18 週進程。選擇週次後會自動切換基礎、速度、專項耐力與比賽週。",
     unitSystem: "單位",
     metricUnit: "公制 km",
     imperialUnit: "英制 mile",
@@ -195,6 +210,12 @@ const copy = {
     plannedWeeklyTotal: "本週規劃總量",
     longRunShare: "長跑占比",
     weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；馬拉松另採 2Q 間隔、混合長課與減量規則。",
+    weeklyPlanNoteHansons:
+      "依 Hansons 官方 Classic 課表與 Luke Humphrey 公開的 5K／10K 訓練邏輯安排；SOS 不連排，漏課不補課。",
+    hansonsVolumeWarning:
+      "官方 PDF 以 mile 列示，系統用 1 mile＝1.609344 km 換算。峰值跑量低於官方 Classic 峰值時，品質課維持原配速並採非線性減量；跑量減少主要來自 Easy 與品質課總量，而不是降低目標配速。若無法恢復，應先建立跑量。",
+    hansonsLowVolumeWarning:
+      "低跑量調整版（峰值低於官方約 75%）：這不是官方原表的逐欄縮小。Speed 期依週量縮減組數；Strength 期在 42 km／週以下改用約 3–6 km 的專項主課並維持原配速，恢復只計組間。32–35 km／週的中央 Strength 週以 3 × 1.5 km 為主；Tempo 保留約 4–6 km 主課，後期週量盡量用滿峰值，長跑控制在約 30%，其餘分配給 Easy。熱身與收操縮短但不拿來灌大品質課總量。",
     switchWorkout: "換堂課",
     coachPick: "課表建議",
     skipEasyRun: "今天不跑",
@@ -212,6 +233,8 @@ const copy = {
     sourceTitle: "資料來源與計算方式",
     sourceNote:
       "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構、E/M/T/I/R 訓練強度概念與四期週期。先前用強度比例帶呈現 E/M/T/I/R 區間時，相鄰區間可能因比例帶接近、四捨五入與熱天降速後看起來重合；這不是 Daniels VDOT 表本身有多個 T/I/R 配速，而是區間呈現造成的視覺結果。現在 E 仍以 59-74% VDOT 的範圍估算；M/T/I/R 改用單點目標強度，並以跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度後換算成配速。熱天配速調整保留在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。馬拉松課量上限：T 為 min(週量 10%, 24 km)、I 為 min(8%, 10 km)、R 為 min(5%, 8 km)、M 在週量超過 64 km 時為 min(20%, 29 km)，較低週量則為 min(30%, 29 km)。長跑在 64 km 以下採 30%、以上採 25%，並與 150 分鐘取較小值。",
+    sourceNoteHansons:
+      "半馬與馬拉松週期參考 Hansons Running Shop 公開的 Beginner／Advanced Classic 18 週課表；5K 與 10K 依 Luke Humphrey Running 公開的距離專項原則建立，不複製付費課表。重要專項配速由目前 VDOT 等效成績推算；實際目標 MP／HMP 若與目前能力不同，應以可完成整堂課且不破壞後續恢復為準。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -230,8 +253,11 @@ const copy = {
       "800m": "800 公尺",
       "1500m-2mi": "1500 公尺到 2 英里",
       "5K-10K": "5K / 10K",
+      "5K": "5K",
+      "10K": "10K",
       "Cross Country": "越野賽",
       "15K-30K": "15K 到 30K / 半馬",
+      "Half Marathon": "半馬",
       Marathon: "馬拉松"
     },
     cycleNames: {
@@ -309,6 +335,16 @@ const copy = {
     invalidRaceTime: "Enter a valid race time.",
     weeklyMileage: "Weekly Mileage",
     peakWeeklyMileage: "Peak Weekly Mileage",
+    trainingMethod: "Plan System",
+    danielsMethod: "Daniels",
+    hansonsMethod: "Hansons",
+    hansonsLevel: "Hansons Plan Level",
+    hansonsBeginner: "Beginner",
+    hansonsAdvanced: "Advanced",
+    hansonsPlanWeek: "Hansons Plan Week",
+    hansonsPlanWeekOption: "Week {week} of {total}",
+    hansonsPlanHelp:
+      "5K and 10K use a 12-week public-philosophy progression; the half and marathon use the official 18-week Classic progression. The selected week automatically sets the current training phase.",
     unitSystem: "Units",
     metricUnit: "Metric km",
     imperialUnit: "Imperial mile",
@@ -400,6 +436,12 @@ const copy = {
     plannedWeeklyTotal: "Planned weekly total",
     longRunShare: "Long-run share",
     weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Marathon plans add 2Q spacing, mixed long sessions, and taper rules.",
+    weeklyPlanNoteHansons:
+      "Built from the official Hansons Classic plans and Luke Humphrey's public 5K/10K training guidance. SOS days are not stacked, and missed SOS sessions are not made up.",
+    hansonsVolumeWarning:
+      "The official PDFs list miles, converted here at 1 mi = 1.609344 km. Below the published Classic peak, quality sessions keep their prescribed pace and use nonlinear volume reduction; mileage comes out of easy running and quality-session volume rather than target pace. Build mileage first if recovery is inadequate.",
+    hansonsLowVolumeWarning:
+      "Low-volume adaptation (peak below about 75% of the official plan): this is not a column-by-column shrink of the official table. Speed weeks reduce repetitions as mileage requires. Strength weeks below 42 km per week retain about 3–6 km of race-specific work at the prescribed pace, with recovery counted only between repetitions. Central Strength weeks at 32–35 km per week use 3 × 1.5 km; Tempo retains about 4–6 km of work, late-cycle weeks use the selected peak where possible, the long run stays near 30%, and the balance goes to Easy running. Warm-up and cooldown remain short without inflating the quality session.",
     switchWorkout: "Swap Workout",
     coachPick: "Plan recommendation",
     skipEasyRun: "Skip Run",
@@ -417,6 +459,8 @@ const copy = {
     sourceTitle: "Source & Calculation",
     sourceNote:
       "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework, E/M/T/I/R intensity concepts, and four-phase planning. The earlier range-based display could make adjacent zones appear to overlap because intensity bands were close, values were rounded, and heat adjustment slowed E/M/T/I paces. That overlap was a display choice, not a claim that the VDOT table has multiple T/I/R paces for one VDOT. E is still estimated as a 59-74% VDOT range; M/T/I/R now use point target intensities and the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² to solve velocity and convert it to pace. Heat/humidity pace adjustment is still applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Marathon guardrails: T is min(10% of weekly mileage, 24 km), I is min(8%, 10 km), R is min(5%, 8 km), and M is min(20%, 29 km) above 64 km per week or min(30%, 29 km) below that threshold. Long runs use 30% below 64 km, 25% above it, and are also capped at 150 minutes.",
+    sourceNoteHansons:
+      "The half-marathon and marathon progressions reference the free 18-week Beginner and Advanced Classic plans from Hansons Running Shop. The 5K and 10K generators implement Luke Humphrey Running's public distance-specific principles without copying paid calendars. Key race-specific paces are estimated from the current VDOT equivalent; if an actual goal MP/HMP differs from current fitness, use a target that lets you complete the session without compromising later recovery.",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -435,8 +479,11 @@ const copy = {
       "800m": "800 m",
       "1500m-2mi": "1500 m to 2 mi",
       "5K-10K": "5K / 10K",
+      "5K": "5K",
+      "10K": "10K",
       "Cross Country": "Cross Country",
       "15K-30K": "15K to 30K / Half",
+      "Half Marathon": "Half Marathon",
       Marathon: "Marathon"
     },
     cycleNames: {
@@ -479,6 +526,13 @@ const targetRaceOptions = [
   TargetRace.MARATHON
 ];
 
+const hansonsTargetRaceOptions = [
+  TargetRace.FIVE_K,
+  TargetRace.TEN_K,
+  TargetRace.HALF_MARATHON,
+  TargetRace.MARATHON
+];
+
 const trainingCycleOptions = [
   TrainingCycle.PHASE_I,
   TrainingCycle.PHASE_II,
@@ -487,29 +541,33 @@ const trainingCycleOptions = [
 ];
 
 const initialLocale = document.documentElement.lang.startsWith("en") ? "en" : "zh-TW";
+const isAndroidApp = window.__RUNSTRATEGY_ANDROID__ === true;
 
 const state = {
   locale: initialLocale,
   toolMode: "pace",
   sidebarOpen: window.matchMedia("(min-width: 621px)").matches,
   theme: "light",
-  abilityMode: "vdot",
-  converterType: "pace",
+  abilityMode: isAndroidApp ? "race" : "vdot",
+  converterType: isAndroidApp ? "race" : "pace",
   equivalentDirection: "coolToHot",
   openMenu: null,
   unitSystem: UnitSystem.METRIC,
+  trainingMethod: TrainingMethod.DANIELS,
   targetRace: TargetRace.FIVE_TEN_K,
   trainingCycle: TrainingCycle.PHASE_II,
   halfMarathonWeek: HalfMarathonWeek.ODD,
   marathonPhaseWeek: 1,
+  hansonsWeek: 1,
+  hansonsLevel: HansonsLevel.BEGINNER,
   vdot: 50,
   raceDistanceMeters: 5000,
   raceHours: 0,
-  raceMinutes: 20,
-  raceSeconds: 0,
-  equivalentRaceDistanceMeters: 5000,
-  equivalentRaceHours: 0,
-  equivalentRaceMinutes: 20,
+  raceMinutes: isAndroidApp ? 19 : 20,
+  raceSeconds: isAndroidApp ? 55 : 0,
+  equivalentRaceDistanceMeters: isAndroidApp ? 21097.5 : 5000,
+  equivalentRaceHours: isAndroidApp ? 1 : 0,
+  equivalentRaceMinutes: isAndroidApp ? 45 : 20,
   equivalentRaceSeconds: 0,
   paceMinutes: 5,
   paceSeconds: 0,
@@ -520,6 +578,7 @@ const state = {
   weatherStatus: "idle",
   weatherError: "",
   weatherCurrent: null,
+  androidSheet: null,
   manualTemperatureC: 26,
   manualHumidity: 70,
   gpxFileName: "",
@@ -563,6 +622,14 @@ const state = {
 
 const app = document.querySelector("#app");
 let pacePanelObserver = null;
+let pendingToolMode = null;
+let pendingToolModeScrollReset = false;
+let toolModeTransitionTimer = null;
+let hasPlayedAndroidLaunchAnimation = false;
+
+const TOOL_VIEW_EXIT_MS = 120;
+const TOOL_VIEW_ENTER_MS = 260;
+const ANDROID_LAUNCH_ENTER_MS = 440;
 
 const downhillStrategyOptions = {
   conservative: 0.35,
@@ -783,13 +850,19 @@ function getGpxCopy() {
 }
 
 function render() {
-  if (state.toolMode === "gpxCatalog") {
+  if (state.toolMode === "gpxCatalog" || (isAndroidApp && state.toolMode === "gpx")) {
     state.toolMode = "pace";
   }
 
   const t = copy[state.locale];
   const activeVdot = getActiveVdot();
   const model = calculatePaceModel({ ...state, vdot: activeVdot });
+
+  if (isAndroidApp) {
+    renderAndroidApp(model, t);
+    return;
+  }
+
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
   const isGpx = state.toolMode === "gpx";
@@ -809,7 +882,7 @@ function render() {
           ${renderCompactToolbar(t)}
         </header>
 
-        <main class="pace-layout">
+        <main class="pace-layout" data-tool-view>
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
               <p class="section-index">01</p>
@@ -854,18 +927,613 @@ function render() {
   if (!isConverter && !isGpx) fitPaceZonePanel();
 }
 
+function renderAndroidApp(model, t) {
+  document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
+  document.documentElement.dataset.theme = state.theme;
+
+  const content = state.toolMode === "equivalent"
+    ? renderAndroidEquivalentPage(model, t)
+    : state.toolMode === "plan"
+      ? renderAndroidPlanPage(model, t)
+      : renderAndroidPacePage(model, t);
+
+  app.innerHTML = `
+    <div class="android-workspace android-direct-layout">
+      <header class="android-appbar">
+        <strong>RUNSTRATEGY</strong>
+        ${renderCompactToolbar(t)}
+      </header>
+      <main class="android-page" data-tool-view>${content}</main>
+      ${renderAndroidBottomNav(t)}
+    </div>
+  `;
+
+  bindEvents();
+  playAndroidLaunchAnimation();
+}
+
+function playAndroidLaunchAnimation() {
+  if (!isAndroidApp || hasPlayedAndroidLaunchAnimation) return;
+  hasPlayedAndroidLaunchAnimation = true;
+  if (prefersReducedMotion()) return;
+
+  const workspace = app.querySelector(".android-workspace");
+  const bottomNav = workspace?.querySelector(".android-bottom-nav");
+  if (!workspace) return;
+
+  workspace.classList.add("android-app-enter");
+  const clearLaunchAnimation = () => {
+    workspace.classList.remove("android-app-enter");
+    bottomNav?.removeEventListener("animationend", clearLaunchAnimation);
+  };
+
+  bottomNav?.addEventListener("animationend", clearLaunchAnimation);
+  window.setTimeout(clearLaunchAnimation, ANDROID_LAUNCH_ENTER_MS);
+}
+
+function renderAndroidBottomNav(t) {
+  const items = [
+    ["pace", t.sidebarPaceLabel, renderSidebarIcon("pace")],
+    ["equivalent", t.sidebarHeatLabel, renderSidebarIcon("heat")],
+    ["plan", t.sidebarPlanLabel, renderSidebarIcon("plan")]
+  ];
+
+  return `
+    <nav class="android-bottom-nav" aria-label="${t.toolMode}">
+      ${items.map(([value, label, icon]) => `
+        <button
+          type="button"
+          class="${state.toolMode === value ? "active" : ""}"
+          data-action="select-menu-option"
+          data-field="toolMode"
+          data-value="${value}"
+          aria-current="${state.toolMode === value ? "page" : "false"}"
+        >
+          <span aria-hidden="true">${icon}</span>
+          <b>${label}</b>
+        </button>
+      `).join("")}
+    </nav>
+  `;
+}
+
+function renderAndroidPageHead(eyebrow, title, value) {
+  return `
+    <header class="android-page-head">
+      <div><p>${eyebrow}</p><h1>${title}</h1></div>
+      <strong>${value}</strong>
+    </header>
+  `;
+}
+
+function renderAndroidPacePage(model, t) {
+  const estimate = getRaceEstimate();
+  const isRace = state.abilityMode === "race";
+  const abilityInputs = isRace
+    ? `
+      <div class="android-best-result">
+        ${renderAndroidSelect(
+          "raceDistanceMeters",
+          state.raceDistanceMeters,
+          raceDistanceOptions.map((item) => ({
+            value: item.meters,
+            label: state.locale === "en" ? item.en : item.zh
+          })),
+          t.raceDistance
+        )}
+        ${renderAndroidTimeInputs([
+          ["raceHours", state.raceHours, t.hours, 0, 9],
+          ["raceMinutes", state.raceMinutes, t.minutes, 0, 59],
+          ["raceSeconds", state.raceSeconds, t.seconds, 0, 59]
+        ])}
+        <span class="android-vdot-result">${estimate.valid ? `→ VDOT ${estimate.vdot}<small class="finish-result-pace">${formatAverageResultPace(getRaceTimeSeconds(), state.raceDistanceMeters)}</small>` : t.invalidRaceTime}</span>
+      </div>
+    `
+    : `
+      <label class="android-direct-vdot">
+        <span>${t.vdot}</span>
+        <input data-field="vdot" type="number" inputmode="numeric" min="30" max="85" step="1" value="${state.vdot}" />
+      </label>
+    `;
+
+  return `
+    ${renderAndroidPageHead("PACE", t.sidebarPaceLabel, `VDOT ${model.vdot}`)}
+    <section class="android-control-card">
+      <div class="android-setting-line">
+        <label><span>${t.vdotSource}</span>${renderAndroidSelect(
+          "abilityMode",
+          state.abilityMode,
+          [
+            { value: "race", label: t.raceResult },
+            { value: "vdot", label: t.directVdot }
+          ],
+          t.vdotSource
+        )}</label>
+        ${renderAndroidSelect(
+          "unitSystem",
+          state.unitSystem,
+          [
+            { value: UnitSystem.METRIC, label: t.metricUnit },
+            { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+          ],
+          t.unitSystem
+        )}
+      </div>
+      ${abilityInputs}
+      ${renderAndroidWeatherControl(t)}
+    </section>
+    <section class="android-pace-list" aria-label="${t.vdotPaces}">
+      ${model.zones.map((zone) => `
+        <article class="android-pace-row ${zoneTone[zone.id]}">
+          <div><b>${zone.id}</b><span>${t.zoneNames[zone.id].replace(`${zone.id} `, "")}</span></div>
+          <dl>
+            <div><dt>${t.basePace}</dt><dd>${renderPaceValue(zone.base.label)}</dd></div>
+            <div><dt>${zone.id === "R" ? t.rTargetPaceShort : t.adjustedPaceShort}</dt><dd>${renderPaceValue(zone.adjusted.label)}</dd></div>
+          </dl>
+        </article>
+      `).join("")}
+    </section>
+    ${renderAndroidHeatStrip(model, t)}
+  `;
+}
+
+function renderAndroidEquivalentPage(model, t) {
+  const result = state.converterType === "race"
+    ? getRaceEquivalent(model.heatAdjustment.multiplier)
+    : getPaceEquivalent(model.heatAdjustment.multiplier);
+  const isRace = state.converterType === "race";
+  const inputFields = isRace
+    ? `
+      <div class="android-conversion-inputs">
+        <label><span>${t.raceDistance}</span>${renderAndroidSelect(
+          "equivalentRaceDistanceMeters",
+          state.equivalentRaceDistanceMeters,
+          equivalentRaceOptions.map((item) => ({
+            value: item.meters,
+            label: state.locale === "en" ? item.en : item.zh
+          })),
+          t.raceDistance
+        )}</label>
+        <label><span>${state.equivalentDirection === "hotToCool" ? t.heatEnvironmentResult : t.equivalentRace}</span>${renderAndroidTimeInputs([
+          ["equivalentRaceHours", state.equivalentRaceHours, t.hours, 0, 9],
+          ["equivalentRaceMinutes", state.equivalentRaceMinutes, t.minutes, 0, 59],
+          ["equivalentRaceSeconds", state.equivalentRaceSeconds, t.seconds, 0, 59]
+        ])}</label>
+      </div>
+    `
+    : `
+      <div class="android-conversion-inputs">
+        <label><span>${state.equivalentDirection === "hotToCool" ? t.heatEnvironmentPace : t.baselinePace}</span>${renderAndroidTimeInputs([
+          ["paceMinutes", state.paceMinutes, t.minutes, 0, 30],
+          ["paceSeconds", state.paceSeconds, t.seconds, 0, 59]
+        ])}</label>
+        <label><span>${t.unitSystem}</span>${renderAndroidSelect(
+          "unitSystem",
+          state.unitSystem,
+          [
+            { value: UnitSystem.METRIC, label: t.metricUnit },
+            { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+          ],
+          t.unitSystem
+        )}</label>
+      </div>
+    `;
+
+  return `
+    ${renderAndroidPageHead("HEAT", t.sidebarHeatLabel, state.locale === "en" ? "Equal effort" : "同等努力")}
+    <section class="android-control-card">
+      <div class="android-segmented" role="group" aria-label="${t.converterType}">
+        <button type="button" class="${isRace ? "" : "active"}" data-action="select-menu-option" data-field="converterType" data-value="pace">${t.paceConverter}</button>
+        <button type="button" class="${isRace ? "active" : ""}" data-action="select-menu-option" data-field="converterType" data-value="race">${t.raceConverter}</button>
+      </div>
+      <label class="android-direction"><span>${t.converterDirection}</span>${renderAndroidSelect(
+        "equivalentDirection",
+        state.equivalentDirection,
+        [
+          { value: "coolToHot", label: t.coolToHot },
+          { value: "hotToCool", label: t.hotToCool }
+        ],
+        t.converterDirection
+      )}</label>
+      ${inputFields}
+      ${renderAndroidWeatherControl(t)}
+    </section>
+    <section class="android-result-card">
+      <p>${t.equivalentResult}</p>
+      <h2>${isRace
+        ? (state.locale === "en" ? "Equal-effort finish time" : "同等努力的完賽時間")
+        : (state.locale === "en" ? "Equal-effort pace" : "同等努力的配速差異")}</h2>
+      <span>${state.locale === "en" ? "Estimated from the current temperature and humidity." : "依目前溫濕度估算，作為今天策略參考。"}</span>
+      <div class="android-result-grid">
+        ${result.cards.slice(0, 2).map((card) => `
+          <div class="${card.highlight ? "active" : ""}">
+            <span>${card.label}</span>
+            <strong>${card.finishSeconds
+              ? renderFinishTimeWithPace(card.finishSeconds, card.distanceMeters)
+              : renderPaceValue(card.value)}</strong>
+            <small>${card.meta ?? ""}</small>
+          </div>
+        `).join("")}
+      </div>
+      <div class="android-decision"><span>${state.locale === "en" ? "Today" : "今天建議"}</span><strong>${renderAndroidConversionDecision(model, isRace)}</strong></div>
+    </section>
+    ${renderAndroidHeatStrip(model, t)}
+    <aside class="android-heat-advice"><b>!</b><span>${state.locale === "en" ? "Check effort and heart rate first; slow down or stop if you feel unwell." : "先看體感與心率；若持續不適，降低總量或改到較涼時段。"}</span></aside>
+  `;
+}
+
+function renderAndroidPlanPage(model, t) {
+  const schedule = applyEasyRunRedistribution(model.weeklySchedule);
+  const orderedSchedule = getOrderedSchedule(schedule);
+  const plannedTotalKm = schedule.reduce((total, day) => total + Number(day.plannedDistanceKm ?? 0), 0);
+  const longRunKm = Number(schedule.find((day) => day.isLongRun)?.plannedDistanceKm ?? 0);
+  const longRunShare = plannedTotalKm > 0 ? Math.round((longRunKm / plannedTotalKm) * 1000) / 10 : 0;
+  const totalLabel = formatPlanDistanceRange({ min: plannedTotalKm, max: plannedTotalKm });
+  const isHansons = state.trainingMethod === TrainingMethod.HANSONS;
+  const planTargetOptions = isHansons ? hansonsTargetRaceOptions : targetRaceOptions;
+  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 12;
+  const planHeading = isHansons
+    ? `PLAN · HANSONS · ${model.hansonsPlan?.phaseEn ?? ""}`
+    : `PLAN · ${t.cycleNames[state.trainingCycle].split(" ").slice(0, 2).join(" ")}`;
+
+  return `
+    ${renderAndroidPageHead(planHeading, t.sidebarPlanLabel, totalLabel)}
+    <section class="android-plan-summary">
+      <label><span>${t.trainingMethod}</span>${renderAndroidSelect("trainingMethod", state.trainingMethod, [
+        { value: TrainingMethod.DANIELS, label: t.danielsMethod },
+        { value: TrainingMethod.HANSONS, label: t.hansonsMethod }
+      ], t.trainingMethod)}</label>
+      <label><span>${t.targetRace}</span>${renderAndroidSelect(
+        "targetRace",
+        state.targetRace,
+        planTargetOptions.map((value) => ({ value, label: t.targetRaceNames[value] })),
+        t.targetRace
+      )}</label>
+      <div><span>${t.vdot}</span><strong>${model.vdot}</strong></div>
+      <div><span>${t.longRunShare}</span><strong>${longRunShare}%</strong></div>
+    </section>
+    <section class="android-plan-settings">
+      ${isHansons
+        ? `
+          <label><span>${t.hansonsLevel}</span>${renderAndroidSelect("hansonsLevel", state.hansonsLevel, [
+            { value: HansonsLevel.BEGINNER, label: t.hansonsBeginner },
+            { value: HansonsLevel.ADVANCED, label: t.hansonsAdvanced }
+          ], t.hansonsLevel)}</label>
+          <label><span>${t.hansonsPlanWeek}</span>${renderAndroidSelect("hansonsWeek", state.hansonsWeek, Array.from({ length: hansonsTotalWeeks }, (_, index) => ({
+            value: index + 1,
+            label: t.hansonsPlanWeekOption.replace("{week}", index + 1).replace("{total}", hansonsTotalWeeks)
+          })), t.hansonsPlanWeek)}</label>
+        `
+        : `<label><span>${t.trainingCycle}</span>${renderAndroidSelect(
+            "trainingCycle",
+            state.trainingCycle,
+            trainingCycleOptions.map((value) => ({ value, label: t.cycleNames[value] })),
+            t.trainingCycle
+          )}</label>`}
+      <label><span>${isHansons ? t.peakWeeklyMileage : t.weeklyMileage}</span><input data-field="weeklyMileage" type="number" inputmode="numeric" min="0" max="${state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180}" step="1" value="${state.weeklyMileage}" /><b>${state.unitSystem === UnitSystem.IMPERIAL ? "mi" : "km"}</b></label>
+    </section>
+    ${model.hansonsPlan?.qualityNoteZh ? `<p class="android-heat-advice">${state.locale === "en" ? model.hansonsPlan.qualityNoteEn : model.hansonsPlan.qualityNoteZh}</p>` : ""}
+    ${model.hansonsPlan?.belowRecommendedVolume ? `<p class="android-heat-advice">${model.hansonsPlan.lowVolumeAdaptation ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p>` : ""}
+    ${renderAndroidWeatherControl(t)}
+    <p class="android-drag-hint">${state.locale === "en" ? "Press and hold, then drag up or down to swap days." : "長按卡片後上下拖曳，可交換訓練日期"}</p>
+    <section class="android-week-list" data-plan-grid aria-label="${t.weeklyPlan}">
+      ${orderedSchedule.map(({ day, index }) => renderAndroidPlanDay(day, index, model, t)).join("")}
+    </section>
+  `;
+}
+
+function renderAndroidPlanDay(day, index, model, t) {
+  const candidates = getPlanWorkoutCandidates(day, model);
+  const selectedWorkout = getSelectedPlanWorkout(index, candidates);
+  const displayDay = selectedWorkout
+    ? {
+        ...day,
+        zone: selectedWorkout.zone ?? day.zone,
+        paceZoneIds: selectedWorkout.paceZoneIds ?? day.paceZoneIds,
+        zhDistanceLabel: selectedWorkout.zhDistanceLabel ?? day.zhDistanceLabel,
+        enDistanceLabel: selectedWorkout.enDistanceLabel ?? day.enDistanceLabel
+      }
+    : day;
+  const title = selectedWorkout
+    ? (state.locale === "en" ? selectedWorkout.en : selectedWorkout.zh)
+    : (state.locale === "en" ? day.en : day.zh);
+  const distance = state.locale === "en" ? displayDay.enDistanceLabel : displayDay.zhDistanceLabel;
+  const zoneIds = Array.isArray(displayDay.paceZoneIds) && displayDay.paceZoneIds.length
+    ? displayDay.paceZoneIds
+    : displayDay.pace ? [displayDay.zone] : [];
+  const paceZone = model.zones.find((zone) => zone.id === zoneIds[0]);
+  const customPace = displayDay.customPaceRows?.[0];
+  const pace = customPace
+    ? renderPaceValue(customPace.adjusted)
+    : paceZone
+      ? renderPaceValue(paceZone.adjusted.label)
+      : "—";
+  const paceLabel = customPace
+    ? (state.locale === "en" ? customPace.en : customPace.zh)
+    : displayDay.zone === "R"
+      ? t.rTargetPaceShort
+      : t.adjustedPaceShort;
+
+  return `
+    <article class="android-plan-day ${zoneTone[displayDay.zone] ?? "rest"} ${day.isSkippedEasyRun ? "rest" : ""}" data-plan-card data-plan-index="${index}" aria-label="${state.locale === "en" ? "Drag to move" : "長按拖曳交換日期"}：${title}">
+      <span class="android-drag-handle" aria-hidden="true">⋮⋮</span>
+      <div class="android-day-zone"><span>${state.locale === "en" ? day.enDay : day.zhDay}</span><b>${day.isSkippedEasyRun ? "—" : displayDay.zone}</b></div>
+      <div><strong>${title}</strong>${distance ? `<span>${distance}</span>` : ""}</div>
+      <div class="android-day-pace"><small>${paceLabel}</small><strong>${pace}</strong></div>
+      ${day.easyDistributionEligible ? `<button type="button" data-action="toggle-easy-rest" data-plan-index="${index}" aria-label="${day.isSkippedEasyRun ? t.restoreEasyRun : t.skipEasyRun}">${day.isSkippedEasyRun ? "+" : "×"}</button>` : ""}
+    </article>
+  `;
+}
+
+function renderAndroidSettingsSheet(model, t) {
+  if (!state.androidSheet) return "";
+
+  const titles = {
+    pace: state.locale === "en" ? "Pace settings" : "配速設定",
+    equivalent: state.locale === "en" ? "Heat conversion settings" : "熱環境換算設定",
+    plan: state.locale === "en" ? "Weekly plan settings" : "本週課表設定"
+  };
+  const body = state.androidSheet === "equivalent"
+    ? renderAndroidEquivalentSheet(t)
+    : state.androidSheet === "plan"
+      ? renderAndroidPlanSheet(model, t)
+      : renderAndroidPaceSheet(t);
+
+  return `
+    <div class="android-sheet-layer">
+      <button type="button" class="android-sheet-scrim" data-action="close-android-sheet" aria-label="${state.locale === "en" ? "Close settings" : "關閉設定"}"></button>
+      <section class="android-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="android-sheet-title">
+        <div class="android-sheet-handle" aria-hidden="true"></div>
+        <header class="android-sheet-header">
+          <div><p>RUNSTRATEGY</p><h2 id="android-sheet-title">${titles[state.androidSheet] ?? titles.pace}</h2></div>
+          <button type="button" data-action="close-android-sheet" aria-label="${state.locale === "en" ? "Close" : "關閉"}">×</button>
+        </header>
+        <div class="android-sheet-content">${body}</div>
+        <button type="button" class="android-sheet-apply" data-action="close-android-sheet">${state.locale === "en" ? "Apply and view results" : "套用並查看結果"}</button>
+      </section>
+    </div>
+  `;
+}
+
+function renderAndroidPaceSheet(t) {
+  const estimate = getRaceEstimate();
+  const isRace = state.abilityMode === "race";
+
+  return `
+    <div class="android-sheet-segmented" role="group" aria-label="${t.vdotSource}">
+      <button type="button" class="${isRace ? "active" : ""}" data-action="select-menu-option" data-field="abilityMode" data-value="race">${t.raceResult}</button>
+      <button type="button" class="${isRace ? "" : "active"}" data-action="select-menu-option" data-field="abilityMode" data-value="vdot">${t.directVdot}</button>
+    </div>
+    <div class="android-sheet-grid">
+      <label><span>${t.unitSystem}</span>${renderAndroidSelect("unitSystem", state.unitSystem, [
+        { value: UnitSystem.METRIC, label: t.metricUnit },
+        { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+      ], t.unitSystem)}</label>
+      ${isRace
+        ? `<label><span>${t.raceDistance}</span>${renderAndroidSelect("raceDistanceMeters", state.raceDistanceMeters, raceDistanceOptions.map((item) => ({
+            value: item.meters,
+            label: state.locale === "en" ? item.en : item.zh
+          })), t.raceDistance)}</label>`
+        : `<label><span>${t.vdot}</span><input data-field="vdot" type="number" inputmode="numeric" min="30" max="85" step="1" value="${state.vdot}" /></label>`}
+    </div>
+    ${isRace ? `
+      <div class="android-sheet-field">
+        <span>${t.raceTime}</span>
+        ${renderAndroidTimeInputs([
+          ["raceHours", state.raceHours, t.hours, 0, 9],
+          ["raceMinutes", state.raceMinutes, t.minutes, 0, 59],
+          ["raceSeconds", state.raceSeconds, t.seconds, 0, 59]
+        ])}
+        <p class="android-sheet-result">${estimate.valid ? `${t.estimatedVdot} · VDOT ${estimate.vdot}<small class="finish-result-pace">${formatAverageResultPace(getRaceTimeSeconds(), state.raceDistanceMeters)}</small>` : t.invalidRaceTime}</p>
+      </div>
+    ` : ""}
+    ${renderAndroidSheetWeather(t)}
+  `;
+}
+
+function renderAndroidEquivalentSheet(t) {
+  const isRace = state.converterType === "race";
+  const paceUnit = state.unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
+
+  return `
+    <div class="android-sheet-segmented" role="group" aria-label="${t.converterType}">
+      <button type="button" class="${isRace ? "" : "active"}" data-action="select-menu-option" data-field="converterType" data-value="pace">${t.paceConverter}</button>
+      <button type="button" class="${isRace ? "active" : ""}" data-action="select-menu-option" data-field="converterType" data-value="race">${t.raceConverter}</button>
+    </div>
+    <div class="android-sheet-grid">
+      <label><span>${t.converterDirection}</span>${renderAndroidSelect("equivalentDirection", state.equivalentDirection, [
+        { value: "coolToHot", label: t.coolToHot },
+        { value: "hotToCool", label: t.hotToCool }
+      ], t.converterDirection)}</label>
+      <label><span>${t.unitSystem}</span>${renderAndroidSelect("unitSystem", state.unitSystem, [
+        { value: UnitSystem.METRIC, label: t.metricUnit },
+        { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+      ], t.unitSystem)}</label>
+      ${isRace ? `<label><span>${t.raceDistance}</span>${renderAndroidSelect("equivalentRaceDistanceMeters", state.equivalentRaceDistanceMeters, equivalentRaceOptions.map((item) => ({
+        value: item.meters,
+        label: state.locale === "en" ? item.en : item.zh
+      })), t.raceDistance)}</label>` : ""}
+    </div>
+    <div class="android-sheet-field">
+      <span>${isRace ? t.raceTime : `${state.equivalentDirection === "hotToCool" ? t.heatEnvironmentPace : t.baselinePace} ${paceUnit}`}</span>
+      ${isRace
+        ? renderAndroidTimeInputs([
+            ["equivalentRaceHours", state.equivalentRaceHours, t.hours, 0, 9],
+            ["equivalentRaceMinutes", state.equivalentRaceMinutes, t.minutes, 0, 59],
+            ["equivalentRaceSeconds", state.equivalentRaceSeconds, t.seconds, 0, 59]
+          ])
+        : renderAndroidTimeInputs([
+            ["paceMinutes", state.paceMinutes, t.minutes, 0, 30],
+            ["paceSeconds", state.paceSeconds, t.seconds, 0, 59]
+          ])}
+    </div>
+    ${renderAndroidSheetWeather(t)}
+  `;
+}
+
+function renderAndroidPlanSheet(model, t) {
+  const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
+  const showHalfMarathonWeek =
+    state.targetRace === TargetRace.ROAD_15K_30K &&
+    state.trainingCycle !== TrainingCycle.PHASE_I;
+  const showMarathonPhaseWeek = state.targetRace === TargetRace.MARATHON;
+
+  return `
+    <div class="android-sheet-grid">
+      <label><span>${t.targetRace}</span>${renderAndroidSelect("targetRace", state.targetRace, targetRaceOptions.map((value) => ({
+        value,
+        label: t.targetRaceNames[value]
+      })), t.targetRace)}</label>
+      <label><span>${t.trainingCycle}</span>${renderAndroidSelect("trainingCycle", state.trainingCycle, trainingCycleOptions.map((value) => ({
+        value,
+        label: t.cycleNames[value]
+      })), t.trainingCycle)}</label>
+      <label><span>${t.unitSystem}</span>${renderAndroidSelect("unitSystem", state.unitSystem, [
+        { value: UnitSystem.METRIC, label: t.metricUnit },
+        { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
+      ], t.unitSystem)}</label>
+      <label><span>${showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage}</span><input data-field="weeklyMileage" type="number" inputmode="numeric" min="0" max="${mileageMax}" step="1" value="${state.weeklyMileage}" /></label>
+      ${showMarathonPhaseWeek ? `<label><span>${t.marathonPhaseWeek}</span>${renderAndroidSelect("marathonPhaseWeek", state.marathonPhaseWeek, Array.from({ length: MARATHON_PHASE_WEEKS }, (_, index) => ({
+        value: index + 1,
+        label: t.marathonPhaseWeekOption.replace("{week}", index + 1)
+      })), t.marathonPhaseWeek)}</label>` : ""}
+    </div>
+    <p class="android-sheet-result">VDOT ${model.vdot} · ${state.locale === "en" ? "Change ability on the Pace screen." : "跑力請至「算我的配速」調整"}</p>
+    ${showHalfMarathonWeek ? `
+      <div class="android-sheet-field">
+        <span>${t.halfMarathonWeek}</span>
+        <div class="android-sheet-segmented" role="group" aria-label="${t.halfMarathonWeek}">
+          <button type="button" class="${state.halfMarathonWeek === HalfMarathonWeek.ODD ? "active" : ""}" data-action="set-half-marathon-week" data-value="${HalfMarathonWeek.ODD}">${t.halfMarathonOddWeek}</button>
+          <button type="button" class="${state.halfMarathonWeek === HalfMarathonWeek.EVEN ? "active" : ""}" data-action="set-half-marathon-week" data-value="${HalfMarathonWeek.EVEN}">${t.halfMarathonEvenWeek}</button>
+        </div>
+      </div>
+    ` : ""}
+    ${renderAndroidSheetWeather(t)}
+  `;
+}
+
+function renderAndroidSheetWeather(t) {
+  return `
+    <section class="android-sheet-weather">
+      <div><p>${t.environmentSection}</p><strong>${state.locale === "en" ? "Use the same weather for every result" : "每項結果都套用同一組天氣"}</strong></div>
+      ${renderAndroidWeatherControl(t)}
+    </section>
+  `;
+}
+
+function renderAndroidWeatherSummary(t) {
+  return `<small class="android-summary-weather">${renderAndroidWeatherSummaryText(t)}</small>`;
+}
+
+function renderAndroidWeatherSummaryText(t) {
+  if (state.weatherAutoEnabled && state.weatherCurrent) {
+    const location = formatWeatherLocation(state.weatherCurrent.location);
+    const place = [location?.region, location?.place].filter(Boolean).join(" · ");
+    return `${place || (state.locale === "en" ? "Current location" : "目前位置")} · ${state.weatherCurrent.temperatureC}${t.celsius} · ${state.weatherCurrent.humidity}${t.percent}`;
+  }
+
+  return `${state.locale === "en" ? "Manual" : "手動"} · ${state.temperatureC}${t.celsius} · ${state.humidity}${t.percent}`;
+}
+
+function renderAndroidSelect(field, value, items, label) {
+  return `
+    <select data-field="${field}" aria-label="${label}">
+      ${items.map((item) => `<option value="${item.value}" ${String(item.value) === String(value) ? "selected" : ""}>${item.label}</option>`).join("")}
+    </select>
+  `;
+}
+
+function renderAndroidTimeInputs(fields) {
+  return `
+    <span class="android-time-inputs">
+      ${fields.map(([field, value, label, min, max]) => `
+        <label><input data-field="${field}" type="number" inputmode="numeric" min="${min}" max="${max}" step="1" value="${value}" aria-label="${label}" /><small>${label}</small></label>
+      `).join("")}
+    </span>
+  `;
+}
+
+function renderAndroidWeatherControl(t) {
+  const isBusy = state.weatherStatus === "loading" || state.weatherStatus === "refreshing";
+  const isError = state.weatherStatus === "error" || state.weatherStatus === "refresh-error";
+  const location = state.weatherCurrent ? formatWeatherLocation(state.weatherCurrent.location) : null;
+  const place = location ? [location.region, location.place].filter(Boolean).join(" · ") : "";
+
+  if (state.weatherAutoEnabled && state.weatherCurrent) {
+    return `
+      <div class="android-weather active">
+        <button type="button" data-action="toggle-auto-weather" aria-label="${t.disableAutoWeather}">${renderLocationIcon()}</button>
+        <div><span>${t.currentLocationWeather}</span><strong>${place || (state.locale === "en" ? "Current location" : "目前位置")} · ${state.weatherCurrent.temperatureC}${t.celsius} · ${state.weatherCurrent.humidity}${t.percent}</strong></div>
+        <button type="button" data-action="refresh-auto-weather" ${isBusy ? "disabled" : ""}>${isBusy ? "…" : (state.locale === "en" ? "Update" : "更新")}</button>
+      </div>
+    `;
+  }
+
+  const label = isError ? t.retryAutoWeather : (isBusy ? t.weatherLocating : t.enableAutoWeather);
+  return `
+    <div class="android-weather">
+      <button type="button" data-action="toggle-auto-weather" ${isBusy ? "disabled" : ""}>${renderLocationIcon()}<span>${label}</span></button>
+      <label><input data-field="temperatureC" type="number" inputmode="numeric" min="-5" max="45" step="1" value="${state.temperatureC}" /><small>${t.celsius}</small></label>
+      <label><input data-field="humidity" type="number" inputmode="numeric" min="0" max="100" step="1" value="${state.humidity}" /><small>${t.percent}</small></label>
+    </div>
+  `;
+}
+
+function renderAndroidHeatStrip(model, t) {
+  return `
+    <section class="android-heat-strip" aria-label="${t.heatAdjustment}">
+      <div><span>${t.heatIndex}</span><strong>${model.heatAdjustment.heatIndex}${t.celsius}</strong></div>
+      <div><span>${t.speedLoss}</span><strong>${model.heatAdjustment.speedLossPercentage}%</strong></div>
+      <div><span>${t.slowerBy}</span><strong>${model.heatAdjustment.percentage}%</strong></div>
+      <div><span>${t.recoveryHot}</span><strong>+${model.heatAdjustment.recoveryPercentage}%</strong></div>
+    </section>
+  `;
+}
+
+function renderAndroidConversionDecision(model, isRace) {
+  const multiplier = Number(model.heatAdjustment.multiplier);
+  const reverse = state.equivalentDirection === "hotToCool";
+  const direction = state.locale === "en"
+    ? (reverse ? "faster by about" : "slower by about")
+    : (reverse ? "約可縮短" : "約增加");
+  const inputSeconds = isRace ? getEquivalentRaceTimeSeconds() : getPaceInputSeconds();
+  const adjustedSeconds = reverse ? inputSeconds / multiplier : inputSeconds * multiplier;
+  const difference = Math.max(0, Math.round(Math.abs(adjustedSeconds - inputSeconds)));
+
+  if (isRace) {
+    return state.locale === "en"
+      ? `Finish time ${direction} ${formatAndroidDuration(difference)}`
+      : `完賽時間${direction} ${formatAndroidDuration(difference)}`;
+  }
+
+  return state.locale === "en"
+    ? `Pace ${direction} ${difference} sec per ${state.unitSystem === UnitSystem.IMPERIAL ? "mile" : "km"}`
+    : `每${state.unitSystem === UnitSystem.IMPERIAL ? "英里" : "公里"}${direction} ${difference} 秒`;
+}
+
+function formatAndroidDuration(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  if (state.locale === "en") return minutes ? `${minutes}m ${remaining}s` : `${remaining}s`;
+  return minutes ? `${minutes} 分 ${remaining} 秒` : `${remaining} 秒`;
+}
+
 function renderInputs(t) {
   const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   const mileageUnit =
     state.unitSystem === UnitSystem.IMPERIAL ? t.miPerWeek : t.kmPerWeek;
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
+  const isHansons = isPlan && state.trainingMethod === TrainingMethod.HANSONS;
+  const planTargetOptions = isHansons ? hansonsTargetRaceOptions : targetRaceOptions;
+  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 12;
   const showHalfMarathonWeek =
     isPlan &&
+    !isHansons &&
     state.targetRace === TargetRace.ROAD_15K_30K &&
     state.trainingCycle !== TrainingCycle.PHASE_I;
   const showMarathonPhaseWeek =
-    isPlan && state.targetRace === TargetRace.MARATHON;
+    isPlan && !isHansons && state.targetRace === TargetRace.MARATHON;
 
   const sectionTitle = isConverter ? t.conversionSettings : t.runnerAbilitySection;
   const sectionHelp = isConverter ? t.conversionSettingsHelp : t.runnerAbilityHelp;
@@ -889,41 +1557,64 @@ function renderInputs(t) {
               ${
                 isPlan
                   ? `
+                    ${renderMenuField(t.trainingMethod, "trainingMethod", state.trainingMethod, [
+                      { value: TrainingMethod.DANIELS, label: t.danielsMethod },
+                      { value: TrainingMethod.HANSONS, label: t.hansonsMethod }
+                    ])}
                     ${renderMenuField(
                       t.targetRace,
                       "targetRace",
                       state.targetRace,
-                      targetRaceOptions.map((value) => ({
+                      planTargetOptions.map((value) => ({
                         value,
                         label: t.targetRaceNames[value]
                       }))
                     )}
-                    ${renderMenuField(
-                      t.trainingCycle,
-                      "trainingCycle",
-                      state.trainingCycle,
-                      trainingCycleOptions.map((value) => ({
-                        value,
-                        label: t.cycleNames[value]
-                      }))
-                    )}
-                    ${showHalfMarathonWeek ? renderHalfMarathonWeekToggle(t) : ""}
-                    ${
-                      showMarathonPhaseWeek
-                        ? `${renderMenuField(
-                            t.marathonPhaseWeek,
-                            "marathonPhaseWeek",
-                            state.marathonPhaseWeek,
-                            Array.from({ length: MARATHON_PHASE_WEEKS }, (_, index) => ({
-                              value: index + 1,
-                              label: t.marathonPhaseWeekOption.replace("{week}", index + 1)
-                            }))
-                          )}<p class="field-note">${t.marathonPhaseWeekHelp}</p>`
-                        : ""
-                    }
-                    <p class="field-note">${t.trainingCycleHelp}</p>
+                    ${isHansons
+                      ? `
+                        ${renderMenuField(t.hansonsLevel, "hansonsLevel", state.hansonsLevel, [
+                          { value: HansonsLevel.BEGINNER, label: t.hansonsBeginner },
+                          { value: HansonsLevel.ADVANCED, label: t.hansonsAdvanced }
+                        ])}
+                        ${renderMenuField(
+                          t.hansonsPlanWeek,
+                          "hansonsWeek",
+                          state.hansonsWeek,
+                          Array.from({ length: hansonsTotalWeeks }, (_, index) => ({
+                            value: index + 1,
+                            label: t.hansonsPlanWeekOption
+                              .replace("{week}", index + 1)
+                              .replace("{total}", hansonsTotalWeeks)
+                          }))
+                        )}
+                        <p class="field-note">${t.hansonsPlanHelp}</p>
+                      `
+                      : `
+                        ${renderMenuField(
+                          t.trainingCycle,
+                          "trainingCycle",
+                          state.trainingCycle,
+                          trainingCycleOptions.map((value) => ({
+                            value,
+                            label: t.cycleNames[value]
+                          }))
+                        )}
+                        ${showHalfMarathonWeek ? renderHalfMarathonWeekToggle(t) : ""}
+                        ${showMarathonPhaseWeek
+                          ? `${renderMenuField(
+                              t.marathonPhaseWeek,
+                              "marathonPhaseWeek",
+                              state.marathonPhaseWeek,
+                              Array.from({ length: MARATHON_PHASE_WEEKS }, (_, index) => ({
+                                value: index + 1,
+                                label: t.marathonPhaseWeekOption.replace("{week}", index + 1)
+                              }))
+                            )}<p class="field-note">${t.marathonPhaseWeekHelp}</p>`
+                          : ""}
+                        <p class="field-note">${t.trainingCycleHelp}</p>
+                      `}
                     ${renderRangeField(
-                      showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage,
+                      isHansons || showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage,
                       "weeklyMileage",
                       state.weeklyMileage,
                       0,
@@ -1039,13 +1730,16 @@ function renderToolSidebar(t) {
       value: "plan",
       label: t.sidebarPlanLabel,
       icon: renderSidebarIcon("plan")
-    },
-    {
+    }
+  ];
+
+  if (!isAndroidApp) {
+    items.push({
       value: "gpx",
       label: getGpxCopy().sidebarLabel,
       icon: renderSidebarIcon("gpx")
-    }
-  ];
+    });
+  }
 
   return `
     <aside class="tool-sidebar" aria-label="${t.toolMode}">
@@ -1246,6 +1940,7 @@ function renderRaceResultInput(t, estimate) {
     <div class="vdot-estimate ${estimate.valid ? "" : "invalid"}">
       <span>${estimate.valid ? t.estimatedVdot : t.invalidRaceTime}</span>
       ${estimate.valid ? `<strong>${estimate.vdot}</strong>` : ""}
+      ${estimate.valid ? `<small class="finish-result-pace">${formatAverageResultPace(getRaceTimeSeconds(), state.raceDistanceMeters)}</small>` : ""}
     </div>
   `;
 }
@@ -1725,18 +2420,18 @@ function renderGpxSummary(summary, gpx) {
         </div>
         <div>
           <span>${gpx.targetTotalTime}</span>
-          <strong>${formatGpxDuration(summary.targetTotalTimeSec)}</strong>
+          <strong>${renderFinishTimeWithPace(summary.targetTotalTimeSec, summary.totalDistanceKm * 1000, formatGpxDuration)}</strong>
         </div>
         <div>
           <span>${gpx.gradeTotalTime}</span>
-          <strong>${formatGpxDuration(summary.gradeAdjustedTotalTimeSec)}</strong>
+          <strong>${renderFinishTimeWithPace(summary.gradeAdjustedTotalTimeSec, summary.totalDistanceKm * 1000, formatGpxDuration)}</strong>
         </div>
         ${
           summary.heatAdjustment?.finalSlowdown > 0
             ? `
               <div>
                 <span>${gpx.finalTotalTime}</span>
-                <strong>${formatGpxDuration(summary.finalTotalTimeSec)}</strong>
+                <strong>${renderFinishTimeWithPace(summary.finalTotalTimeSec, summary.totalDistanceKm * 1000, formatGpxDuration)}</strong>
               </div>
             `
             : ""
@@ -2244,7 +2939,9 @@ function renderEquivalentResults(model, t) {
             (card) => `
               <article class="equivalent-card data-tile ${card.highlight ? "highlight" : ""}">
                 <span>${card.label}</span>
-                <strong>${renderPaceValue(card.value)}</strong>
+                <strong>${card.finishSeconds
+                  ? renderFinishTimeWithPace(card.finishSeconds, card.distanceMeters)
+                  : renderPaceValue(card.value)}</strong>
                 ${card.meta ? `<small class="equivalent-meta">${card.meta}</small>` : ""}
               </article>
             `
@@ -2816,27 +3513,15 @@ function renderVdotEquivalentResults(model, t) {
       <div class="vdot-equivalent-grid">
         ${results
           .map((result) => {
-            const basePaceSeconds = result.seconds / (result.meters / 1000);
             const heatAdjustedSeconds = result.seconds * model.heatAdjustment.multiplier;
-            const heatAdjustedPaceSeconds =
-              basePaceSeconds * model.heatAdjustment.multiplier;
 
             return `
               <article>
                 <span>${state.locale === "en" ? result.en : result.zh}</span>
-                <strong>${formatFinishTime(result.seconds)}</strong>
-                <small>${t.estimatedPace} ${formatPaceForUnit(
-                  basePaceSeconds,
-                  state.unitSystem
-                )}</small>
+                <strong>${renderFinishTimeWithPace(result.seconds, result.meters)}</strong>
                 <div class="vdot-heat-equivalent">
-                  <small>${t.heatAdjustedEquivalentResult} ${formatFinishTime(
-                    heatAdjustedSeconds
-                  )}</small>
-                  <small>${t.heatAdjustedEquivalentPace} ${formatPaceForUnit(
-                    heatAdjustedPaceSeconds,
-                    state.unitSystem
-                  )}</small>
+                  <small>${t.heatAdjustedEquivalentResult}</small>
+                  <strong>${renderFinishTimeWithPace(heatAdjustedSeconds, result.meters)}</strong>
                 </div>
               </article>
             `;
@@ -2869,18 +3554,19 @@ function renderMileageClass(model, t) {
 }
 
 function renderTrainingPlanResults(model, t) {
+  const isHansons = model.trainingMethod === TrainingMethod.HANSONS;
   return `
     <div class="section-heading">
       <p class="eyebrow">VDOT ${model.vdot}</p>
       <h2>${t.trainingPlanMode}</h2>
     </div>
     ${renderWeeklySchedule(model, t)}
-    ${renderWorkoutExamples(model, t)}
+    ${isHansons ? "" : renderWorkoutExamples(model, t)}
     <aside class="note-panel surface-card info-card">
       <h2>${t.noteTitle}</h2>
-      <p>${t.note}</p>
+      <p>${isHansons ? t.hansonsPlanHelp : t.note}</p>
       <h3>${t.sourceTitle}</h3>
-      <p>${t.sourceNote}</p>
+      <p>${isHansons ? t.sourceNoteHansons : t.sourceNote}</p>
     </aside>
   `;
 }
@@ -2898,6 +3584,7 @@ function renderPaceZonePanel(model, t, embedded = false, options = {}) {
 }
 
 function renderWeeklySchedule(model, t) {
+  const isHansons = model.trainingMethod === TrainingMethod.HANSONS;
   const schedule = applyEasyRunRedistribution(model.weeklySchedule);
   const orderedSchedule = getOrderedSchedule(schedule);
   const plannedTotalKm = schedule.reduce(
@@ -2919,38 +3606,51 @@ function renderWeeklySchedule(model, t) {
   const hasOpenSwapMenu = typeof state.openMenu === "string" &&
     state.openMenu.startsWith("plan-workout-");
   const halfWeekLabel =
+    !isHansons &&
     model.targetRace === TargetRace.ROAD_15K_30K &&
     model.trainingCycle !== TrainingCycle.PHASE_I
       ? ` · ${model.halfMarathonWeek === HalfMarathonWeek.EVEN
         ? t.halfMarathonEvenWeek
         : t.halfMarathonOddWeek}`
       : "";
-  const marathonWeekLabel = model.targetRace === TargetRace.MARATHON
+  const marathonWeekLabel = !isHansons && model.targetRace === TargetRace.MARATHON
     ? ` · ${t.marathonPhaseWeekOption.replace("{week}", model.marathonPhaseWeek)}`
     : "";
+  const hansonsWeekLabel = isHansons && model.hansonsPlan
+    ? ` · ${t.hansonsPlanWeekOption
+        .replace("{week}", model.hansonsPlan.week)
+        .replace("{total}", model.hansonsPlan.totalWeeks)}`
+    : "";
   const longRunLimit = Number(longRunDay?.longRunLimitPercentage ?? 30);
-  const longRunTimeSummary = model.targetRace === TargetRace.MARATHON
+  const longRunTimeSummary = !isHansons && model.targetRace === TargetRace.MARATHON
     ? `<span>${t.longRunTimeCap}<strong>${Math.round(Number(longRunDay?.estimatedMaxMinutes ?? 0))} / ${Number(longRunDay?.longRunTimeLimitMinutes ?? 150)} min</strong></span>`
     : "";
-  const peakFractionSummary = model.marathonPlan
-    ? `<span>${t.peakMileageFraction}<strong>${Math.round(model.marathonPlan.fraction * 100)}%</strong></span>`
+  const peakPlan = model.marathonPlan ?? model.hansonsPlan;
+  const peakFractionSummary = peakPlan
+    ? `<span>${t.peakMileageFraction}<strong>${Math.round(peakPlan.fraction * 100)}%</strong></span>`
     : "";
+  const phaseLabel = isHansons
+    ? (state.locale === "en" ? model.hansonsPlan?.phaseEn : model.hansonsPlan?.phaseZh)
+    : t.cycleNames[model.trainingCycle];
+  const methodLabel = isHansons ? t.hansonsMethod : t.danielsMethod;
 
   return `
     <section class="weekly-plan ${hasOpenSwapMenu ? "swap-open" : ""}">
       <div class="weekly-plan-head">
         <div>
-          <p class="eyebrow">${t.targetRaceNames[model.targetRace]} · ${t.cycleNames[model.trainingCycle]}${halfWeekLabel}${marathonWeekLabel}</p>
+          <p class="eyebrow">${methodLabel} · ${t.targetRaceNames[model.targetRace]} · ${phaseLabel ?? ""}${halfWeekLabel}${marathonWeekLabel}${hansonsWeekLabel}</p>
           <h3>${t.weeklyPlan}</h3>
         </div>
-        <p>${t.weeklyPlanNote}</p>
+        <p>${isHansons ? t.weeklyPlanNoteHansons : t.weeklyPlanNote}</p>
       </div>
       <div class="week-volume-summary">
         <span>${t.plannedWeeklyTotal}<strong>${plannedTotal}</strong></span>
         ${peakFractionSummary}
-        <span>${t.longRunShare}<strong>${longRunShare}% ≤ ${longRunLimit}%</strong></span>
+        <span>${t.longRunShare}<strong>${isHansons ? `${longRunShare}%` : `${longRunShare}% ≤ ${longRunLimit}%`}</strong></span>
         ${longRunTimeSummary}
       </div>
+      ${model.hansonsPlan?.qualityNoteZh ? `<aside class="taper-recommendation surface-card"><p>${state.locale === "en" ? model.hansonsPlan.qualityNoteEn : model.hansonsPlan.qualityNoteZh}</p></aside>` : ""}
+      ${model.hansonsPlan?.belowRecommendedVolume ? `<aside class="taper-recommendation surface-card"><p>${model.hansonsPlan.lowVolumeAdaptation ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p></aside>` : ""}
       ${renderTaperRecommendation(model, t)}
       <p class="drag-hint schedule-drag-hint">${t.scheduleDragHint}</p>
       <div class="week-scroll">
@@ -3023,6 +3723,7 @@ function renderPlanDay(day, t, index, model) {
       data-plan-index="${index}"
       aria-label="${title}"
     >
+      <span class="plan-day-label">${state.locale === "en" ? day.enDay : day.zhDay}</span>
       ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t)}
       ${easyRestControl}
       <div>
@@ -3036,6 +3737,17 @@ function renderPlanDay(day, t, index, model) {
 }
 
 function renderPlanPaceBlock(day, model, t) {
+  if (Array.isArray(day.customPaceRows) && day.customPaceRows.length > 0) {
+    const customRows = day.customPaceRows.map((row) => `
+      <div class="plan-pace-row">
+        <span class="plan-zone-tag">${row.id}</span>
+        <strong><small class="pace-tag">${state.locale === "en" ? row.en : row.zh}</small>${renderPaceValue(row.adjusted)}</strong>
+        <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(row.base)}</em>
+      </div>
+    `).join("");
+    return `<div class="plan-pace">${customRows}</div>`;
+  }
+
   const zoneIds = Array.isArray(day.paceZoneIds) && day.paceZoneIds.length > 0
     ? day.paceZoneIds
     : day.pace
@@ -3463,14 +4175,22 @@ function syncRangeSlider(field, value) {
 function updateFieldValue(field, value) {
   state.openMenu = null;
 
+  if (field === "toolMode") {
+    state.androidSheet = null;
+  }
+
   if (field === "locale") {
     const nextLocale = value === "en" ? "en" : "zh-TW";
-    const nextPath = nextLocale === "en" ? "/en" : "/";
+    const nextPath = isAndroidApp
+      ? new URL(nextLocale === "en" ? "./en/index.html" : "../index.html", window.location.href).href
+      : nextLocale === "en"
+        ? "/en"
+        : "/";
     if (state.locale !== nextLocale) window.location.assign(nextPath);
     return;
   }
 
-  if (["targetRace", "trainingCycle", "marathonPhaseWeek"].includes(field)) {
+  if (["trainingMethod", "targetRace", "trainingCycle", "marathonPhaseWeek", "hansonsWeek", "hansonsLevel"].includes(field)) {
     state.planWorkoutOverrides = {};
     state.planOrder = [];
     state.skippedEasyDays = {};
@@ -3481,11 +4201,46 @@ function updateFieldValue(field, value) {
     return;
   }
 
+  if (field === "trainingMethod") {
+    state.trainingMethod = value;
+    if (value === TrainingMethod.HANSONS) {
+      if (state.targetRace === TargetRace.FIVE_TEN_K) {
+        state.targetRace = TargetRace.TEN_K;
+      } else if (state.targetRace === TargetRace.ROAD_15K_30K) {
+        state.targetRace = TargetRace.HALF_MARATHON;
+      } else if (!hansonsTargetRaceOptions.includes(state.targetRace)) {
+        state.targetRace = TargetRace.FIVE_K;
+      }
+      state.hansonsWeek = getHansonsDefaultWeek(state.targetRace, state.hansonsLevel);
+    }
+    if (value === TrainingMethod.DANIELS) {
+      if (state.targetRace === TargetRace.FIVE_K || state.targetRace === TargetRace.TEN_K) {
+        state.targetRace = TargetRace.FIVE_TEN_K;
+      } else if (state.targetRace === TargetRace.HALF_MARATHON) {
+        state.targetRace = TargetRace.ROAD_15K_30K;
+      }
+    }
+    return;
+  }
+
+  if (field === "targetRace" && state.trainingMethod === TrainingMethod.HANSONS) {
+    state.targetRace = value;
+    state.hansonsWeek = getHansonsDefaultWeek(value, state.hansonsLevel);
+    return;
+  }
+
+  if (field === "hansonsLevel" && state.trainingMethod === TrainingMethod.HANSONS) {
+    state.hansonsLevel = value;
+    state.hansonsWeek = getHansonsDefaultWeek(state.targetRace, value);
+    return;
+  }
+
   if (
     field === "toolMode" ||
     field === "converterType" ||
     field === "equivalentDirection" ||
     field === "abilityMode" ||
+    field === "hansonsLevel" ||
     field === "targetRace" ||
     field === "trainingCycle"
   ) {
@@ -3527,8 +4282,91 @@ function updateUnitSystem(nextUnitSystem) {
   }
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+function commitToolModeChange(nextMode, shouldResetAndroidScroll, animateEntrance) {
+  updateFieldValue("toolMode", nextMode);
+  render();
+
+  if (shouldResetAndroidScroll) window.scrollTo(0, 0);
+  if (!animateEntrance) return;
+
+  const nextView = app.querySelector("[data-tool-view]");
+  const nextBottomNav = app.querySelector(".android-bottom-nav");
+  if (!nextView && !nextBottomNav) return;
+
+  nextView?.classList.add("tool-view-enter");
+  nextBottomNav?.classList.add("bottom-nav-enter");
+  const clearEntrance = (event) => {
+    if (event && event.target !== nextView) return;
+    nextView?.classList.remove("tool-view-enter");
+    nextBottomNav?.classList.remove("bottom-nav-enter");
+    nextView?.removeEventListener("animationend", clearEntrance);
+  };
+  nextView?.addEventListener("animationend", clearEntrance);
+  window.setTimeout(() => clearEntrance(), TOOL_VIEW_ENTER_MS + 40);
+}
+
+function transitionToolMode(nextMode, shouldResetAndroidScroll = false) {
+  if (!nextMode || nextMode === state.toolMode) return;
+
+  pendingToolMode = nextMode;
+  pendingToolModeScrollReset ||= shouldResetAndroidScroll;
+
+  if (toolModeTransitionTimer !== null) return;
+
+  const activeView = app.querySelector("[data-tool-view]");
+  if (!activeView || prefersReducedMotion()) {
+    const targetMode = pendingToolMode;
+    const resetScroll = pendingToolModeScrollReset;
+    pendingToolMode = null;
+    pendingToolModeScrollReset = false;
+    commitToolModeChange(targetMode, resetScroll, false);
+    return;
+  }
+
+  activeView.classList.remove("tool-view-enter");
+  activeView.classList.add("tool-view-exit");
+  app.querySelector(".android-bottom-nav")?.classList.add("bottom-nav-exit");
+
+  toolModeTransitionTimer = window.setTimeout(() => {
+    const targetMode = pendingToolMode;
+    const resetScroll = pendingToolModeScrollReset;
+    pendingToolMode = null;
+    pendingToolModeScrollReset = false;
+    toolModeTransitionTimer = null;
+    commitToolModeChange(targetMode, resetScroll, true);
+  }, TOOL_VIEW_EXIT_MS);
+}
+
 function handleAction(event) {
   const action = event.currentTarget.dataset.action;
+  const actionField = event.currentTarget.dataset.field;
+  const actionValue = event.currentTarget.dataset.value;
+  const shouldResetAndroidScroll =
+    isAndroidApp &&
+    action === "select-menu-option" &&
+    actionField === "toolMode" &&
+    actionValue !== state.toolMode;
+
+  if (action === "select-menu-option" && actionField === "toolMode" && actionValue !== state.toolMode) {
+    transitionToolMode(actionValue, shouldResetAndroidScroll);
+    return;
+  }
+
+  if (action === "open-android-sheet") {
+    state.androidSheet = event.currentTarget.dataset.sheet ?? state.toolMode;
+    render();
+    return;
+  }
+
+  if (action === "close-android-sheet") {
+    state.androidSheet = null;
+    render();
+    return;
+  }
 
   if (action === "step-number") {
     const control = event.currentTarget;
@@ -3627,6 +4465,7 @@ function handleAction(event) {
   }
 
   render();
+  if (shouldResetAndroidScroll) window.scrollTo(0, 0);
 }
 
 async function refreshAutoWeather() {
@@ -4068,7 +4907,7 @@ function getGpxTargetPaceSeconds(points = state.gpxAnalysis?.points) {
 
 function getGpxDerivedPaceLabel() {
   const seconds = getGpxTargetPaceSeconds();
-  return seconds ? formatGpxPace(seconds) : "";
+  return seconds ? formatPaceForUnit(seconds, state.unitSystem) : "";
 }
 
 function exportGpxCsv() {
@@ -4104,6 +4943,7 @@ function handlePlanPointerDown(event) {
     startOrderPosition: state.planOrder.indexOf(Number(card.dataset.planIndex)),
     startScrollLeft: card.closest(".week-scroll")?.scrollLeft ?? 0,
     cardWidth: card.getBoundingClientRect().width,
+    cardHeight: card.getBoundingClientRect().height,
     active: false
   };
   card.setPointerCapture?.(event.pointerId);
@@ -4135,19 +4975,19 @@ function handlePlanPointerMove(event) {
   );
   if (!target || target === event.currentTarget) return;
 
-  swapPlanWithTarget(target, event.clientX);
+  swapPlanWithTarget(target, event.clientX, event.clientY);
 }
 
 function handlePlanPointerEnd(event) {
   const drag = state.planPointerDrag;
   if (!drag || drag.pointerId !== event.pointerId) return;
 
-  finishPlanDrag(drag, event.clientX, event.currentTarget);
+  finishPlanDrag(drag, event.clientX, event.clientY, event.currentTarget);
   event.currentTarget.releasePointerCapture?.(event.pointerId);
   clearPlanPointerDragState();
 }
 
-function finishPlanDrag(drag, endClientX, card) {
+function finishPlanDrag(drag, endClientX, endClientY, card) {
   if (!drag.active) return;
 
   const currentPosition = state.planOrder.indexOf(drag.index);
@@ -4155,7 +4995,28 @@ function finishPlanDrag(drag, endClientX, card) {
 
   const grid = card.closest("[data-plan-grid]");
   const scroller = card.closest(".week-scroll");
-  if (!grid || !scroller) return;
+  if (!grid || (!isAndroidApp && !scroller)) return;
+
+  if (isAndroidApp) {
+    const travelY = endClientY - drag.startY;
+    const cardHeight = Math.max(1, drag.cardHeight);
+    if (Math.abs(travelY) < cardHeight * 0.35) return;
+
+    const direction = Math.sign(travelY);
+    const slots = Math.max(1, Math.floor(Math.abs(travelY) / cardHeight));
+    const targetPosition = Math.max(
+      0,
+      Math.min(state.planOrder.length - 1, currentPosition + direction * slots)
+    );
+    if (targetPosition === currentPosition) return;
+
+    animatePlanReorder(grid, () => {
+      const [movedIndex] = state.planOrder.splice(currentPosition, 1);
+      state.planOrder.splice(targetPosition, 0, movedIndex);
+      reorderPlanCards(grid);
+    });
+    return;
+  }
 
   const travelX =
     endClientX - drag.startX + (scroller.scrollLeft - drag.startScrollLeft);
@@ -4200,10 +5061,10 @@ function handlePlanDragOver(event) {
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
   autoScrollHorizontalContainer(event.currentTarget.closest(".week-scroll"), event.clientX);
-  swapPlanWithTarget(event.currentTarget, event.clientX);
+  swapPlanWithTarget(event.currentTarget, event.clientX, event.clientY);
 }
 
-function swapPlanWithTarget(target, clientX) {
+function swapPlanWithTarget(target, clientX, clientY) {
   const grid = target.closest("[data-plan-grid]");
   const draggedIndex = state.draggedPlanIndex;
   const targetIndex = Number(target.dataset.planIndex);
@@ -4215,9 +5076,11 @@ function swapPlanWithTarget(target, clientX) {
   if (from < 0 || to < 0 || from === to) return;
 
   const targetRect = target.getBoundingClientRect();
-  const pointerRatio = (clientX - targetRect.left) / targetRect.width;
-  const movingRight = from < to;
-  const crossedThreshold = movingRight ? pointerRatio > 0.5 : pointerRatio < 0.5;
+  const pointerRatio = isAndroidApp
+    ? (clientY - targetRect.top) / targetRect.height
+    : (clientX - targetRect.left) / targetRect.width;
+  const movingForward = from < to;
+  const crossedThreshold = movingForward ? pointerRatio > 0.5 : pointerRatio < 0.5;
   if (!crossedThreshold) return;
 
   animatePlanReorder(grid, () => {
@@ -4256,11 +5119,13 @@ function handlePlanTouchStart(event) {
     startOrderPosition: state.planOrder.indexOf(Number(card.dataset.planIndex)),
     startScrollLeft: card.closest(".week-scroll")?.scrollLeft ?? 0,
     cardWidth: card.getBoundingClientRect().width,
+    cardHeight: card.getBoundingClientRect().height,
     active: false,
     timerId: window.setTimeout(() => {
       touchDrag.active = true;
       state.draggedPlanIndex = touchDrag.index;
       card.classList.add("is-dragging");
+      navigator.vibrate?.(18);
     }, 360)
   };
 
@@ -4301,7 +5166,7 @@ function handlePlanTouchMove(event) {
   );
   if (!target || target === event.currentTarget) return;
 
-  swapPlanWithTarget(target, touch.clientX);
+  swapPlanWithTarget(target, touch.clientX, touch.clientY);
 }
 
 function findPlanCardAtPoint(grid, clientX, clientY, excludedCard) {
@@ -4351,7 +5216,7 @@ function handlePlanTouchEnd(event) {
     (item) => item.identifier === touchDrag.touchId
   );
   if (finishedTouch) {
-    finishPlanDrag(touchDrag, finishedTouch.clientX, event.currentTarget);
+    finishPlanDrag(touchDrag, finishedTouch.clientX, finishedTouch.clientY, event.currentTarget);
   }
   clearPlanTouchDragState();
 }
@@ -4737,6 +5602,7 @@ function formatPlanDistance(value) {
 }
 
 function getPlanWorkoutCandidates(day, model) {
+  if (model.trainingMethod === TrainingMethod.HANSONS) return [];
   if (model.targetRace === TargetRace.MARATHON) {
     return getMarathonSwapCandidates(day, model.unitSystem);
   }
@@ -4838,18 +5704,17 @@ function getRaceEquivalent(heatMultiplier) {
         {
           label: t.heatEnvironmentResult,
           value: formatFinishTime(inputSeconds),
+          finishSeconds: inputSeconds,
+          distanceMeters: distanceKm * 1000,
           meta: getEquivalentRaceLabel()
         },
         {
           label: t.baselineTime,
           value: formatFinishTime(baselineSeconds),
+          finishSeconds: baselineSeconds,
+          distanceMeters: distanceKm * 1000,
           meta: `-${formatPercent((1 - 1 / heatMultiplier) * 100)}`,
           highlight: true
-        },
-        {
-          label: t.averagePace,
-          value: formatPaceForUnit(baselineSeconds / distanceKm, state.unitSystem),
-          meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
         }
       ]
     };
@@ -4862,18 +5727,17 @@ function getRaceEquivalent(heatMultiplier) {
       {
         label: t.baselineTime,
         value: formatFinishTime(inputSeconds),
+        finishSeconds: inputSeconds,
+        distanceMeters: distanceKm * 1000,
         meta: getEquivalentRaceLabel()
       },
       {
         label: t.heatEquivalentTime,
         value: formatFinishTime(hotSeconds),
+        finishSeconds: hotSeconds,
+        distanceMeters: distanceKm * 1000,
         meta: `+${formatPercent((heatMultiplier - 1) * 100)}`,
         highlight: true
-      },
-      {
-        label: t.averagePace,
-        value: formatPaceForUnit(hotSeconds / distanceKm, state.unitSystem),
-        meta: state.unitSystem === UnitSystem.IMPERIAL ? "per mile" : "per km"
       }
     ]
   };
@@ -4935,10 +5799,34 @@ function clampNumber(value, min, max) {
 }
 
 function formatPaceForUnit(secondsPerKm, unitSystem) {
+  if (!Number.isFinite(secondsPerKm) || secondsPerKm <= 0) return "-";
   const seconds =
     unitSystem === UnitSystem.IMPERIAL ? secondsPerKm * KM_PER_MILE : secondsPerKm;
   const suffix = unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
   return `${formatClock(seconds)} ${suffix}`;
+}
+
+function formatAverageResultPace(
+  totalSeconds,
+  distanceMeters,
+  unitSystem = state.unitSystem
+) {
+  const paceSeconds = calculateAveragePaceSeconds(
+    totalSeconds,
+    distanceMeters,
+    unitSystem
+  );
+  if (paceSeconds === null) return "-";
+  const suffix = unitSystem === UnitSystem.IMPERIAL ? "/ mi" : "/ km";
+  return `${formatClock(paceSeconds)} ${suffix}`;
+}
+
+function renderFinishTimeWithPace(
+  totalSeconds,
+  distanceMeters,
+  timeFormatter = formatFinishTime
+) {
+  return `<span class="finish-time-with-pace"><span>${timeFormatter(totalSeconds)}</span><small class="finish-result-pace">${formatAverageResultPace(totalSeconds, distanceMeters)}</small></span>`;
 }
 
 function formatFinishTime(seconds) {

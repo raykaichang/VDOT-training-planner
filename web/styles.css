@@ -1219,12 +1219,13 @@ html[lang="en"] .tool-sidebar-head span {
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 16px 28px rgba(1, 4, 9, 0.38);
-  transform: translateY(-4px);
+  transform: translateY(-8px) scale(0.99);
+  transform-origin: top center;
   transition:
     max-height 180ms ease,
     opacity 140ms ease,
     padding 180ms ease,
-    transform 180ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
     border-color 180ms ease;
 }
 
@@ -1235,7 +1236,8 @@ html[lang="en"] .tool-sidebar-head span {
   opacity: 1;
   overflow-y: auto;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+  animation: dropdown-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .ability-option {
@@ -1327,6 +1329,36 @@ html[lang="en"] .tool-sidebar-head span {
 .vdot-estimate.invalid {
   background: rgba(240, 136, 62, 0.12);
   color: var(--orange);
+}
+
+#app .finish-time-with-pace {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.42em;
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+}
+
+#app .finish-time-with-pace > span {
+  color: inherit;
+  font: inherit;
+}
+
+#app .finish-result-pace {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: var(--card-label-size);
+  font-weight: var(--font-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+#app .vdot-estimate > .finish-result-pace {
+  font-size: var(--card-label-size);
 }
 
 .range-row {
@@ -1673,6 +1705,11 @@ html[lang="en"] .tool-sidebar-head span {
   overflow-wrap: anywhere;
 }
 
+.vdot-heat-equivalent > strong {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .vdot-equivalent-card > p:not(.eyebrow) {
   margin: 0;
 }
@@ -1927,6 +1964,10 @@ html[lang="en"] .tool-sidebar-head span {
     transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.plan-day-label {
+  display: none;
+}
+
 .plan-day:hover {
   box-shadow: 0 10px 24px rgba(1, 4, 9, 0.24);
 }
@@ -2025,10 +2066,13 @@ html[lang="en"] .tool-sidebar-head span {
   background: var(--surface);
   opacity: 0;
   box-shadow: 0 16px 34px rgba(1, 4, 9, 0.38);
+  transform: translateY(-8px) scale(0.99);
+  transform-origin: top center;
   transition:
     max-height 160ms ease,
     opacity 140ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .plan-swap.open .plan-swap-menu {
@@ -2036,6 +2080,50 @@ html[lang="en"] .tool-sidebar-head span {
   overflow-y: auto;
   border-color: var(--line);
   opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: dropdown-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Taste Skill motion layer: state changes only, with the existing visual theme intact. */
+[data-tool-view].tool-view-exit {
+  pointer-events: none;
+  animation: tool-view-exit 120ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+[data-tool-view].tool-view-enter {
+  animation: tool-view-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tool-view-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes tool-view-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .plan-swap-option {
@@ -5254,4 +5342,314 @@ body {
   min-height: 30px;
   padding: 4px 10px;
   border-radius: 6px;
+}
+
+/* Design Taste polish: preserve the existing RunStrategy palette ---------- */
+
+:root {
+  --ui-tint: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  --ui-hover: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  --ui-focus: color-mix(in srgb, var(--accent) 18%, transparent);
+  --sidebar-line: color-mix(in srgb, var(--sidebar-text) 14%, transparent);
+}
+
+.content-shell {
+  padding: 26px 38px 56px;
+}
+
+.topbar {
+  align-items: flex-start;
+  gap: 28px;
+  padding: 16px 0 24px;
+}
+
+#app .topbar h1 {
+  margin-bottom: 7px;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+}
+
+.topbar .subtitle {
+  max-width: 62ch;
+}
+
+.compact-toolbar {
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg));
+  padding: 3px;
+}
+
+.toolbar-language select,
+.toolbar-icon-button,
+.compact-toolbar .feedback-link {
+  border-radius: 5px;
+}
+
+.toolbar-language select:hover,
+.toolbar-language select:focus,
+.toolbar-icon-button:hover,
+.compact-toolbar .feedback-link:hover {
+  border-color: transparent;
+  background: var(--surface-soft);
+}
+
+.pace-layout {
+  gap: 38px;
+  padding-top: 26px;
+}
+
+.section-heading {
+  min-height: 38px;
+  align-items: center;
+  border-bottom-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+  padding-bottom: 13px;
+}
+
+.section-heading .section-index {
+  color: var(--accent);
+  font-weight: var(--font-bold);
+}
+
+#app .section-heading h2 {
+  font-size: 1.16rem;
+}
+
+.input-section {
+  padding: 22px 0;
+}
+
+.input-section + .input-section {
+  border-top-color: color-mix(in srgb, var(--text) 7%, var(--line));
+}
+
+#app .input-section-head h3 {
+  color: var(--text);
+  font-size: 0.96rem;
+}
+
+.input-section-head p {
+  max-width: 48ch;
+}
+
+.ability-select-trigger,
+select,
+input[type="number"],
+input[type="text"],
+.number-stepper,
+.weather-toggle-button {
+  border-color: color-mix(in srgb, var(--text) 8%, var(--line));
+  background-color: var(--surface-raised);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.ability-select-trigger:hover,
+select:hover,
+input[type="number"]:hover,
+input[type="text"]:hover,
+.number-stepper:hover,
+.weather-toggle-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+
+.ability-select-trigger:focus-visible,
+select:focus-visible,
+input[type="number"]:focus-visible,
+input[type="text"]:focus-visible,
+.number-stepper:focus-visible,
+.weather-toggle-button:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ui-focus);
+}
+
+.pace-data-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.pace-data-row {
+  border-top-color: var(--line);
+  padding: 16px 18px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.pace-data-row:first-child {
+  border-top: 0;
+}
+
+.pace-data-row:hover {
+  background: color-mix(in srgb, var(--row-tone) 5%, var(--surface));
+}
+
+.pace-zone-label > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--row-tone) 30%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--row-tone) 10%, transparent);
+}
+
+#app .pace-zone-label h3 {
+  color: var(--text);
+  font-weight: var(--font-bold);
+}
+
+.pace-data-row .pace-values > div {
+  min-height: 44px;
+}
+
+.pace-data-row .pace-values dd {
+  margin-top: 4px;
+}
+
+.pace-row-detail .pace-card-note {
+  border-left-color: color-mix(in srgb, var(--row-tone) 35%, var(--line));
+}
+
+.vdot-equivalent-grid {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.vdot-equivalent-grid article {
+  transition: background-color 140ms ease;
+}
+
+.vdot-equivalent-grid article:hover {
+  background: var(--ui-tint);
+}
+
+.tool-sidebar {
+  border-color: var(--sidebar-line);
+}
+
+.tool-sidebar-head {
+  border-bottom-color: var(--sidebar-line);
+}
+
+.tool-sidebar-head strong {
+  letter-spacing: 0.035em;
+}
+
+.sidebar-toggle {
+  border-color: var(--sidebar-line);
+  background: color-mix(in srgb, var(--sidebar-text) 7%, transparent);
+  color: var(--accent);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.sidebar-toggle:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--sidebar-line));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.tool-sidebar-nav {
+  gap: 4px;
+}
+
+.tool-sidebar-nav button {
+  border-radius: 6px;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.tool-sidebar-nav button.active::before {
+  box-shadow: none;
+}
+
+@media (max-width: 1200px) {
+  .topbar {
+    align-items: stretch;
+  }
+
+  .compact-toolbar {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 1050px) {
+  .pace-layout {
+    gap: 30px;
+  }
+}
+
+@media (max-width: 720px) {
+  .content-shell {
+    padding: 22px 20px 48px;
+  }
+
+  .pace-data-row {
+    padding: 15px 14px;
+  }
+}
+
+@media (max-width: 620px) {
+  .tool-sidebar {
+    gap: 12px;
+    padding: 18px 12px;
+  }
+
+  .tool-sidebar-head {
+    padding-bottom: 14px;
+  }
+
+  .content-shell {
+    padding: 20px 12px 44px;
+  }
+
+  .topbar {
+    gap: 16px;
+    padding: 0 0 22px;
+  }
+
+  #app .topbar h1 {
+    font-size: clamp(1.8rem, 9vw, 2.15rem);
+  }
+
+  .compact-toolbar {
+    width: 100%;
+  }
+
+  .pace-layout {
+    gap: 26px;
+    padding-top: 22px;
+  }
+
+  .pace-data-list,
+  .vdot-equivalent-grid {
+    border-radius: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ability-select-trigger,
+  select,
+  input[type="number"],
+  input[type="text"],
+  .number-stepper,
+  .weather-toggle-button,
+  .pace-data-row,
+  .vdot-equivalent-grid article,
+  .sidebar-toggle,
+  .tool-sidebar-nav button {
+    transition: none;
+  }
 }

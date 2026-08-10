@@ -1,18 +1,362 @@
 import assert from "node:assert/strict";
 import {
+  HANSONS_PLAN_LENGTHS,
   HalfMarathonWeek,
+  HansonsLevel,
   TargetRace,
+  TrainingMethod,
   TrainingCycle,
   UnitSystem,
   PaceZone,
+  calculateAveragePaceSeconds,
   calculateHeatAdjustment,
   calculatePaceModel,
   calculateVdotFromRaceResult,
+  getHansonsDefaultWeek,
   getMarathonTrainingLimits,
   getMarathonSwapCandidates,
   getMileageClass,
   getWorkoutExamplesForMileage
 } from "../src/training-planner/paceCalculator.mjs";
+
+assert.equal(calculateAveragePaceSeconds(20 * 60, 5000, UnitSystem.METRIC), 240);
+assert.ok(
+  Math.abs(
+    calculateAveragePaceSeconds(20 * 60, 5000, UnitSystem.IMPERIAL) -
+      240 * 1.609344
+  ) < 1e-9
+);
+assert.ok(
+  Math.abs(calculateAveragePaceSeconds(40 * 60, 7300, UnitSystem.METRIC) - 328.767123) <
+    1e-6
+);
+assert.equal(calculateAveragePaceSeconds(3600, 0, UnitSystem.METRIC), null);
+assert.equal(calculateAveragePaceSeconds(null, 5000, UnitSystem.METRIC), null);
+
+const hansonsRaces = [
+  TargetRace.FIVE_K,
+  TargetRace.TEN_K,
+  TargetRace.HALF_MARATHON,
+  TargetRace.MARATHON
+];
+
+const classicDailySamples = [
+  [TargetRace.MARATHON, HansonsLevel.BEGINNER, 57.5, 1, [0, 2, 0, 3, 0, 3, 4]],
+  [TargetRace.MARATHON, HansonsLevel.BEGINNER, 57.5, 6, [4, 9, 0, 7, 4, 8, 8]],
+  [TargetRace.MARATHON, HansonsLevel.ADVANCED, 61.5, 7, [6, 8, 0, 9, 7, 8, 14]],
+  [TargetRace.HALF_MARATHON, HansonsLevel.BEGINNER, 47, 5, [0, 5, 0, 6, 5, 4, 8]],
+  [TargetRace.HALF_MARATHON, HansonsLevel.BEGINNER, 47, 10, [6, 8, 0, 7, 5, 5, 12]],
+  [TargetRace.HALF_MARATHON, HansonsLevel.ADVANCED, 50, 10, [7, 9, 0, 8, 5, 6, 12]],
+  [TargetRace.HALF_MARATHON, HansonsLevel.ADVANCED, 50, 11, [5, 10, 0, 9, 6, 5, 10]],
+  [TargetRace.HALF_MARATHON, HansonsLevel.ADVANCED, 50, 18, [5, 5, 0, 6, 5, 3, 13.1]]
+];
+
+for (const [targetRace, hansonsLevel, peakMiles, hansonsWeek, expectedMiles] of classicDailySamples) {
+  const model = calculatePaceModel({
+    trainingMethod: TrainingMethod.HANSONS,
+    targetRace,
+    hansonsLevel,
+    hansonsWeek,
+    weeklyMileage: peakMiles * 1.609344,
+    vdot: 50
+  });
+  const byDay = Object.fromEntries(model.weeklySchedule.map((day) => [day.enDay, day]));
+  const actualMiles = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+    (day) => Math.round((byDay[day].plannedDistanceKm / 1.609344) * 10) / 10
+  );
+  assert.deepEqual(actualMiles, expectedMiles);
+  assert.equal(
+    model.weeklySchedule.some((day) => /strides|加速跑/.test(`${day.zh} ${day.en}`)),
+    false
+  );
+}
+
+const zeroMileageClassic = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsWeek: 11,
+  weeklyMileage: 0
+});
+assert.equal(
+  zeroMileageClassic.weeklySchedule.reduce((sum, day) => sum + day.plannedDistanceKm, 0),
+  0
+);
+
+assert.equal(
+  getHansonsDefaultWeek(TargetRace.HALF_MARATHON, HansonsLevel.BEGINNER),
+  6
+);
+assert.equal(
+  getHansonsDefaultWeek(TargetRace.MARATHON, HansonsLevel.ADVANCED),
+  3
+);
+
+for (const targetRace of hansonsRaces) {
+  for (const hansonsLevel of Object.values(HansonsLevel)) {
+    const totalWeeks = HANSONS_PLAN_LENGTHS[targetRace];
+    for (let hansonsWeek = 1; hansonsWeek <= totalWeeks; hansonsWeek += 1) {
+      const hansonsModel = calculatePaceModel({
+        trainingMethod: TrainingMethod.HANSONS,
+        targetRace,
+        hansonsLevel,
+        hansonsWeek,
+        weeklyMileage: 70,
+        vdot: 50
+      });
+      const plannedTotal = hansonsModel.weeklySchedule.reduce(
+        (sum, day) => sum + day.plannedDistanceKm,
+        0
+      );
+      const qualityIndexes = hansonsModel.weeklySchedule
+        .map((day, index) => ({ day, index }))
+        .filter(({ day }) => day.isPrimaryWorkout)
+        .map(({ index }) => index);
+
+      assert.equal(hansonsModel.trainingMethod, TrainingMethod.HANSONS);
+      assert.equal(hansonsModel.hansonsPlan.totalWeeks, totalWeeks);
+      assert.equal(hansonsModel.weeklySchedule.length, 7);
+      assert.ok(Math.abs(plannedTotal - hansonsModel.hansonsPlan.plannedWeeklyMileageKm) < 0.05);
+      assert.ok(
+        qualityIndexes.every(
+          (index, itemIndex) =>
+            itemIndex === 0 || index - qualityIndexes[itemIndex - 1] >= 2
+        )
+      );
+      assert.equal(
+        hansonsModel.weeklySchedule.some((day) => /Couch Potato|走跑/.test(`${day.zh} ${day.en}`)),
+        false
+      );
+    }
+  }
+}
+
+const hansonsHalfSpeed = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.HALF_MARATHON,
+  hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsWeek: 6,
+  weeklyMileage: 70,
+  vdot: 50
+});
+assert.equal(hansonsHalfSpeed.hansonsPlan.phase, "speed");
+assert.match(hansonsHalfSpeed.weeklySchedule.find((day) => day.enDay === "Tue").zh, /Speed/);
+assert.equal(
+  hansonsHalfSpeed.weeklySchedule.find((day) => day.enDay === "Thu").customPaceRows[0].id,
+  "HMP"
+);
+assert.match(hansonsHalfSpeed.hansonsPlan.qualityNoteZh, /星期二.*Speed.*星期四.*HMP Tempo/);
+
+const hansonsAdvancedHalfWeek10 = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.HALF_MARATHON,
+  hansonsLevel: HansonsLevel.ADVANCED,
+  hansonsWeek: 10,
+  weeklyMileage: 81,
+  vdot: 50
+});
+assert.equal(hansonsAdvancedHalfWeek10.hansonsPlan.phase, "speed");
+assert.match(
+  hansonsAdvancedHalfWeek10.weeklySchedule.find((day) => day.enDay === "Tue").zh,
+  /12 x 0\.4 km.*組間 0\.4 km/
+);
+
+const hansonsAdvancedMarathonWeek7 = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsLevel: HansonsLevel.ADVANCED,
+  hansonsWeek: 7,
+  weeklyMileage: 99,
+  vdot: 50
+});
+assert.equal(hansonsAdvancedMarathonWeek7.hansonsPlan.phase, "speed");
+assert.match(
+  hansonsAdvancedMarathonWeek7.weeklySchedule.find((day) => day.enDay === "Tue").zh,
+  /3 x 1\.6 km.*組間 0\.8 km/
+);
+assert.equal(
+  hansonsAdvancedMarathonWeek7.weeklySchedule.find((day) => day.enDay === "Thu").customPaceRows[0].id,
+  "MP"
+);
+
+const hansonsHalfStrength = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.HALF_MARATHON,
+  trainingCycle: TrainingCycle.PHASE_IV,
+  hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsWeek: 11,
+  weeklyMileage: 70,
+  vdot: 50
+});
+assert.equal(hansonsHalfStrength.hansonsPlan.phase, "strength");
+assert.equal(hansonsHalfStrength.taperRecommendation, null);
+assert.equal(
+  hansonsHalfStrength.weeklySchedule.find((day) => day.enDay === "Tue").zone,
+  "I"
+);
+assert.equal(
+  hansonsHalfStrength.weeklySchedule.find((day) => day.enDay === "Tue").customPaceRows[0].id,
+  "HMP−10"
+);
+
+const hansonsMarathonStrength = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsWeek: 11,
+  weeklyMileage: 85,
+  vdot: 50
+});
+assert.equal(
+  hansonsMarathonStrength.weeklySchedule.find((day) => day.enDay === "Tue").customPaceRows[0].id,
+  "MP−10"
+);
+assert.equal(
+  hansonsMarathonStrength.weeklySchedule.find((day) => day.enDay === "Thu").customPaceRows[0].id,
+  "MP"
+);
+
+const hansonsFiveKSharpening = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.FIVE_K,
+  hansonsWeek: 10,
+  weeklyMileage: 55,
+  vdot: 50
+});
+assert.equal(hansonsFiveKSharpening.hansonsPlan.phase, "sharpening");
+assert.equal(
+  hansonsFiveKSharpening.weeklySchedule.find((day) => day.enDay === "Tue").customPaceRows[0].id,
+  "3K"
+);
+
+const hansonsTenKDevelopment = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.TEN_K,
+  hansonsWeek: 4,
+  weeklyMileage: 65,
+  vdot: 50
+});
+assert.equal(hansonsTenKDevelopment.hansonsPlan.phase, "development");
+assert.equal(
+  hansonsTenKDevelopment.weeklySchedule.find((day) => day.enDay === "Fri").customPaceRows[0].id,
+  "8K–10K"
+);
+
+const lowVolumeHansons = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsWeek: 11,
+  weeklyMileage: 25
+});
+assert.equal(lowVolumeHansons.hansonsPlan.belowRecommendedVolume, true);
+assert.equal(
+  lowVolumeHansons.weeklySchedule.filter((day) => day.isPrimaryWorkout).length,
+  3
+);
+
+const lowVolumeHalfSpeed = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.HALF_MARATHON,
+  hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsWeek: 6,
+  weeklyMileage: 25,
+  vdot: 50
+});
+const lowVolumeHalfByDay = Object.fromEntries(
+  lowVolumeHalfSpeed.weeklySchedule.map((day) => [day.enDay, day])
+);
+assert.deepEqual(
+  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+    (day) => lowVolumeHalfByDay[day].plannedDistanceKm
+  ),
+  [1.4, 4.4, 0, 3.3, 1.4, 1.7, 7.5]
+);
+assert.match(lowVolumeHalfByDay.Tue.zh, /4 x 0\.4 km/);
+assert.match(lowVolumeHalfByDay.Thu.zh, /半馬配速 2 km/);
+assert.equal(lowVolumeHalfSpeed.hansonsPlan.lowVolumeAdaptation, true);
+assert.equal(lowVolumeHalfSpeed.hansonsPlan.plannedWeeklyMileageKm, 19.7);
+
+const scaledMarathonSpeed = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsWeek: 6,
+  weeklyMileage: 58,
+  vdot: 50
+});
+const scaledMarathonByDay = Object.fromEntries(
+  scaledMarathonSpeed.weeklySchedule.map((day) => [day.enDay, day])
+);
+assert.equal(scaledMarathonByDay.Tue.plannedDistanceKm, 10.6);
+assert.equal(scaledMarathonByDay.Thu.plannedDistanceKm, 8.4);
+assert.match(scaledMarathonByDay.Tue.zh, /10 x 0\.4 km/);
+assert.match(scaledMarathonByDay.Thu.zh, /馬拉松配速 6\.4 km/);
+
+const screenshotLowVolumeCase = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsLevel: HansonsLevel.ADVANCED,
+  hansonsWeek: 14,
+  weeklyMileage: 34,
+  vdot: 53
+});
+const screenshotLowVolumeByDay = Object.fromEntries(
+  screenshotLowVolumeCase.weeklySchedule.map((day) => [day.enDay, day])
+);
+assert.equal(screenshotLowVolumeCase.hansonsPlan.lowVolumeAdaptation, true);
+assert.equal(screenshotLowVolumeCase.hansonsPlan.plannedWeeklyMileageKm, 34);
+assert.equal(screenshotLowVolumeByDay.Sun.plannedDistanceKm, 10);
+assert.equal(screenshotLowVolumeByDay.Tue.plannedDistanceKm, 7.5);
+assert.equal(screenshotLowVolumeByDay.Tue.workDistanceKm, 4.5);
+assert.equal(screenshotLowVolumeByDay.Tue.recoveryDistanceKm, 1.2);
+assert.equal(screenshotLowVolumeByDay.Tue.warmupCooldownKm, 1.8);
+assert.match(screenshotLowVolumeByDay.Tue.zh, /3 x 1\.5 km/);
+assert.match(screenshotLowVolumeByDay.Tue.zh, /組間 0\.6 km/);
+assert.equal(screenshotLowVolumeByDay.Tue.customPaceRows[0].id, "MP−10");
+assert.equal(screenshotLowVolumeByDay.Thu.plannedDistanceKm, 7);
+assert.equal(screenshotLowVolumeByDay.Thu.workDistanceKm, 5.4);
+assert.equal(screenshotLowVolumeByDay.Thu.warmupCooldownKm, 1.6);
+assert.equal(screenshotLowVolumeByDay.Thu.customPaceRows[0].id, "MP");
+assert.equal(
+  ["Mon", "Fri", "Sat"].reduce(
+    (sum, day) => sum + screenshotLowVolumeByDay[day].plannedDistanceKm,
+    0
+  ),
+  9.5
+);
+
+const officialMarathonStrength = calculatePaceModel({
+  trainingMethod: TrainingMethod.HANSONS,
+  targetRace: TargetRace.MARATHON,
+  hansonsLevel: HansonsLevel.ADVANCED,
+  hansonsWeek: 14,
+  weeklyMileage: 99,
+  vdot: 53
+});
+const officialMarathonStrengthTuesday = officialMarathonStrength.weeklySchedule.find(
+  (day) => day.enDay === "Tue"
+);
+assert.equal(officialMarathonStrengthTuesday.workDistanceKm, 9.7);
+assert.equal(officialMarathonStrengthTuesday.recoveryDistanceKm, 1.6);
+assert.equal(officialMarathonStrengthTuesday.warmupCooldownKm, 4.8);
+assert.equal(officialMarathonStrengthTuesday.plannedDistanceKm, 16.1);
+
+for (const targetRace of hansonsRaces) {
+  const raceWeek = calculatePaceModel({
+    trainingMethod: TrainingMethod.HANSONS,
+    targetRace,
+    hansonsWeek: HANSONS_PLAN_LENGTHS[targetRace],
+    weeklyMileage: 70
+  });
+  const expectedRaceDistance = {
+    [TargetRace.FIVE_K]: 5,
+    [TargetRace.TEN_K]: 10,
+    [TargetRace.HALF_MARATHON]: 21.1,
+    [TargetRace.MARATHON]: 42.2
+  }[targetRace];
+  assert.equal(raceWeek.hansonsPlan.phase, "race");
+  assert.equal(raceWeek.weeklySchedule.find((day) => day.enDay === "Sun").plannedDistanceKm, expectedRaceDistance);
+  assert.equal(raceWeek.taperRecommendation.automatic, true);
+}
 
 const model = calculatePaceModel({
   vdot: 50,
