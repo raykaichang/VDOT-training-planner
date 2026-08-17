@@ -187,3 +187,10 @@ Long Run progression is the highest priority.
 
 Use the marathon-specific weekly generator rather than the generic fixed-day quality template. Phase I must remain E/L/strides only; Phase II introduces R; Phase III combines M/T long work with I; Phase IV retains M/T while automatically reducing peak mileage. Keep Q1 on Sunday and Q2 on Wednesday, enforce 2-3 E days between Q sessions, cap long runs by both weekly share and 150 minutes, and validate actual M/T/I/R work against Daniels volume limits.
 
+---
+
+# Git Branch Policy
+
+- 未經使用者明確同意，不得建立新的 Git branch。
+- 使用者要求推送時，先確認目前展示或部署網站使用的既有 branch，並直接推送到該 branch；不得自行建立 feature branch 或 PR branch。
+
