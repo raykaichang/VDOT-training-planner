@@ -3723,6 +3723,153 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* Treadmill speed and incline converter */
+.tool-icon-glyph {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.treadmill-input-grid {
+  gap: 18px;
+}
+
+.treadmill-result-hero {
+  display: grid;
+  gap: 8px;
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-raised));
+  padding: clamp(20px, 4vw, 34px);
+}
+
+.treadmill-result-hero > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.treadmill-result-hero > strong {
+  color: var(--text);
+  font-size: clamp(2.2rem, 6vw, 4.4rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.treadmill-result-hero > p {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.treadmill-result-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 18px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+}
+
+.treadmill-result-metrics > div {
+  min-width: 0;
+  background: var(--surface-raised);
+  padding: 16px;
+}
+
+.treadmill-result-metrics dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.treadmill-result-metrics dd {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: clamp(1rem, 2vw, 1.28rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.treadmill-result-metrics small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.treadmill-validation {
+  display: grid;
+  gap: 5px;
+  margin-top: 16px;
+  border-left: 3px solid var(--green);
+  background: color-mix(in srgb, var(--green) 7%, var(--surface));
+  padding: 13px 15px;
+}
+
+.treadmill-validation.caution {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 8%, var(--surface));
+}
+
+.treadmill-validation strong,
+.treadmill-validation p,
+.treadmill-validation small {
+  margin: 0;
+}
+
+.treadmill-validation strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.treadmill-validation p,
+.treadmill-validation small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.treadmill-method {
+  margin-top: 20px;
+}
+
+.treadmill-empty {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--amber) 7%, var(--surface));
+  padding: 18px;
+}
+
+.treadmill-empty h3,
+.treadmill-empty p {
+  margin: 0;
+}
+
+.treadmill-empty p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .treadmill-result-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .treadmill-result-hero > strong {
+    font-size: clamp(2rem, 12vw, 3.2rem);
+  }
+}
+
 /* RunStrategy data-tool refinements --------------------------------------- */
 .visually-hidden {
   position: absolute !important;

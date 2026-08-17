@@ -39,6 +39,15 @@ import {
   sourceTypeLabel
 } from "../src/gpx-catalog/format.mjs";
 import { parseGpxText } from "../src/gpx-catalog/parser.mjs";
+import {
+  KM_PER_MILE as TREADMILL_KM_PER_MILE,
+  convertTreadmillEffort
+} from "../src/treadmill/hillRunner.mjs";
+import {
+  formatStepValue,
+  roundToStepPrecision,
+  stepNumericValue
+} from "../src/ui/numericStep.mjs";
 
 const copy = {
   "zh-TW": {
@@ -569,6 +578,9 @@ const state = {
   equivalentRaceHours: isAndroidApp ? 1 : 0,
   equivalentRaceMinutes: isAndroidApp ? 45 : 20,
   equivalentRaceSeconds: 0,
+  treadmillSpeedUnit: initialLocale === "en" ? "mph" : "kph",
+  treadmillSpeed: initialLocale === "en" ? 7.5 : 12,
+  treadmillIncline: 1,
   paceMinutes: 5,
   paceSeconds: 0,
   weeklyMileage: 58,
@@ -849,6 +861,76 @@ function getGpxCopy() {
   };
 }
 
+function getTreadmillCopy() {
+  if (state.locale === "en") {
+    return {
+      sidebarLabel: "Treadmill Effort",
+      inputsTitle: "Treadmill setup",
+      inputSection: "Speed and incline",
+      inputHelp: "Enter the speed shown on the treadmill and its incline setting.",
+      speedUnit: "Speed unit",
+      speed: "Treadmill speed",
+      incline: "Incline",
+      sourceRange: "HillRunner table range: 5.0-12.0 mph (8.0-19.3 km/h), 0-10% incline.",
+      resultsTitle: "Flat-road equivalent effort",
+      equivalentPace: "Equivalent outdoor pace",
+      equivalentSpeed: "Equivalent outdoor speed",
+      treadmillPace: "Belt pace",
+      setting: "Current setting",
+      difference: "Pace difference",
+      faster: "faster than belt pace",
+      slower: "slower than belt pace",
+      same: "same as belt pace",
+      exact: "Direct HillRunner table value",
+      interpolated: "Interpolated between adjacent HillRunner table values",
+      supported: "Within the study-supported range",
+      supportedNote: "Supported for trained runners at submaximal effort, a 6:45-10:00/mi flat-road equivalent pace, and 0-4% incline.",
+      caution: "Outside the validated range",
+      cautionNote: "The table value still matches HillRunner, but the study only supports trained runners at submaximal effort, a 6:45-10:00/mi equivalent pace, and 0-4% incline. Use effort and heart rate to adjust.",
+      methodTitle: "Source and limits",
+      method:
+        "This tool reproduces the HillRunner speed-incline lookup table and linearly interpolates only between adjacent published cells. It does not extrapolate beyond the table. HillRunner states that the source data do not fit a meaningful formula and recommends treating the chart as a starting point.",
+      invalidSpeed: "Enter a speed within the HillRunner table range.",
+      invalidIncline: "Enter an incline from 0% to 10%.",
+      mph: "mph",
+      kph: "km/h"
+    };
+  }
+
+  return {
+    sidebarLabel: "跑步機換算",
+    inputsTitle: "跑步機設定",
+    inputSection: "速度與坡度",
+    inputHelp: "輸入跑步機面板顯示的速度與坡度，換算成戶外平地的同等努力。",
+    speedUnit: "速度單位",
+    speed: "跑步機速度",
+    incline: "坡度",
+    sourceRange: "HillRunner 表格範圍：5.0-12.0 mph（約 8.0-19.3 km/h）、0-10% 坡度。",
+    resultsTitle: "戶外平地等強結果",
+    equivalentPace: "戶外平地等強配速",
+    equivalentSpeed: "戶外平地等強速度",
+    treadmillPace: "跑步機實際配速",
+    setting: "目前設定",
+    difference: "配速差",
+    faster: "比跑步機實際配速快",
+    slower: "比跑步機實際配速慢",
+    same: "與跑步機實際配速相同",
+    exact: "直接使用 HillRunner 表格值",
+    interpolated: "使用相鄰 HillRunner 表格值線性內插",
+    supported: "位於研究支持範圍",
+    supportedNote: "研究支持受訓跑者在次最大努力、平地等效配速 6:45-10:00/mi（約 4:12-6:13/km）、0-4% 坡度使用。",
+    caution: "超出研究驗證範圍",
+    cautionNote: "查表數值仍與 HillRunner 一致，但研究只支持受訓跑者在次最大努力、平地等效配速 6:45-10:00/mi、0-4% 坡度使用，請再用體感與心率調整。",
+    methodTitle: "來源與限制",
+    method:
+      "本工具重現 HillRunner 的速度與坡度查表資料，只在相鄰公開表格值之間做線性內插，不會外推超出原始範圍。HillRunner 說明原始資料無法良好套用單一公式，建議把結果當成調整起點。",
+    invalidSpeed: "請輸入 HillRunner 表格範圍內的速度。",
+    invalidIncline: "請輸入 0-10% 的坡度。",
+    mph: "mph",
+    kph: "km/h"
+  };
+}
+
 function render() {
   if (state.toolMode === "gpxCatalog" || (isAndroidApp && state.toolMode === "gpx")) {
     state.toolMode = "pace";
@@ -866,6 +948,7 @@ function render() {
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
   const isGpx = state.toolMode === "gpx";
+  const isTreadmill = state.toolMode === "treadmill";
 
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-Hant";
   document.documentElement.dataset.theme = state.theme;
@@ -886,11 +969,19 @@ function render() {
           <section class="control-panel" aria-labelledby="inputs-title">
             <div class="section-heading">
               <p class="section-index">01</p>
-              <h2 id="inputs-title">${isGpx ? getGpxCopy().inputsTitle : t.settingsTitle}</h2>
+              <h2 id="inputs-title">${
+                isGpx
+                  ? getGpxCopy().inputsTitle
+                  : isTreadmill
+                    ? getTreadmillCopy().inputsTitle
+                    : t.settingsTitle
+              }</h2>
             </div>
             ${
               isGpx
                 ? renderGpxInputs()
+                : isTreadmill
+                  ? renderTreadmillInputs()
                 : `
                   ${renderInputs(t)}
                   ${isPlan ? renderMileageClass(model, t) : ""}
@@ -902,6 +993,8 @@ function render() {
             ${
               isGpx
                 ? renderGpxResults()
+                : isTreadmill
+                  ? renderTreadmillResults()
                 : isConverter
                 ? `${renderEquivalentResults(model, t)}${renderEnvironmentSummary(model, t)}`
                 : isPlan
@@ -924,7 +1017,7 @@ function render() {
   `;
 
   bindEvents();
-  if (!isConverter && !isGpx) fitPaceZonePanel();
+  if (!isConverter && !isGpx && !isTreadmill) fitPaceZonePanel();
 }
 
 function renderAndroidApp(model, t) {
@@ -933,6 +1026,8 @@ function renderAndroidApp(model, t) {
 
   const content = state.toolMode === "equivalent"
     ? renderAndroidEquivalentPage(model, t)
+    : state.toolMode === "treadmill"
+      ? renderAndroidTreadmillPage()
     : state.toolMode === "plan"
       ? renderAndroidPlanPage(model, t)
       : renderAndroidPacePage(model, t);
@@ -975,6 +1070,7 @@ function renderAndroidBottomNav(t) {
   const items = [
     ["pace", t.sidebarPaceLabel, renderSidebarIcon("pace")],
     ["equivalent", t.sidebarHeatLabel, renderSidebarIcon("heat")],
+    ["treadmill", getTreadmillCopy().sidebarLabel, '<span class="tool-icon-glyph">TM</span>'],
     ["plan", t.sidebarPlanLabel, renderSidebarIcon("plan")]
   ];
 
@@ -1518,6 +1614,41 @@ function formatAndroidDuration(seconds) {
   return minutes ? `${minutes} 分 ${remaining} 秒` : `${remaining} 秒`;
 }
 
+function renderAndroidTreadmillPage() {
+  const copy = getTreadmillCopy();
+  const conversion = getTreadmillConversion();
+  const bounds = getTreadmillSpeedBounds();
+  const result = conversion.valid
+    ? `
+      <section class="android-treadmill-result">
+        <span>${copy.equivalentPace}</span>
+        <strong>${formatTreadmillPace(conversion)}</strong>
+        <small>${formatTreadmillSpeed(conversion.equivalentSpeedMph, conversion.equivalentSpeedKph)}</small>
+      </section>
+      <dl class="android-treadmill-metrics">
+        <div><dt>${copy.treadmillPace}</dt><dd>${formatTreadmillPace(conversion, "treadmill")}</dd></div>
+        <div><dt>${copy.setting}</dt><dd>${formatTreadmillSetting()}</dd></div>
+      </dl>
+      <p class="android-heat-advice ${conversion.withinValidatedRange ? "" : "treadmill-caution"}">
+        ${conversion.withinValidatedRange ? copy.supportedNote : copy.cautionNote}
+      </p>
+    `
+    : `<p class="android-heat-advice treadmill-caution">${getTreadmillError(copy, conversion)}</p>`;
+
+  return `
+    ${renderAndroidPageHead("TREADMILL", copy.sidebarLabel, formatTreadmillSetting())}
+    <section class="android-treadmill-controls">
+      <label><span>${copy.speedUnit}</span>${renderAndroidSelect("treadmillSpeedUnit", state.treadmillSpeedUnit, [
+        { value: "kph", label: copy.kph },
+        { value: "mph", label: copy.mph }
+      ], copy.speedUnit)}</label>
+      <label><span>${copy.speed}</span><input data-field="treadmillSpeed" type="number" inputmode="decimal" min="${bounds.min}" max="${bounds.max}" step="0.1" value="${state.treadmillSpeed}" /><b>${state.treadmillSpeedUnit === "mph" ? copy.mph : copy.kph}</b></label>
+      <label><span>${copy.incline}</span><input data-field="treadmillIncline" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${state.treadmillIncline}" /><b>%</b></label>
+    </section>
+    ${result}
+  `;
+}
+
 function renderInputs(t) {
   const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   const mileageUnit =
@@ -1725,6 +1856,11 @@ function renderToolSidebar(t) {
       value: "equivalent",
       label: t.sidebarHeatLabel,
       icon: renderSidebarIcon("heat")
+    },
+    {
+      value: "treadmill",
+      label: getTreadmillCopy().sidebarLabel,
+      icon: '<span class="tool-icon-glyph">TM</span>'
     },
     {
       value: "plan",
@@ -1945,6 +2081,159 @@ function renderRaceResultInput(t, estimate) {
   `;
 }
 
+function renderTreadmillInputs() {
+  const copy = getTreadmillCopy();
+  const bounds = getTreadmillSpeedBounds();
+  const speedUnit = state.treadmillSpeedUnit === "mph" ? copy.mph : copy.kph;
+
+  return `
+    <section class="input-section treadmill-input-section" aria-labelledby="treadmill-input-title">
+      <div class="input-section-head">
+        <h3 id="treadmill-input-title">${copy.inputSection}</h3>
+        <p>${copy.inputHelp}</p>
+      </div>
+      <div class="field-grid treadmill-input-grid">
+        ${renderMenuField(copy.speedUnit, "treadmillSpeedUnit", state.treadmillSpeedUnit, [
+          { value: "kph", label: copy.kph },
+          { value: "mph", label: copy.mph }
+        ])}
+        ${renderRangeField(
+          copy.speed,
+          "treadmillSpeed",
+          state.treadmillSpeed,
+          bounds.min,
+          bounds.max,
+          0.1,
+          speedUnit
+        )}
+        ${renderRangeField(copy.incline, "treadmillIncline", state.treadmillIncline, 0, 10, 0.5, "%")}
+      </div>
+      <p class="field-note">${copy.sourceRange}</p>
+    </section>
+  `;
+}
+
+function renderTreadmillResults() {
+  const copy = getTreadmillCopy();
+  const conversion = getTreadmillConversion();
+
+  if (!conversion.valid) {
+    return `
+      <div class="section-heading">
+        <p class="section-index">02</p>
+        <h2>${copy.resultsTitle}</h2>
+      </div>
+      <section class="treadmill-empty surface-card" role="alert">
+        <h3>${getTreadmillError(copy, conversion)}</h3>
+        <p>${copy.sourceRange}</p>
+      </section>
+      ${renderTreadmillMethod(copy)}
+    `;
+  }
+
+  const difference = formatTreadmillDifference(copy, conversion);
+  return `
+    <div class="section-heading">
+      <p class="section-index">02</p>
+      <h2>${copy.resultsTitle}</h2>
+      <strong class="section-value">${formatTreadmillSetting()}</strong>
+    </div>
+    <section class="treadmill-result-hero" aria-label="${copy.equivalentPace}">
+      <span>${copy.equivalentPace}</span>
+      <strong>${formatTreadmillPace(conversion)}</strong>
+      <p>${copy.equivalentSpeed} ${formatTreadmillSpeed(conversion.equivalentSpeedMph, conversion.equivalentSpeedKph)}</p>
+    </section>
+    <dl class="treadmill-result-metrics">
+      <div>
+        <dt>${copy.treadmillPace}</dt>
+        <dd>${formatTreadmillPace(conversion, "treadmill")}</dd>
+      </div>
+      <div>
+        <dt>${copy.difference}</dt>
+        <dd>${difference.value}</dd>
+        <small>${difference.label}</small>
+      </div>
+      <div>
+        <dt>${copy.setting}</dt>
+        <dd>${formatTreadmillSetting()}</dd>
+      </div>
+    </dl>
+    <aside class="treadmill-validation ${conversion.withinValidatedRange ? "supported" : "caution"}">
+      <strong>${conversion.withinValidatedRange ? copy.supported : copy.caution}</strong>
+      <p>${conversion.withinValidatedRange ? copy.supportedNote : copy.cautionNote}</p>
+      <small>${conversion.interpolationUsed ? copy.interpolated : copy.exact}</small>
+    </aside>
+    ${renderTreadmillMethod(copy)}
+  `;
+}
+
+function renderTreadmillMethod(copy) {
+  return `
+    <details class="method-details treadmill-method">
+      <summary>${copy.methodTitle}</summary>
+      <div class="heat-formula">
+        <p>${copy.method}</p>
+        <ul>
+          <li><a href="https://www.hillrunner.com/calculators/treadmill-pace-conversions/" target="_blank" rel="noreferrer">HillRunner.com Treadmill Pace Conversions</a></li>
+          <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10707652/" target="_blank" rel="noreferrer">Foreman et al. 2022 validation study</a></li>
+        </ul>
+      </div>
+    </details>
+  `;
+}
+
+function getTreadmillConversion() {
+  return convertTreadmillEffort({
+    speed: state.treadmillSpeed,
+    speedUnit: state.treadmillSpeedUnit,
+    inclinePercent: state.treadmillIncline
+  });
+}
+
+function getTreadmillSpeedBounds() {
+  return state.treadmillSpeedUnit === "mph"
+    ? { min: 5, max: 12 }
+    : { min: 8.1, max: 19.3 };
+}
+
+function getTreadmillError(copy, conversion) {
+  return conversion.reason === "incline-range" || conversion.reason === "invalid-incline"
+    ? copy.invalidIncline
+    : copy.invalidSpeed;
+}
+
+function formatTreadmillSetting() {
+  const copy = getTreadmillCopy();
+  const unit = state.treadmillSpeedUnit === "mph" ? copy.mph : copy.kph;
+  return `${Number(state.treadmillSpeed).toFixed(1)} ${unit} ? ${Number(state.treadmillIncline).toFixed(1)}%`;
+}
+
+function formatTreadmillPace(conversion, type = "equivalent") {
+  const useMiles = state.treadmillSpeedUnit === "mph";
+  const seconds = type === "treadmill"
+    ? (useMiles ? conversion.treadmillPaceSecondsPerMile : conversion.treadmillPaceSecondsPerKm)
+    : (useMiles ? conversion.equivalentPaceSecondsPerMile : conversion.equivalentPaceSecondsPerKm);
+  return `${formatClock(seconds)} / ${useMiles ? "mi" : "km"}`;
+}
+
+function formatTreadmillSpeed(speedMph, speedKph) {
+  return state.treadmillSpeedUnit === "mph"
+    ? `${speedMph.toFixed(1)} mph`
+    : `${speedKph.toFixed(1)} km/h`;
+}
+
+function formatTreadmillDifference(copy, conversion) {
+  const useMiles = state.treadmillSpeedUnit === "mph";
+  const difference = useMiles
+    ? conversion.differenceSecondsPerMile
+    : conversion.differenceSecondsPerKm;
+  const rounded = Math.round(Math.abs(difference));
+  return {
+    value: `${rounded} ${state.locale === "en" ? "sec" : "?"} / ${useMiles ? "mi" : "km"}`,
+    label: Math.abs(difference) < 0.5 ? copy.same : difference < 0 ? copy.faster : copy.slower
+  };
+}
+
 function renderEquivalentInputs(t) {
   return `
     ${renderMenuField(t.converterType, "converterType", state.converterType, [
@@ -2031,6 +2320,7 @@ function renderRangeField(label, field, value, min, max, step, unit, disabled = 
   const midpoint = min + (max - min) / 2;
   const formatTick = (tick) => Number.isInteger(tick) ? String(tick) : tick.toFixed(1);
   const numberId = `${field}-number`;
+  const displayValue = formatStepValue(value, step);
   return `
     <div class="field range-field precision-field ${disabled ? "disabled" : ""}">
       <label for="${numberId}">${label}</label>
@@ -2054,7 +2344,7 @@ function renderRangeField(label, field, value, min, max, step, unit, disabled = 
           min="${min}"
           max="${max}"
           step="${step}"
-          value="${value}"
+          value="${displayValue}"
           aria-label="${label}"
           ${disabledAttribute}
         />
@@ -2078,7 +2368,7 @@ function renderRangeField(label, field, value, min, max, step, unit, disabled = 
           min="${min}"
           max="${max}"
           step="${step}"
-          value="${value}"
+          value="${displayValue}"
           aria-label="${label}"
           ${disabledAttribute}
         />
@@ -4121,7 +4411,8 @@ function handleFieldChange(event) {
   const value = input.value;
 
   if (input.type === "range" && event.type === "input") {
-    syncRangeNumber(field, value);
+    const normalizedValue = normalizeNumericInput(input, value, state[field]);
+    syncRangeNumber(field, normalizedValue);
     return;
   }
 
@@ -4157,18 +4448,23 @@ function normalizeNumericInput(input, value, fallbackValue = 0) {
   if (input.min !== "" && Number.isFinite(min)) normalized = Math.max(min, normalized);
   if (input.max !== "" && Number.isFinite(max)) normalized = Math.min(max, normalized);
 
+  const step = Number(input.step);
+  if (input.step !== "" && input.step !== "any" && Number.isFinite(step) && step > 0) {
+    normalized = roundToStepPrecision(normalized, step);
+  }
+
   return normalized;
 }
 
 function syncRangeNumber(field, value) {
   app.querySelectorAll(`input[data-field="${field}"]`).forEach((input) => {
-    if (input.type === "number") input.value = value;
+    if (input.type === "number") input.value = formatStepValue(value, input.step);
   });
 }
 
 function syncRangeSlider(field, value) {
   app.querySelectorAll(`input[data-field="${field}"]`).forEach((input) => {
-    if (input.type === "range") input.value = value;
+    if (input.type === "range") input.value = formatStepValue(value, input.step);
   });
 }
 
@@ -4194,6 +4490,19 @@ function updateFieldValue(field, value) {
     state.planWorkoutOverrides = {};
     state.planOrder = [];
     state.skippedEasyDays = {};
+  }
+
+  if (field === "treadmillSpeedUnit") {
+    const nextUnit = value === "mph" ? "mph" : "kph";
+    if (nextUnit !== state.treadmillSpeedUnit) {
+      const convertedSpeed = nextUnit === "mph"
+        ? Math.round((state.treadmillSpeed / TREADMILL_KM_PER_MILE) * 10) / 10
+        : Math.round((state.treadmillSpeed * TREADMILL_KM_PER_MILE) * 10) / 10;
+      state.treadmillSpeedUnit = nextUnit;
+      const bounds = getTreadmillSpeedBounds();
+      state.treadmillSpeed = Math.min(bounds.max, Math.max(bounds.min, convertedSpeed));
+    }
+    return;
   }
 
   if (field === "unitSystem") {
@@ -4375,7 +4684,7 @@ function handleAction(event) {
     const min = Number(control.dataset.min);
     const max = Number(control.dataset.max);
     const current = Number(state[field]);
-    const next = Math.min(max, Math.max(min, current + delta));
+    const next = stepNumericValue({ current, delta, min, max });
     updateFieldValue(field, next);
     render();
     return;

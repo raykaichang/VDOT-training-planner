@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/server.mjs",
     "build": "node scripts/build.mjs",
-    "test": "node tests/rotationPlanner.test.mjs && node tests/paceCalculator.test.mjs && node tests/gpxEffort.test.mjs && node tests/gpxHeat.test.mjs"
+    "test": "node tests/rotationPlanner.test.mjs && node tests/paceCalculator.test.mjs && node tests/gpxEffort.test.mjs && node tests/gpxHeat.test.mjs && node tests/numericStep.test.mjs && node tests/treadmill.test.mjs && node scripts/treadmill-validation/run-all.mjs",
+    "test:treadmill:literature": "node scripts/treadmill-validation/run-all.mjs"
   }
 }
