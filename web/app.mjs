@@ -2,6 +2,9 @@ import {
   HANSONS_PLAN_LENGTHS,
   HalfMarathonWeek,
   HansonsLevel,
+  NorwegianExperience,
+  NorwegianHealth,
+  NorwegianSpecificity,
   KM_PER_MILE,
   MARATHON_PHASE_WEEKS,
   TargetRace,
@@ -121,13 +124,57 @@ const copy = {
     trainingMethod: "課表系統",
     danielsMethod: "Daniels 丹尼爾斯",
     hansonsMethod: "Hansons 漢森",
+    norwegianMethod: "Norwegian Singles · LetsRun Sub‑T",
     hansonsLevel: "漢森課表級別",
     hansonsBeginner: "Beginner 入門",
     hansonsAdvanced: "Advanced 進階",
     hansonsPlanWeek: "漢森計畫週次",
     hansonsPlanWeekOption: "第 {week} / {total} 週",
     hansonsPlanHelp:
-      "5K／10K 使用 12 週公開訓練邏輯；半馬／馬拉松使用官方 Classic 18 週進程。選擇週次後會自動切換基礎、速度、專項耐力與比賽週。",
+      "Hansons 僅提供可逐週對照官方免費 Classic 課表的半馬與馬拉松 18 週進程。選擇週次後會自動切換基礎、速度、專項耐力與比賽週。",
+    hansonsGoalTime: "目標完賽時間",
+    hansonsGoalTimeHelp:
+      "E、Long、Speed 與 T／I／R 仍依目前 VDOT；Tempo、Strength 與比賽日才讀取目標 MP／HMP。",
+    hansonsGoalGapWarning:
+      "目標配速比目前等效成績快超過每英里 10 秒。本週 Tempo／Strength 已從目前能力往目標配速漸進，不會直接把尚未具備的目標當成目前跑力。",
+    hansonsGoalPaceActive:
+      "目標配速已啟用：Tempo／Strength 使用目標 MP／HMP；Speed 與 Easy 類課程仍依目前能力。",
+    danielsLowVolumeBaseNote:
+      "本週尚不足以同時容納至少 20 分鐘 T、熱身收操與週量 10% 上限，因此改排 E＋strides；這不是把過短刺激標成正式 T。",
+    norwegianPlanHelp:
+      "跑步時間決定每週 Sub‑T 預算，近期 VDOT 只決定每趟速度。預設採時間課表；專項模式只會取代其中一堂，不會在原有品質課之外加課。",
+    norwegianWeeklyTime: "過去 4 週平均跑步時間",
+    norwegianRunningDays: "每週可跑天數",
+    norwegianExperience: "Sub‑T 適應狀態",
+    norwegianIntro: "第一次使用／剛增加跑量 · 20%",
+    norwegianStable: "已穩定 4–6 週 · 2 完整＋1 T-lite · 22.5%",
+    norwegianLongTerm: "長期穩定 · 最多 3 堂完整課 · 25%",
+    norwegianHealth: "目前訓練狀態",
+    norwegianHealthy: "健康、正常訓練",
+    norwegianReturning: "受傷／剛回跑",
+    norwegianSpecificity: "本週課表模式",
+    norwegianVanilla: "Vanilla · 全部 Sub‑T",
+    norwegianSpecific: "專項替換週 · 取代一堂 Q",
+    norwegianWeeklySubTBudget: "每週 Sub‑T 預算",
+    norwegianPlannedSubT: "本週實際 Sub‑T／預算",
+    norwegianQualitySessions: "品質課結構",
+    norwegianTimeFirstNote:
+      "時間優先：先用近 4 週平均時間算每週 Sub‑T 預算，再由預算、可跑天數與適應狀態決定堂數。增加堂數只重分同一份預算，不會因跨過 300 分鐘突然加量。",
+    norwegianLowVolumeNote:
+      "低於每週 4.5 小時屬於 Low-volume adaptation，最多安排 2 堂 Sub‑T；4.5–6 小時是進入 Singles 的過渡區，不代表自動升成三堂完整 T。",
+    norwegianTransitionNote:
+      "目前是 2＋1 T-lite 過渡：兩堂完整 Sub‑T 加一堂 10–15 分鐘輕量 T。先維持相同週預算，長期穩定後才把第三堂補到完整課量。",
+    norwegianSpecificityDeferredNote:
+      "專項替換暫緩：2＋1 T-lite 過渡期先完成第三次閾值暴露的適應，不用專項課取代輕量 T；回跑狀態也不啟用專項替換。",
+    norwegianSafetyNote:
+      "可跑天數、回跑狀態或總時間不足，已依網站安全規則減少品質課；這些限制不是 LetsRun 討論串的原始生理定律。",
+    norwegianDistanceWarning:
+      "輸入的週跑量低於目前 Sub‑T 工作分鐘按跑力換算出的最低距離，時間與距離彼此矛盾；課表以時間與強度安全為先，因此規劃距離可能高於輸入值。",
+    norwegianControllerNote:
+      "Sub‑T 是可控制的生理狀態，不是必須命中的單一配速。乳酸儀可參考末段約 2.5–3.5 mmol/L；沒有儀器時看配速穩定、心率漂移與 RPE，寧可慢 3–5 秒／km，也不要把課表跑成力竭。Easy 以可交談、可恢復為主，≤70% HRmax 只是此方法的實務參考。",
+    switchSubTFormat: "更換分組方式",
+    norwegianFormatNote:
+      "每堂完整 Sub‑T 預設使用中組。短組可用較高絕對跑速，但更需要克制；長組中斷較少，起跑要更保守。三種格式維持接近的工作分鐘，不依比賽距離或週期自動綁定。",
     unitSystem: "單位",
     metricUnit: "公制 km",
     imperialUnit: "英制 mile",
@@ -215,16 +262,20 @@ const copy = {
     ],
     mileageClass: "跑量課表級距",
     availableQuality: "可開品質課",
+    danielsBaseOnly: "E＋strides（尚未開正式 T）",
+    hansonsFoundationQuality: "E＋strides＋基礎長跑",
     weeklyPlan: "本週建議安排",
     plannedWeeklyTotal: "本週規劃總量",
     longRunShare: "長跑占比",
     weeklyPlanNote: "依 Daniels 第 4 版賽事分法、四期週期與跑量動態安排；馬拉松另採 2Q 間隔、混合長課與減量規則。",
     weeklyPlanNoteHansons:
-      "依 Hansons 官方 Classic 課表與 Luke Humphrey 公開的 5K／10K 訓練邏輯安排；SOS 不連排，漏課不補課。",
+      "依 Hansons 官方免費半馬／馬拉松 Classic 課表安排；SOS 不連排，漏課不補課。",
+    weeklyPlanNoteNorwegian:
+      "先決定週 Sub‑T 分鐘，再拆 sessions 與 reps；Easy 維持低強度，長跑不做固定 fast finish。",
     hansonsVolumeWarning:
       "官方 PDF 以 mile 列示，系統用 1 mile＝1.609344 km 換算。峰值跑量低於官方 Classic 峰值時，品質課維持原配速並採非線性減量；跑量減少主要來自 Easy 與品質課總量，而不是降低目標配速。若無法恢復，應先建立跑量。",
     hansonsLowVolumeWarning:
-      "低跑量調整版（峰值低於官方約 75%）：這不是官方原表的逐欄縮小。Speed 期依週量縮減組數；Strength 期在 42 km／週以下改用約 3–6 km 的專項主課並維持原配速，恢復只計組間。32–35 km／週的中央 Strength 週以 3 × 1.5 km 為主；Tempo 保留約 4–6 km 主課，後期週量盡量用滿峰值，長跑控制在約 30%，其餘分配給 Easy。熱身與收操縮短但不拿來灌大品質課總量。",
+      "目前峰值低於官方 Classic 約 75%，已切換成基礎／完賽路線：保留 Easy、strides 與不超過 30% 的長跑，不再把 Speed、Strength、Tempo 等比例縮小後稱為 Classic SOS。跑量建立到門檻後才會切回官方骨架。",
     switchWorkout: "換堂課",
     coachPick: "課表建議",
     skipEasyRun: "今天不跑",
@@ -241,9 +292,11 @@ const copy = {
       "Daniels VDOT 表通常把 M/T/I/R 顯示為單一目標配速；本分支也改用單點配速。E 保留範圍，因為 E 跑的目的在於用可恢復、可交談的強度累積有氧跑量，而不是精準刺激單一生理門檻，所以能依疲勞、天氣與地形在一段配速範圍內調整。",
     sourceTitle: "資料來源與計算方式",
     sourceNote:
-      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版的 VDOT 架構、E/M/T/I/R 訓練強度概念與四期週期。先前用強度比例帶呈現 E/M/T/I/R 區間時，相鄰區間可能因比例帶接近、四捨五入與熱天降速後看起來重合；這不是 Daniels VDOT 表本身有多個 T/I/R 配速，而是區間呈現造成的視覺結果。現在 E 仍以 59-74% VDOT 的範圍估算；M/T/I/R 改用單點目標強度，並以跑步氧耗方程 VO2 = -4.60 + 0.182258v + 0.000104v² 反解速度後換算成配速。熱天配速調整保留在 E/M/T/I；R 的處理方式請見下方 R 反覆跑卡片。馬拉松課量上限：T 為 min(週量 10%, 24 km)、I 為 min(8%, 10 km)、R 為 min(5%, 8 km)、M 在週量超過 64 km 時為 min(20%, 29 km)，較低週量則為 min(30%, 29 km)。長跑在 64 km 以下採 30%、以上採 25%，並與 150 分鐘取較小值。",
+      "配速推算參考 Jack Daniels《Daniels' Running Formula》第 4 版與官方 VDOT 計算器。E/M/T/I/R 使用已核對的官方配速錨點分段換算，並保留 VDOT 39 以下的官方修正；E 顯示範圍，M/T/I/R 顯示單點。熱天配速調整保留在 E/M/T/I，R 只調整恢復或總量。一般距離課表只有在能同時容納至少 20 分鐘 T、約 2 km 熱身收操與週量 10% T 上限時才開正式品質課，否則使用 E＋strides。馬拉松課量上限：T 為 min(週量 10%, 24 km)、I 為 min(8%, 10 km)、R 為 min(5%, 8 km)、M 在週量超過 64 km 時為 min(20%, 29 km)，較低週量則為 min(30%, 29 km)。長跑採週量上限並與 150 分鐘取較小值。",
     sourceNoteHansons:
-      "半馬與馬拉松週期參考 Hansons Running Shop 公開的 Beginner／Advanced Classic 18 週課表；5K 與 10K 依 Luke Humphrey Running 公開的距離專項原則建立，不複製付費課表。重要專項配速由目前 VDOT 等效成績推算；實際目標 MP／HMP 若與目前能力不同，應以可完成整堂課且不破壞後續恢復為準。",
+      "半馬與馬拉松週期參考 Hansons Running Shop 公開的 Beginner／Advanced Classic 18 週課表。5K 與績效型 10K 沒有可逐週核對的免費官方 Classic 課表，因此不提供自動課表。E、Long、Speed 與網站中的 T／I／R 使用目前 VDOT；Tempo、Strength 與比賽日使用目標 MP／HMP。若目標比目前等效配速快超過每英里 10 秒，前期由目前專項配速漸進到目標配速。峰值低於 Classic 約 75% 時改用基礎／完賽路線，不等比例縮小 SOS。",
+    sourceNoteNorwegian:
+      "此頁把 LetsRun 討論串後期的 Norwegian Singles 實務整理成演算法：4.5 小時／週作為進入 Singles 的實務門檻，約 5–8.5 小時是主要範圍；Sub‑T 預設占每週跑步時間 20–25%，30% 只作警戒上限。堂數不是單看總時間：先確保每堂約 20–30 分鐘，再依跑天數與適應狀態安排 1、2、2＋1 T-lite 或 3 堂；單堂自動上限 35 分鐘。短／中／長 reps 的初始配速約為 15K–10 mile、半馬、25K–30K effort。",
     zoneNames: {
       E: "E 輕鬆跑",
       M: "M 馬拉松配速",
@@ -347,13 +400,57 @@ const copy = {
     trainingMethod: "Plan System",
     danielsMethod: "Daniels",
     hansonsMethod: "Hansons",
+    norwegianMethod: "Norwegian Singles · LetsRun Sub-T",
     hansonsLevel: "Hansons Plan Level",
     hansonsBeginner: "Beginner",
     hansonsAdvanced: "Advanced",
     hansonsPlanWeek: "Hansons Plan Week",
     hansonsPlanWeekOption: "Week {week} of {total}",
     hansonsPlanHelp:
-      "5K and 10K use a 12-week public-philosophy progression; the half and marathon use the official 18-week Classic progression. The selected week automatically sets the current training phase.",
+      "Hansons is limited to the half-marathon and marathon 18-week progressions that can be checked week by week against the free official Classic schedules.",
+    hansonsGoalTime: "Goal Finish Time",
+    hansonsGoalTimeHelp:
+      "E, Long, Speed, and T/I/R stay tied to current VDOT; Tempo, Strength, and race day use goal MP/HMP.",
+    hansonsGoalGapWarning:
+      "Goal pace is more than 10 seconds per mile faster than the current equivalent. This week's Tempo/Strength pace now progresses from current ability toward goal pace instead of treating the goal as current fitness.",
+    hansonsGoalPaceActive:
+      "Goal pace is active for Tempo/Strength; Speed and Easy work still use current ability.",
+    danielsLowVolumeBaseNote:
+      "This week cannot fit at least 20 minutes at T, warm-up/cooldown, and the 10% weekly cap together, so it uses E plus strides instead of labeling a micro-dose as formal T.",
+    norwegianPlanHelp:
+      "Weekly running time sets the Sub-T budget; current VDOT only sets rep pace. Time-based sessions are the default, and specificity replaces an existing quality session instead of adding another one.",
+    norwegianWeeklyTime: "Average Running Time · Last 4 Weeks",
+    norwegianRunningDays: "Available Running Days",
+    norwegianExperience: "Sub-T Adaptation Status",
+    norwegianIntro: "New / recently increased volume · 20%",
+    norwegianStable: "Stable 4–6 weeks · 2 full + 1 T-lite · 22.5%",
+    norwegianLongTerm: "Long-term stable · up to 3 full sessions · 25%",
+    norwegianHealth: "Current Training Status",
+    norwegianHealthy: "Healthy / normal training",
+    norwegianReturning: "Injured / returning to running",
+    norwegianSpecificity: "This Week's Mode",
+    norwegianVanilla: "Vanilla · all Sub-T",
+    norwegianSpecific: "Specific replacement · replaces one Q",
+    norwegianWeeklySubTBudget: "Weekly Sub-T Budget",
+    norwegianPlannedSubT: "Actual Sub-T / Budget",
+    norwegianQualitySessions: "Quality Structure",
+    norwegianTimeFirstNote:
+      "Time first: calculate the weekly Sub-T budget from the last four weeks, then let budget, available days, and adaptation status set frequency. Adding a session redistributes the same budget; crossing 300 minutes does not suddenly add load.",
+    norwegianLowVolumeNote:
+      "Under 4.5 hours per week is a Low-volume adaptation capped at two Sub-T sessions. The 4.5–6 hour range is a Singles gateway, not an automatic jump to three full threshold sessions.",
+    norwegianTransitionNote:
+      "This is a 2 + 1 T-lite transition: two full Sub-T sessions plus 10–15 minutes of light T. The weekly budget stays unchanged until long-term stability supports a full third session.",
+    norwegianSpecificityDeferredNote:
+      "Specific replacement is deferred during the 2 + 1 T-lite transition so the third threshold exposure can be adapted first; it also stays off while returning from injury.",
+    norwegianSafetyNote:
+      "Quality was reduced because of available days, return-to-running status, or total-time capacity. These are site safety rules, not universal physiological laws from the LetsRun thread.",
+    norwegianDistanceWarning:
+      "Entered weekly distance is below the minimum implied by the Sub-T work minutes at current ability. Because time and distance conflict, the plan protects time and intensity first and may exceed the entered distance.",
+    norwegianControllerNote:
+      "Sub-T is a controlled state, not one pace that must be hit. With a lactate meter, trained runners in the thread commonly used about 2.5–3.5 mmol/L late in the session. Otherwise use stable reps, HR drift, and RPE; slow by 3–5 sec/km before turning it into a maximal workout. Easy should stay conversational and recoverable; ≤70% HRmax is this method's practical reference, not a universal threshold.",
+    switchSubTFormat: "Change rep format",
+    norwegianFormatNote:
+      "Each full Sub-T session defaults to medium reps. Short reps allow a higher absolute speed but demand more restraint; long reps have fewer breaks and need a more conservative start. All formats keep similar work minutes and are not automatically tied to race distance or phase.",
     unitSystem: "Units",
     metricUnit: "Metric km",
     imperialUnit: "Imperial mile",
@@ -441,16 +538,20 @@ const copy = {
     ],
     mileageClass: "Mileage Class",
     availableQuality: "Available Quality Work",
+    danielsBaseOnly: "E + strides (formal T not yet open)",
+    hansonsFoundationQuality: "E + strides + foundation long run",
     weeklyPlan: "Suggested Week",
     plannedWeeklyTotal: "Planned weekly total",
     longRunShare: "Long-run share",
     weeklyPlanNote: "Built from Daniels 4th ed. event groups, phase logic, and mileage. Marathon plans add 2Q spacing, mixed long sessions, and taper rules.",
     weeklyPlanNoteHansons:
-      "Built from the official Hansons Classic plans and Luke Humphrey's public 5K/10K training guidance. SOS days are not stacked, and missed SOS sessions are not made up.",
+      "Built from the official free Hansons half-marathon and marathon Classic plans. SOS days are not stacked, and missed SOS sessions are not made up.",
+    weeklyPlanNoteNorwegian:
+      "Set weekly Sub-T minutes first, then split sessions and reps; Easy stays easy and the long run has no fixed fast finish.",
     hansonsVolumeWarning:
       "The official PDFs list miles, converted here at 1 mi = 1.609344 km. Below the published Classic peak, quality sessions keep their prescribed pace and use nonlinear volume reduction; mileage comes out of easy running and quality-session volume rather than target pace. Build mileage first if recovery is inadequate.",
     hansonsLowVolumeWarning:
-      "Low-volume adaptation (peak below about 75% of the official plan): this is not a column-by-column shrink of the official table. Speed weeks reduce repetitions as mileage requires. Strength weeks below 42 km per week retain about 3–6 km of race-specific work at the prescribed pace, with recovery counted only between repetitions. Central Strength weeks at 32–35 km per week use 3 × 1.5 km; Tempo retains about 4–6 km of work, late-cycle weeks use the selected peak where possible, the long run stays near 30%, and the balance goes to Easy running. Warm-up and cooldown remain short without inflating the quality session.",
+      "The selected peak is below about 75% of the official Classic plan, so the app has switched to a foundation / finish route: Easy running, strides, and a long run capped at 30%. It no longer proportionally shrinks Speed, Strength, and Tempo and labels them Classic SOS. The official structure returns after mileage reaches the gate.",
     switchWorkout: "Swap Workout",
     coachPick: "Plan recommendation",
     skipEasyRun: "Skip Run",
@@ -467,9 +568,11 @@ const copy = {
       "Daniels VDOT tables generally present M/T/I/R as point target paces, so this branch now displays them as point targets. E remains a range because easy running is meant to accumulate aerobic volume at a recoverable, conversational effort rather than hit one precise physiological threshold; it can flex with fatigue, weather, and terrain.",
     sourceTitle: "Source & Calculation",
     sourceNote:
-      "The pace model references Jack Daniels' Daniels' Running Formula, 4th ed., for the VDOT framework, E/M/T/I/R intensity concepts, and four-phase planning. The earlier range-based display could make adjacent zones appear to overlap because intensity bands were close, values were rounded, and heat adjustment slowed E/M/T/I paces. That overlap was a display choice, not a claim that the VDOT table has multiple T/I/R paces for one VDOT. E is still estimated as a 59-74% VDOT range; M/T/I/R now use point target intensities and the running oxygen-cost equation VO2 = -4.60 + 0.182258v + 0.000104v² to solve velocity and convert it to pace. Heat/humidity pace adjustment is still applied to E/M/T/I only; R guidance is shown on the R Repetition card below. Marathon guardrails: T is min(10% of weekly mileage, 24 km), I is min(8%, 10 km), R is min(5%, 8 km), and M is min(20%, 29 km) above 64 km per week or min(30%, 29 km) below that threshold. Long runs use 30% below 64 km, 25% above it, and are also capped at 150 minutes.",
+      "The pace model references Daniels' Running Formula, 4th ed., and the official VDOT calculator. E/M/T/I/R are interpolated from verified official pace anchors, including the official correction below VDOT 39; E remains a range while M/T/I/R are point targets. Heat adjustment applies to E/M/T/I, while R changes recovery or volume. A non-marathon plan opens formal quality only when it can fit at least 20 minutes at T, about 2 km of warm-up/cooldown, and the 10% weekly T cap together; otherwise it uses E plus strides. Marathon guardrails remain T min(10%, 24 km), I min(8%, 10 km), R min(5%, 8 km), and M min(20%, 29 km) above 64 km or min(30%, 29 km) below it. Long runs use the mileage cap and 150 minutes, whichever is lower.",
     sourceNoteHansons:
-      "The half-marathon and marathon progressions reference the free 18-week Beginner and Advanced Classic plans from Hansons Running Shop. The 5K and 10K generators implement Luke Humphrey Running's public distance-specific principles without copying paid calendars. Key race-specific paces are estimated from the current VDOT equivalent; if an actual goal MP/HMP differs from current fitness, use a target that lets you complete the session without compromising later recovery.",
+      "The half-marathon and marathon progressions reference the free 18-week Beginner and Advanced Classic plans from Hansons Running Shop. No week-by-week free official Classic schedule is available for 5K or performance 10K, so those automatic plans are not offered. E, Long, Speed, and the app's T/I/R use current VDOT, while Tempo, Strength, and race day use goal MP/HMP. If goal pace is more than 10 seconds per mile faster than the current equivalent, specific work progresses from current pace toward goal pace. Below about 75% of the Classic peak, the app uses a foundation / finish route instead of proportionally shrinking SOS sessions.",
+    sourceNoteNorwegian:
+      "This page turns the late-stage LetsRun Norwegian Singles discussion into an algorithm: 4.5 running hours per week is a practical gateway and roughly 5–8.5 hours is the main range. Sub-T defaults to 20–25% of weekly running time, with 30% only a warning ceiling. Frequency is not selected by time alone: sessions are kept around 20–30 minutes, then budget, available days, and adaptation status choose 1, 2, 2 + 1 T-lite, or 3 sessions; the automatic per-session cap is 35 minutes. Short, medium, and long reps start around 15K–10-mile, half-marathon, and 25K–30K effort.",
     zoneNames: {
       E: "E Easy",
       M: "M Marathon",
@@ -536,10 +639,14 @@ const targetRaceOptions = [
 ];
 
 const hansonsTargetRaceOptions = [
-  TargetRace.FIVE_K,
-  TargetRace.TEN_K,
   TargetRace.HALF_MARATHON,
   TargetRace.MARATHON
+];
+
+const norwegianTargetRaceOptions = [
+  TargetRace.FIVE_K,
+  TargetRace.TEN_K,
+  TargetRace.HALF_MARATHON
 ];
 
 const trainingCycleOptions = [
@@ -569,6 +676,15 @@ const state = {
   marathonPhaseWeek: 1,
   hansonsWeek: 1,
   hansonsLevel: HansonsLevel.BEGINNER,
+  hansonsGoalHours: 3,
+  hansonsGoalMinutes: 45,
+  hansonsGoalSeconds: 0,
+  norwegianWeeklyHours: 4,
+  norwegianWeeklyMinutes: 45,
+  norwegianRunningDays: 6,
+  norwegianExperience: NorwegianExperience.INTRO,
+  norwegianHealthStatus: NorwegianHealth.HEALTHY,
+  norwegianSpecificity: NorwegianSpecificity.VANILLA,
   vdot: 50,
   raceDistanceMeters: 5000,
   raceHours: 0,
@@ -1266,18 +1382,26 @@ function renderAndroidPlanPage(model, t) {
   const longRunShare = plannedTotalKm > 0 ? Math.round((longRunKm / plannedTotalKm) * 1000) / 10 : 0;
   const totalLabel = formatPlanDistanceRange({ min: plannedTotalKm, max: plannedTotalKm });
   const isHansons = state.trainingMethod === TrainingMethod.HANSONS;
-  const planTargetOptions = isHansons ? hansonsTargetRaceOptions : targetRaceOptions;
-  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 12;
+  const isNorwegian = state.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
+  const planTargetOptions = isHansons
+    ? hansonsTargetRaceOptions
+    : isNorwegian
+      ? norwegianTargetRaceOptions
+      : targetRaceOptions;
+  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 18;
   const planHeading = isHansons
     ? `PLAN · HANSONS · ${model.hansonsPlan?.phaseEn ?? ""}`
-    : `PLAN · ${t.cycleNames[state.trainingCycle].split(" ").slice(0, 2).join(" ")}`;
+    : isNorwegian
+      ? `PLAN · SUB-T · ${model.norwegianPlan?.levelEn ?? ""}`
+      : `PLAN · ${t.cycleNames[state.trainingCycle].split(" ").slice(0, 2).join(" ")}`;
 
   return `
     ${renderAndroidPageHead(planHeading, t.sidebarPlanLabel, totalLabel)}
     <section class="android-plan-summary">
       <label><span>${t.trainingMethod}</span>${renderAndroidSelect("trainingMethod", state.trainingMethod, [
         { value: TrainingMethod.DANIELS, label: t.danielsMethod },
-        { value: TrainingMethod.HANSONS, label: t.hansonsMethod }
+        { value: TrainingMethod.HANSONS, label: t.hansonsMethod },
+        { value: TrainingMethod.NORWEGIAN_SINGLES, label: t.norwegianMethod }
       ], t.trainingMethod)}</label>
       <label><span>${t.targetRace}</span>${renderAndroidSelect(
         "targetRace",
@@ -1286,7 +1410,10 @@ function renderAndroidPlanPage(model, t) {
         t.targetRace
       )}</label>
       <div><span>${t.vdot}</span><strong>${model.vdot}</strong></div>
-      <div><span>${t.longRunShare}</span><strong>${longRunShare}%</strong></div>
+      ${isNorwegian
+        ? `<div><span>${t.norwegianWeeklySubTBudget}</span><strong>${model.norwegianPlan?.weeklySubTTargetMinutes ?? 0} min</strong></div>
+           <div><span>${t.norwegianQualitySessions}</span><strong>${getNorwegianQualityCountLabel(model.norwegianPlan)}</strong></div>`
+        : `<div><span>${t.longRunShare}</span><strong>${longRunShare}%</strong></div>`}
     </section>
     <section class="android-plan-settings">
       ${isHansons
@@ -1299,8 +1426,34 @@ function renderAndroidPlanPage(model, t) {
             value: index + 1,
             label: t.hansonsPlanWeekOption.replace("{week}", index + 1).replace("{total}", hansonsTotalWeeks)
           })), t.hansonsPlanWeek)}</label>
+          ${isHansonsClassicTarget() ? `<label><span>${t.hansonsGoalTime}</span>${renderAndroidTimeInputs([
+            ["hansonsGoalHours", state.hansonsGoalHours, t.hours, 0, 9],
+            ["hansonsGoalMinutes", state.hansonsGoalMinutes, t.minutes, 0, 59],
+            ["hansonsGoalSeconds", state.hansonsGoalSeconds, t.seconds, 0, 59]
+          ])}</label>` : ""}
         `
-        : `<label><span>${t.trainingCycle}</span>${renderAndroidSelect(
+        : isNorwegian
+          ? `
+            <label><span>${t.norwegianWeeklyTime}</span>${renderAndroidTimeInputs([
+              ["norwegianWeeklyHours", state.norwegianWeeklyHours, t.hours, 0, 15],
+              ["norwegianWeeklyMinutes", state.norwegianWeeklyMinutes, t.minutes, 0, 59]
+            ])}</label>
+            <label><span>${t.norwegianRunningDays}</span>${renderAndroidSelect("norwegianRunningDays", state.norwegianRunningDays, Array.from({ length: 5 }, (_, index) => ({ value: index + 3, label: `${index + 3}` })), t.norwegianRunningDays)}</label>
+            <label><span>${t.norwegianExperience}</span>${renderAndroidSelect("norwegianExperience", state.norwegianExperience, [
+              { value: NorwegianExperience.INTRO, label: t.norwegianIntro },
+              { value: NorwegianExperience.STABLE, label: t.norwegianStable },
+              { value: NorwegianExperience.LONG_TERM, label: t.norwegianLongTerm }
+            ], t.norwegianExperience)}</label>
+            <label><span>${t.norwegianHealth}</span>${renderAndroidSelect("norwegianHealthStatus", state.norwegianHealthStatus, [
+              { value: NorwegianHealth.HEALTHY, label: t.norwegianHealthy },
+              { value: NorwegianHealth.RETURNING, label: t.norwegianReturning }
+            ], t.norwegianHealth)}</label>
+            <label><span>${t.norwegianSpecificity}</span>${renderAndroidSelect("norwegianSpecificity", state.norwegianSpecificity, [
+              { value: NorwegianSpecificity.VANILLA, label: t.norwegianVanilla },
+              { value: NorwegianSpecificity.SPECIFIC, label: t.norwegianSpecific }
+            ], t.norwegianSpecificity)}</label>
+          `
+          : `<label><span>${t.trainingCycle}</span>${renderAndroidSelect(
             "trainingCycle",
             state.trainingCycle,
             trainingCycleOptions.map((value) => ({ value, label: t.cycleNames[value] })),
@@ -1309,7 +1462,16 @@ function renderAndroidPlanPage(model, t) {
       <label><span>${isHansons ? t.peakWeeklyMileage : t.weeklyMileage}</span><input data-field="weeklyMileage" type="number" inputmode="numeric" min="0" max="${state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180}" step="1" value="${state.weeklyMileage}" /><b>${state.unitSystem === UnitSystem.IMPERIAL ? "mi" : "km"}</b></label>
     </section>
     ${model.hansonsPlan?.qualityNoteZh ? `<p class="android-heat-advice">${state.locale === "en" ? model.hansonsPlan.qualityNoteEn : model.hansonsPlan.qualityNoteZh}</p>` : ""}
-    ${model.hansonsPlan?.belowRecommendedVolume ? `<p class="android-heat-advice">${model.hansonsPlan.lowVolumeAdaptation ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p>` : ""}
+    ${model.hansonsPlan?.belowRecommendedVolume ? `<p class="android-heat-advice">${model.hansonsPlan.foundationFinishRoute ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p>` : ""}
+    ${model.hansonsPlan?.goalGapTooLarge && !model.hansonsPlan?.foundationFinishRoute ? `<p class="android-heat-advice">${t.hansonsGoalGapWarning}</p>` : ""}
+    ${isNorwegian && model.norwegianPlan?.levelId === "A" ? `<p class="android-heat-advice">${t.norwegianLowVolumeNote}</p>` : ""}
+    ${isNorwegian && model.norwegianPlan?.transitionThirdSession ? `<p class="android-heat-advice">${t.norwegianTransitionNote}</p>` : ""}
+    ${isNorwegian && model.norwegianPlan?.specificityRequested && !model.norwegianPlan?.specificityEnabled ? `<p class="android-heat-advice">${t.norwegianSpecificityDeferredNote}</p>` : ""}
+    ${isNorwegian && model.norwegianPlan?.safetyReasons?.length ? `<p class="android-heat-advice">${t.norwegianSafetyNote}</p>` : ""}
+    ${isNorwegian && model.norwegianPlan?.distanceCanMatchInput === false ? `<p class="android-heat-advice">${t.norwegianDistanceWarning}</p>` : ""}
+    ${isNorwegian ? `<p class="android-heat-advice">${t.norwegianTimeFirstNote}</p>` : ""}
+    ${isNorwegian ? `<p class="android-heat-advice">${t.norwegianFormatNote}</p>` : ""}
+    ${state.trainingMethod === TrainingMethod.DANIELS && model.danielsQualityEligibility?.fallback ? `<p class="android-heat-advice">${t.danielsLowVolumeBaseNote}</p>` : ""}
     ${renderAndroidWeatherControl(t)}
     <p class="android-drag-hint">${state.locale === "en" ? "Press and hold, then drag up or down to swap days." : "長按卡片後上下拖曳，可交換訓練日期"}</p>
     <section class="android-week-list" data-plan-grid aria-label="${t.weeklyPlan}">
@@ -1326,6 +1488,9 @@ function renderAndroidPlanDay(day, index, model, t) {
         ...day,
         zone: selectedWorkout.zone ?? day.zone,
         paceZoneIds: selectedWorkout.paceZoneIds ?? day.paceZoneIds,
+        customPaceRows: selectedWorkout.customPaceRows ?? day.customPaceRows,
+        workoutType: selectedWorkout.type ?? day.workoutType,
+        subTMinutes: selectedWorkout.subTMinutes ?? day.subTMinutes,
         zhDistanceLabel: selectedWorkout.zhDistanceLabel ?? day.zhDistanceLabel,
         enDistanceLabel: selectedWorkout.enDistanceLabel ?? day.enDistanceLabel
       }
@@ -1356,6 +1521,7 @@ function renderAndroidPlanDay(day, index, model, t) {
       <div class="android-day-zone"><span>${state.locale === "en" ? day.enDay : day.zhDay}</span><b>${day.isSkippedEasyRun ? "—" : displayDay.zone}</b></div>
       <div><strong>${title}</strong>${distance ? `<span>${distance}</span>` : ""}</div>
       <div class="android-day-pace"><small>${paceLabel}</small><strong>${pace}</strong></div>
+      ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t, day, model)}
       ${day.easyDistributionEligible ? `<button type="button" data-action="toggle-easy-rest" data-plan-index="${index}" aria-label="${day.isSkippedEasyRun ? t.restoreEasyRun : t.skipEasyRun}">${day.isSkippedEasyRun ? "+" : "×"}</button>` : ""}
     </article>
   `;
@@ -1469,26 +1635,67 @@ function renderAndroidEquivalentSheet(t) {
 
 function renderAndroidPlanSheet(model, t) {
   const mileageMax = state.unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
+  const isHansons = state.trainingMethod === TrainingMethod.HANSONS;
+  const isNorwegian = state.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
+  const planTargetOptions = isHansons
+    ? hansonsTargetRaceOptions
+    : isNorwegian
+      ? norwegianTargetRaceOptions
+      : targetRaceOptions;
+  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 18;
   const showHalfMarathonWeek =
-    state.targetRace === TargetRace.ROAD_15K_30K &&
+    !isHansons && !isNorwegian && state.targetRace === TargetRace.ROAD_15K_30K &&
     state.trainingCycle !== TrainingCycle.PHASE_I;
-  const showMarathonPhaseWeek = state.targetRace === TargetRace.MARATHON;
+  const showMarathonPhaseWeek = !isHansons && !isNorwegian && state.targetRace === TargetRace.MARATHON;
 
   return `
     <div class="android-sheet-grid">
-      <label><span>${t.targetRace}</span>${renderAndroidSelect("targetRace", state.targetRace, targetRaceOptions.map((value) => ({
+      <label><span>${t.targetRace}</span>${renderAndroidSelect("targetRace", state.targetRace, planTargetOptions.map((value) => ({
         value,
         label: t.targetRaceNames[value]
       })), t.targetRace)}</label>
-      <label><span>${t.trainingCycle}</span>${renderAndroidSelect("trainingCycle", state.trainingCycle, trainingCycleOptions.map((value) => ({
-        value,
-        label: t.cycleNames[value]
-      })), t.trainingCycle)}</label>
+      ${isHansons ? `
+        <label><span>${t.hansonsLevel}</span>${renderAndroidSelect("hansonsLevel", state.hansonsLevel, [
+          { value: HansonsLevel.BEGINNER, label: t.hansonsBeginner },
+          { value: HansonsLevel.ADVANCED, label: t.hansonsAdvanced }
+        ], t.hansonsLevel)}</label>
+        <label><span>${t.hansonsPlanWeek}</span>${renderAndroidSelect("hansonsWeek", state.hansonsWeek, Array.from({ length: hansonsTotalWeeks }, (_, index) => ({
+          value: index + 1,
+          label: t.hansonsPlanWeekOption.replace("{week}", index + 1).replace("{total}", hansonsTotalWeeks)
+        })), t.hansonsPlanWeek)}</label>
+        ${isHansonsClassicTarget() ? `<label><span>${t.hansonsGoalTime}</span>${renderAndroidTimeInputs([
+          ["hansonsGoalHours", state.hansonsGoalHours, t.hours, 0, 9],
+          ["hansonsGoalMinutes", state.hansonsGoalMinutes, t.minutes, 0, 59],
+          ["hansonsGoalSeconds", state.hansonsGoalSeconds, t.seconds, 0, 59]
+        ])}</label>` : ""}
+      ` : isNorwegian ? `
+        <label><span>${t.norwegianWeeklyTime}</span>${renderAndroidTimeInputs([
+          ["norwegianWeeklyHours", state.norwegianWeeklyHours, t.hours, 0, 15],
+          ["norwegianWeeklyMinutes", state.norwegianWeeklyMinutes, t.minutes, 0, 59]
+        ])}</label>
+        <label><span>${t.norwegianRunningDays}</span>${renderAndroidSelect("norwegianRunningDays", state.norwegianRunningDays, Array.from({ length: 5 }, (_, index) => ({ value: index + 3, label: `${index + 3}` })), t.norwegianRunningDays)}</label>
+        <label><span>${t.norwegianExperience}</span>${renderAndroidSelect("norwegianExperience", state.norwegianExperience, [
+          { value: NorwegianExperience.INTRO, label: t.norwegianIntro },
+          { value: NorwegianExperience.STABLE, label: t.norwegianStable },
+          { value: NorwegianExperience.LONG_TERM, label: t.norwegianLongTerm }
+        ], t.norwegianExperience)}</label>
+        <label><span>${t.norwegianHealth}</span>${renderAndroidSelect("norwegianHealthStatus", state.norwegianHealthStatus, [
+          { value: NorwegianHealth.HEALTHY, label: t.norwegianHealthy },
+          { value: NorwegianHealth.RETURNING, label: t.norwegianReturning }
+        ], t.norwegianHealth)}</label>
+        <label><span>${t.norwegianSpecificity}</span>${renderAndroidSelect("norwegianSpecificity", state.norwegianSpecificity, [
+          { value: NorwegianSpecificity.VANILLA, label: t.norwegianVanilla },
+          { value: NorwegianSpecificity.SPECIFIC, label: t.norwegianSpecific }
+        ], t.norwegianSpecificity)}</label>
+      ` : `<label><span>${t.trainingCycle}</span>${renderAndroidSelect("trainingCycle", state.trainingCycle, trainingCycleOptions.map((value) => ({
+          value,
+          label: t.cycleNames[value]
+        })), t.trainingCycle)}</label>`}
       <label><span>${t.unitSystem}</span>${renderAndroidSelect("unitSystem", state.unitSystem, [
         { value: UnitSystem.METRIC, label: t.metricUnit },
         { value: UnitSystem.IMPERIAL, label: t.imperialUnit }
       ], t.unitSystem)}</label>
-      <label><span>${showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage}</span><input data-field="weeklyMileage" type="number" inputmode="numeric" min="0" max="${mileageMax}" step="1" value="${state.weeklyMileage}" /></label>
+      <label><span>${isHansons || showMarathonPhaseWeek ? t.peakWeeklyMileage : t.weeklyMileage}</span><input data-field="weeklyMileage" type="number" inputmode="numeric" min="0" max="${mileageMax}" step="1" value="${state.weeklyMileage}" /></label>
       ${showMarathonPhaseWeek ? `<label><span>${t.marathonPhaseWeek}</span>${renderAndroidSelect("marathonPhaseWeek", state.marathonPhaseWeek, Array.from({ length: MARATHON_PHASE_WEEKS }, (_, index) => ({
         value: index + 1,
         label: t.marathonPhaseWeekOption.replace("{week}", index + 1)
@@ -1656,15 +1863,21 @@ function renderInputs(t) {
   const isConverter = state.toolMode === "equivalent";
   const isPlan = state.toolMode === "plan";
   const isHansons = isPlan && state.trainingMethod === TrainingMethod.HANSONS;
-  const planTargetOptions = isHansons ? hansonsTargetRaceOptions : targetRaceOptions;
-  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 12;
+  const isNorwegian = isPlan && state.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
+  const planTargetOptions = isHansons
+    ? hansonsTargetRaceOptions
+    : isNorwegian
+      ? norwegianTargetRaceOptions
+      : targetRaceOptions;
+  const hansonsTotalWeeks = HANSONS_PLAN_LENGTHS[state.targetRace] ?? 18;
   const showHalfMarathonWeek =
     isPlan &&
     !isHansons &&
+    !isNorwegian &&
     state.targetRace === TargetRace.ROAD_15K_30K &&
     state.trainingCycle !== TrainingCycle.PHASE_I;
   const showMarathonPhaseWeek =
-    isPlan && !isHansons && state.targetRace === TargetRace.MARATHON;
+    isPlan && !isHansons && !isNorwegian && state.targetRace === TargetRace.MARATHON;
 
   const sectionTitle = isConverter ? t.conversionSettings : t.runnerAbilitySection;
   const sectionHelp = isConverter ? t.conversionSettingsHelp : t.runnerAbilityHelp;
@@ -1690,7 +1903,8 @@ function renderInputs(t) {
                   ? `
                     ${renderMenuField(t.trainingMethod, "trainingMethod", state.trainingMethod, [
                       { value: TrainingMethod.DANIELS, label: t.danielsMethod },
-                      { value: TrainingMethod.HANSONS, label: t.hansonsMethod }
+                      { value: TrainingMethod.HANSONS, label: t.hansonsMethod },
+                      { value: TrainingMethod.NORWEGIAN_SINGLES, label: t.norwegianMethod }
                     ])}
                     ${renderMenuField(
                       t.targetRace,
@@ -1701,7 +1915,9 @@ function renderInputs(t) {
                         label: t.targetRaceNames[value]
                       }))
                     )}
-                    ${isHansons
+                    ${isNorwegian
+                      ? renderNorwegianInputs(t)
+                      : isHansons
                       ? `
                         ${renderMenuField(t.hansonsLevel, "hansonsLevel", state.hansonsLevel, [
                           { value: HansonsLevel.BEGINNER, label: t.hansonsBeginner },
@@ -1718,6 +1934,9 @@ function renderInputs(t) {
                               .replace("{total}", hansonsTotalWeeks)
                           }))
                         )}
+                        ${isHansonsClassicTarget()
+                          ? renderHansonsGoalTimeInput(t)
+                          : ""}
                         <p class="field-note">${t.hansonsPlanHelp}</p>
                       `
                       : `
@@ -2205,7 +2424,7 @@ function getTreadmillError(copy, conversion) {
 function formatTreadmillSetting() {
   const copy = getTreadmillCopy();
   const unit = state.treadmillSpeedUnit === "mph" ? copy.mph : copy.kph;
-  return `${Number(state.treadmillSpeed).toFixed(1)} ${unit} ? ${Number(state.treadmillIncline).toFixed(1)}%`;
+  return `${Number(state.treadmillSpeed).toFixed(1)} ${unit} · ${Number(state.treadmillIncline).toFixed(1)}%`;
 }
 
 function formatTreadmillPace(conversion, type = "equivalent") {
@@ -2229,9 +2448,69 @@ function formatTreadmillDifference(copy, conversion) {
     : conversion.differenceSecondsPerKm;
   const rounded = Math.round(Math.abs(difference));
   return {
-    value: `${rounded} ${state.locale === "en" ? "sec" : "?"} / ${useMiles ? "mi" : "km"}`,
+    value: `${rounded} ${state.locale === "en" ? "sec" : "秒"} / ${useMiles ? "mi" : "km"}`,
     label: Math.abs(difference) < 0.5 ? copy.same : difference < 0 ? copy.faster : copy.slower
   };
+}
+
+function isHansonsClassicTarget() {
+  return state.targetRace === TargetRace.HALF_MARATHON
+    || state.targetRace === TargetRace.MARATHON;
+}
+
+function renderHansonsGoalTimeInput(t) {
+  return `
+    <fieldset class="time-fieldset hansons-goal-time">
+      <legend>${t.hansonsGoalTime}</legend>
+      <label>
+        <span>${t.hours}</span>
+        <input data-field="hansonsGoalHours" aria-label="${t.hansonsGoalTime} ${t.hours}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="9" step="1" value="${state.hansonsGoalHours}" />
+      </label>
+      <label>
+        <span>${t.minutes}</span>
+        <input data-field="hansonsGoalMinutes" aria-label="${t.hansonsGoalTime} ${t.minutes}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.hansonsGoalMinutes}" />
+      </label>
+      <label>
+        <span>${t.seconds}</span>
+        <input data-field="hansonsGoalSeconds" aria-label="${t.hansonsGoalTime} ${t.seconds}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.hansonsGoalSeconds}" />
+      </label>
+      <small>${t.hansonsGoalTimeHelp}</small>
+    </fieldset>
+  `;
+}
+
+function renderNorwegianInputs(t) {
+  return `
+    <fieldset class="time-fieldset norwegian-weekly-time">
+      <legend>${t.norwegianWeeklyTime}</legend>
+      <label>
+        <span>${t.hours}</span>
+        <input data-field="norwegianWeeklyHours" aria-label="${t.norwegianWeeklyTime} ${t.hours}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="15" step="1" value="${state.norwegianWeeklyHours}" />
+      </label>
+      <label>
+        <span>${t.minutes}</span>
+        <input data-field="norwegianWeeklyMinutes" aria-label="${t.norwegianWeeklyTime} ${t.minutes}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="59" step="1" value="${state.norwegianWeeklyMinutes}" />
+      </label>
+    </fieldset>
+    ${renderMenuField(t.norwegianRunningDays, "norwegianRunningDays", state.norwegianRunningDays, Array.from({ length: 5 }, (_, index) => ({
+      value: index + 3,
+      label: `${index + 3} ${state.locale === "en" ? "days" : "天"}`
+    })))}
+    ${renderMenuField(t.norwegianExperience, "norwegianExperience", state.norwegianExperience, [
+      { value: NorwegianExperience.INTRO, label: t.norwegianIntro },
+      { value: NorwegianExperience.STABLE, label: t.norwegianStable },
+      { value: NorwegianExperience.LONG_TERM, label: t.norwegianLongTerm }
+    ])}
+    ${renderMenuField(t.norwegianHealth, "norwegianHealthStatus", state.norwegianHealthStatus, [
+      { value: NorwegianHealth.HEALTHY, label: t.norwegianHealthy },
+      { value: NorwegianHealth.RETURNING, label: t.norwegianReturning }
+    ])}
+    ${renderMenuField(t.norwegianSpecificity, "norwegianSpecificity", state.norwegianSpecificity, [
+      { value: NorwegianSpecificity.VANILLA, label: t.norwegianVanilla },
+      { value: NorwegianSpecificity.SPECIFIC, label: t.norwegianSpecific }
+    ])}
+    <p class="field-note">${t.norwegianPlanHelp}</p>
+  `;
 }
 
 function renderEquivalentInputs(t) {
@@ -3823,10 +4102,37 @@ function renderVdotEquivalentResults(model, t) {
   `;
 }
 
+function getNorwegianQualityCountLabel(plan) {
+  if (!plan) return "0";
+  return state.locale === "en"
+    ? plan.qualityCountLabelEn ?? String(plan.qualityCount ?? 0)
+    : plan.qualityCountLabelZh ?? String(plan.qualityCount ?? 0);
+}
+
 function renderMileageClass(model, t) {
-  const qualityLabels = model.mileageClass.qualityTypes
-    .map((type) => t.zoneNames[type])
-    .join(" / ");
+  if (model.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES && model.norwegianPlan) {
+    const plan = model.norwegianPlan;
+    return `
+      <section class="summary-card surface-card mileage-card">
+        <p class="eyebrow">${t.norwegianWeeklyTime}</p>
+        <h2>${state.locale === "en" ? plan.levelEn : plan.levelZh}</h2>
+        <p>${Math.floor(plan.weeklyRunningMinutes / 60)}h ${plan.weeklyRunningMinutes % 60}m · ${plan.runningDays} ${state.locale === "en" ? "days" : "天"}</p>
+        <dl class="simple-list">
+          <div><dt>${t.norwegianWeeklySubTBudget}</dt><dd>${plan.weeklySubTTargetMinutes} min</dd></div>
+          <div><dt>${t.norwegianQualitySessions}</dt><dd>${getNorwegianQualityCountLabel(plan)}</dd></div>
+        </dl>
+      </section>
+    `;
+  }
+
+  const qualityLabels = model.hansonsPlan?.foundationFinishRoute
+    ? t.hansonsFoundationQuality
+    : model.trainingMethod === TrainingMethod.DANIELS
+      && model.danielsQualityEligibility?.fallback
+      ? t.danielsBaseOnly
+      : model.mileageClass.qualityTypes
+        .map((type) => t.zoneNames[type])
+        .join(" / ");
 
   return `
     <section class="summary-card surface-card mileage-card">
@@ -3845,18 +4151,19 @@ function renderMileageClass(model, t) {
 
 function renderTrainingPlanResults(model, t) {
   const isHansons = model.trainingMethod === TrainingMethod.HANSONS;
+  const isNorwegian = model.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
   return `
     <div class="section-heading">
       <p class="eyebrow">VDOT ${model.vdot}</p>
       <h2>${t.trainingPlanMode}</h2>
     </div>
     ${renderWeeklySchedule(model, t)}
-    ${isHansons ? "" : renderWorkoutExamples(model, t)}
+    ${isHansons || isNorwegian || model.danielsQualityEligibility?.fallback ? "" : renderWorkoutExamples(model, t)}
     <aside class="note-panel surface-card info-card">
       <h2>${t.noteTitle}</h2>
-      <p>${isHansons ? t.hansonsPlanHelp : t.note}</p>
+      <p>${isHansons ? t.hansonsPlanHelp : isNorwegian ? t.norwegianControllerNote : t.note}</p>
       <h3>${t.sourceTitle}</h3>
-      <p>${isHansons ? t.sourceNoteHansons : t.sourceNote}</p>
+      <p>${isHansons ? t.sourceNoteHansons : isNorwegian ? t.sourceNoteNorwegian : t.sourceNote}</p>
     </aside>
   `;
 }
@@ -3875,6 +4182,7 @@ function renderPaceZonePanel(model, t, embedded = false, options = {}) {
 
 function renderWeeklySchedule(model, t) {
   const isHansons = model.trainingMethod === TrainingMethod.HANSONS;
+  const isNorwegian = model.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
   const schedule = applyEasyRunRedistribution(model.weeklySchedule);
   const orderedSchedule = getOrderedSchedule(schedule);
   const plannedTotalKm = schedule.reduce(
@@ -3921,8 +4229,10 @@ function renderWeeklySchedule(model, t) {
     : "";
   const phaseLabel = isHansons
     ? (state.locale === "en" ? model.hansonsPlan?.phaseEn : model.hansonsPlan?.phaseZh)
-    : t.cycleNames[model.trainingCycle];
-  const methodLabel = isHansons ? t.hansonsMethod : t.danielsMethod;
+    : isNorwegian
+      ? (state.locale === "en" ? model.norwegianPlan?.phaseEn : model.norwegianPlan?.phaseZh)
+      : t.cycleNames[model.trainingCycle];
+  const methodLabel = isHansons ? t.hansonsMethod : isNorwegian ? t.norwegianMethod : t.danielsMethod;
 
   return `
     <section class="weekly-plan ${hasOpenSwapMenu ? "swap-open" : ""}">
@@ -3931,16 +4241,29 @@ function renderWeeklySchedule(model, t) {
           <p class="eyebrow">${methodLabel} · ${t.targetRaceNames[model.targetRace]} · ${phaseLabel ?? ""}${halfWeekLabel}${marathonWeekLabel}${hansonsWeekLabel}</p>
           <h3>${t.weeklyPlan}</h3>
         </div>
-        <p>${isHansons ? t.weeklyPlanNoteHansons : t.weeklyPlanNote}</p>
+        <p>${isHansons ? t.weeklyPlanNoteHansons : isNorwegian ? t.weeklyPlanNoteNorwegian : t.weeklyPlanNote}</p>
       </div>
       <div class="week-volume-summary">
         <span>${t.plannedWeeklyTotal}<strong>${plannedTotal}</strong></span>
         ${peakFractionSummary}
-        <span>${t.longRunShare}<strong>${isHansons ? `${longRunShare}%` : `${longRunShare}% ≤ ${longRunLimit}%`}</strong></span>
+        <span>${t.longRunShare}<strong>${isHansons || isNorwegian ? `${longRunShare}%` : `${longRunShare}% ≤ ${longRunLimit}%`}</strong></span>
+        ${isNorwegian ? `<span>${t.norwegianWeeklySubTBudget}<strong>${model.norwegianPlan?.weeklySubTTargetMinutes ?? 0} min</strong></span>` : ""}
+        ${isNorwegian ? `<span>${t.norwegianPlannedSubT}<strong>${model.norwegianPlan?.plannedSubTMinutes ?? 0} / ${model.norwegianPlan?.weeklySubTTargetMinutes ?? 0} min</strong></span>` : ""}
+        ${isNorwegian ? `<span>${t.norwegianQualitySessions}<strong>${getNorwegianQualityCountLabel(model.norwegianPlan)}</strong></span>` : ""}
         ${longRunTimeSummary}
       </div>
       ${model.hansonsPlan?.qualityNoteZh ? `<aside class="taper-recommendation surface-card"><p>${state.locale === "en" ? model.hansonsPlan.qualityNoteEn : model.hansonsPlan.qualityNoteZh}</p></aside>` : ""}
-      ${model.hansonsPlan?.belowRecommendedVolume ? `<aside class="taper-recommendation surface-card"><p>${model.hansonsPlan.lowVolumeAdaptation ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p></aside>` : ""}
+      ${model.hansonsPlan?.belowRecommendedVolume ? `<aside class="taper-recommendation surface-card"><p>${model.hansonsPlan.foundationFinishRoute ? t.hansonsLowVolumeWarning : t.hansonsVolumeWarning}</p></aside>` : ""}
+      ${model.hansonsPlan?.goalGapTooLarge && !model.hansonsPlan?.foundationFinishRoute ? `<aside class="taper-recommendation surface-card"><p>${t.hansonsGoalGapWarning}</p></aside>` : ""}
+      ${isHansons && model.hansonsPlan?.hasExplicitGoalTime && !model.hansonsPlan?.goalGapTooLarge && !model.hansonsPlan?.foundationFinishRoute ? `<aside class="taper-recommendation surface-card"><p>${t.hansonsGoalPaceActive}</p></aside>` : ""}
+      ${isNorwegian ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianTimeFirstNote}</p></aside>` : ""}
+      ${isNorwegian ? `<aside class="subt-format-note surface-card"><p>${t.norwegianFormatNote}</p></aside>` : ""}
+      ${isNorwegian && model.norwegianPlan?.levelId === "A" ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianLowVolumeNote}</p></aside>` : ""}
+      ${isNorwegian && model.norwegianPlan?.transitionThirdSession ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianTransitionNote}</p></aside>` : ""}
+      ${isNorwegian && model.norwegianPlan?.specificityRequested && !model.norwegianPlan?.specificityEnabled ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianSpecificityDeferredNote}</p></aside>` : ""}
+      ${isNorwegian && model.norwegianPlan?.safetyReasons?.length ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianSafetyNote}</p></aside>` : ""}
+      ${isNorwegian && model.norwegianPlan?.distanceCanMatchInput === false ? `<aside class="taper-recommendation surface-card"><p>${t.norwegianDistanceWarning}</p></aside>` : ""}
+      ${model.trainingMethod === TrainingMethod.DANIELS && model.danielsQualityEligibility?.fallback ? `<aside class="taper-recommendation surface-card"><p>${t.danielsLowVolumeBaseNote}</p></aside>` : ""}
       ${renderTaperRecommendation(model, t)}
       <p class="drag-hint schedule-drag-hint">${t.scheduleDragHint}</p>
       <div class="week-scroll">
@@ -3988,6 +4311,9 @@ function renderPlanDay(day, t, index, model) {
         ...day,
         zone: selectedWorkout.zone ?? day.zone,
         paceZoneIds: selectedWorkout.paceZoneIds ?? day.paceZoneIds,
+        customPaceRows: selectedWorkout.customPaceRows ?? day.customPaceRows,
+        workoutType: selectedWorkout.type ?? day.workoutType,
+        subTMinutes: selectedWorkout.subTMinutes ?? day.subTMinutes,
         zhDistanceLabel: selectedWorkout.zhDistanceLabel ?? day.zhDistanceLabel,
         enDistanceLabel: selectedWorkout.enDistanceLabel ?? day.enDistanceLabel
       }
@@ -4014,7 +4340,7 @@ function renderPlanDay(day, t, index, model) {
       aria-label="${title}"
     >
       <span class="plan-day-label">${state.locale === "en" ? day.enDay : day.zhDay}</span>
-      ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t)}
+      ${renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t, day, model)}
       ${easyRestControl}
       <div>
         <b>${displayDay.zone}</b>
@@ -4029,10 +4355,13 @@ function renderPlanDay(day, t, index, model) {
 function renderPlanPaceBlock(day, model, t) {
   if (Array.isArray(day.customPaceRows) && day.customPaceRows.length > 0) {
     const customRows = day.customPaceRows.map((row) => `
-      <div class="plan-pace-row">
+      <div class="plan-pace-row plan-pace-row-custom">
         <span class="plan-zone-tag">${row.id}</span>
-        <strong><small class="pace-tag">${state.locale === "en" ? row.en : row.zh}</small>${renderPaceValue(row.adjusted)}</strong>
-        <em><small class="pace-tag">${t.basePaceShort}</small>${renderPaceValue(row.base)}</em>
+        <small class="pace-tag plan-effort-tag">${state.locale === "en" ? row.en : row.zh}</small>
+        <small class="plan-pace-label">${t.adjustedPaceShort}</small>
+        <strong>${renderPaceValue(row.adjusted)}</strong>
+        <small class="plan-pace-label plan-base-label">${t.basePaceShort}</small>
+        <em>${renderPaceValue(row.base)}</em>
       </div>
     `).join("");
     return `<div class="plan-pace">${customRows}</div>`;
@@ -4075,11 +4404,21 @@ function renderEasyRestControl(day, index, t) {
   `;
 }
 
-function renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t) {
+function renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t, day = null, model = null) {
   if (candidates.length === 0) return "";
 
   const menuId = `plan-workout-${index}`;
   const isOpen = state.openMenu === menuId;
+  const isNorwegian = model?.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES;
+  const defaultLabel = isNorwegian && day?.defaultFormat
+    ? (state.locale === "en" ? day.defaultFormat.labelEn : day.defaultFormat.labelZh)
+    : t.coachPick;
+  const defaultHelp = isNorwegian && day?.defaultFormat
+    ? (state.locale === "en" ? day.defaultFormat.helpEn : day.defaultFormat.helpZh)
+    : "";
+  const selectedLabel = selectedWorkout
+    ? (state.locale === "en" ? selectedWorkout.formatLabelEn : selectedWorkout.formatLabelZh)
+    : defaultLabel;
 
   return `
     <div class="plan-swap ${isOpen ? "open" : ""}">
@@ -4091,18 +4430,20 @@ function renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t) {
         draggable="false"
         aria-expanded="${isOpen}"
       >
-        <span>${t.switchWorkout}</span>
+        <span>${isNorwegian ? t.switchSubTFormat : t.switchWorkout}${isNorwegian ? ` · ${selectedLabel}` : ""}</span>
       </button>
       <div class="plan-swap-menu">
         <button
           type="button"
-          class="plan-swap-option ${selectedWorkout ? "" : "active"}"
+          class="plan-swap-option ${isNorwegian ? "subt-format-option" : ""} ${selectedWorkout ? "" : "active"}"
           data-action="select-plan-workout"
           data-plan-index="${index}"
           data-workout-id=""
           draggable="false"
         >
-          ${t.coachPick}
+          ${isNorwegian
+            ? `<strong>${defaultLabel}</strong><small>${defaultHelp}</small>`
+            : t.coachPick}
         </button>
         ${candidates
           .map((workout) => renderPlanWorkoutOption(index, workout, selectedWorkout))
@@ -4115,16 +4456,20 @@ function renderPlanWorkoutSwitcher(index, candidates, selectedWorkout, t) {
 function renderPlanWorkoutOption(index, workout, selectedWorkout) {
   const active = selectedWorkout?.id === workout.id;
   const label = state.locale === "en" ? workout.en : workout.zh;
+  const formatLabel = state.locale === "en" ? workout.formatLabelEn : workout.formatLabelZh;
+  const formatHelp = state.locale === "en" ? workout.formatHelpEn : workout.formatHelpZh;
   return `
     <button
       type="button"
-      class="plan-swap-option ${active ? "active" : ""}"
+      class="plan-swap-option ${formatLabel ? "subt-format-option" : ""} ${active ? "active" : ""}"
       data-action="select-plan-workout"
       data-plan-index="${index}"
       data-workout-id="${workout.id}"
       draggable="false"
     >
-      ${label}
+      ${formatLabel
+        ? `<strong>${formatLabel}</strong><small>${formatHelp}</small><span>${label}</span>`
+        : label}
     </button>
   `;
 }
@@ -4486,7 +4831,23 @@ function updateFieldValue(field, value) {
     return;
   }
 
-  if (["trainingMethod", "targetRace", "trainingCycle", "marathonPhaseWeek", "hansonsWeek", "hansonsLevel"].includes(field)) {
+  if ([
+    "trainingMethod",
+    "targetRace",
+    "trainingCycle",
+    "marathonPhaseWeek",
+    "hansonsWeek",
+    "hansonsLevel",
+    "hansonsGoalHours",
+    "hansonsGoalMinutes",
+    "hansonsGoalSeconds",
+    "norwegianWeeklyHours",
+    "norwegianWeeklyMinutes",
+    "norwegianRunningDays",
+    "norwegianExperience",
+    "norwegianHealthStatus",
+    "norwegianSpecificity"
+  ].includes(field)) {
     state.planWorkoutOverrides = {};
     state.planOrder = [];
     state.skippedEasyDays = {};
@@ -4513,14 +4874,11 @@ function updateFieldValue(field, value) {
   if (field === "trainingMethod") {
     state.trainingMethod = value;
     if (value === TrainingMethod.HANSONS) {
-      if (state.targetRace === TargetRace.FIVE_TEN_K) {
-        state.targetRace = TargetRace.TEN_K;
-      } else if (state.targetRace === TargetRace.ROAD_15K_30K) {
+      if (state.targetRace !== TargetRace.MARATHON) {
         state.targetRace = TargetRace.HALF_MARATHON;
-      } else if (!hansonsTargetRaceOptions.includes(state.targetRace)) {
-        state.targetRace = TargetRace.FIVE_K;
       }
       state.hansonsWeek = getHansonsDefaultWeek(state.targetRace, state.hansonsLevel);
+      setHansonsGoalDefault(state.targetRace);
     }
     if (value === TrainingMethod.DANIELS) {
       if (state.targetRace === TargetRace.FIVE_K || state.targetRace === TargetRace.TEN_K) {
@@ -4529,12 +4887,29 @@ function updateFieldValue(field, value) {
         state.targetRace = TargetRace.ROAD_15K_30K;
       }
     }
+    if (value === TrainingMethod.NORWEGIAN_SINGLES) {
+      if (state.targetRace === TargetRace.FIVE_TEN_K) {
+        state.targetRace = TargetRace.TEN_K;
+      } else if (state.targetRace === TargetRace.ROAD_15K_30K) {
+        state.targetRace = TargetRace.HALF_MARATHON;
+      } else if (!norwegianTargetRaceOptions.includes(state.targetRace)) {
+        state.targetRace = TargetRace.TEN_K;
+      }
+    }
     return;
   }
 
   if (field === "targetRace" && state.trainingMethod === TrainingMethod.HANSONS) {
-    state.targetRace = value;
-    state.hansonsWeek = getHansonsDefaultWeek(value, state.hansonsLevel);
+    state.targetRace = hansonsTargetRaceOptions.includes(value)
+      ? value
+      : TargetRace.HALF_MARATHON;
+    state.hansonsWeek = getHansonsDefaultWeek(state.targetRace, state.hansonsLevel);
+    setHansonsGoalDefault(state.targetRace);
+    return;
+  }
+
+  if (field === "targetRace" && state.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES) {
+    state.targetRace = norwegianTargetRaceOptions.includes(value) ? value : TargetRace.TEN_K;
     return;
   }
 
@@ -4550,12 +4925,27 @@ function updateFieldValue(field, value) {
     field === "equivalentDirection" ||
     field === "abilityMode" ||
     field === "hansonsLevel" ||
+    field === "norwegianExperience" ||
+    field === "norwegianHealthStatus" ||
+    field === "norwegianSpecificity" ||
     field === "targetRace" ||
     field === "trainingCycle"
   ) {
     state[field] = value;
   } else {
     state[field] = Number(value);
+  }
+}
+
+function setHansonsGoalDefault(targetRace) {
+  if (targetRace === TargetRace.HALF_MARATHON) {
+    state.hansonsGoalHours = 1;
+    state.hansonsGoalMinutes = 45;
+    state.hansonsGoalSeconds = 0;
+  } else if (targetRace === TargetRace.MARATHON) {
+    state.hansonsGoalHours = 3;
+    state.hansonsGoalMinutes = 45;
+    state.hansonsGoalSeconds = 0;
   }
 }
 
@@ -5912,6 +6302,9 @@ function formatPlanDistance(value) {
 
 function getPlanWorkoutCandidates(day, model) {
   if (model.trainingMethod === TrainingMethod.HANSONS) return [];
+  if (model.trainingMethod === TrainingMethod.NORWEGIAN_SINGLES) {
+    return Array.isArray(day.workoutAlternatives) ? day.workoutAlternatives : [];
+  }
   if (model.targetRace === TargetRace.MARATHON) {
     return getMarathonSwapCandidates(day, model.unitSystem);
   }

@@ -5,6 +5,13 @@ import {
   getHansonsDefaultWeek,
   generateHansonsWeeklySchedule
 } from "./hansonsPlanner.mjs";
+import {
+  NorwegianExperience,
+  NorwegianHealth,
+  NorwegianSpecificity,
+  generateNorwegianSinglesWeeklySchedule,
+  getNorwegianLevel
+} from "./norwegianSinglesPlanner.mjs";
 
 export {
   HANSONS_PLAN_LENGTHS,
@@ -12,6 +19,12 @@ export {
   TrainingMethod,
   getHansonsDefaultWeek
 } from "./hansonsPlanner.mjs";
+export {
+  NorwegianExperience,
+  NorwegianHealth,
+  NorwegianSpecificity,
+  getNorwegianLevel
+} from "./norwegianSinglesPlanner.mjs";
 
 export const PaceZone = Object.freeze({
   EASY: "E",
@@ -90,6 +103,20 @@ const zoneDefinitions = Object.freeze([
     targetIntensity: 1.1,
     displayUnit: "split"
   }
+]);
+
+// Official V.O2 calculator anchors, verified on 2026-08-11 with temperature
+// and altitude adjustments disabled. Values are seconds per kilometer. The
+// calculator applies a separate correction below VDOT 39, so interpolation is
+// anchored on both sides of that boundary instead of extrapolating one VO2
+// percentage formula across the full range.
+const officialVdotPaceAnchors = Object.freeze([
+  paceAnchor(30, [425, 466], 411, 370, 329, 314),
+  paceAnchor(35, [395, 434], 364, 335, 304, 289),
+  paceAnchor(39, [374, 411], 334, 312, 287, 272),
+  paceAnchor(50, [307, 338], 271, 255, 235, 220),
+  paceAnchor(71.3, [230, 254], 200, 191, 176, 161),
+  paceAnchor(85, [200, 220], 172, 166, 153, 138)
 ]);
 
 const mileageClasses = Object.freeze([
@@ -292,8 +319,13 @@ export function calculatePaceModel(input = {}) {
   const weeklyMileageMax = unitSystem === UnitSystem.IMPERIAL ? 112 : 180;
   const weeklyMileage = clamp(Number(input.weeklyMileage ?? 55), 0, weeklyMileageMax);
   const weeklyMileageKm = roundTo(clamp(toKilometers(weeklyMileage, unitSystem), 0, 180), 1);
-  const targetRace = normalizeTargetRace(input.targetRace);
   const trainingMethod = normalizeTrainingMethod(input.trainingMethod);
+  const requestedTargetRace = normalizeTargetRace(input.targetRace);
+  const targetRace = trainingMethod === TrainingMethod.HANSONS
+    && requestedTargetRace !== TargetRace.HALF_MARATHON
+    && requestedTargetRace !== TargetRace.MARATHON
+      ? TargetRace.HALF_MARATHON
+      : requestedTargetRace;
   const trainingCycle = normalizeTrainingCycle(input.trainingCycle);
   const halfMarathonWeek = normalizeHalfMarathonWeek(input.halfMarathonWeek);
   const marathonPhaseWeek = normalizeMarathonPhaseWeek(input.marathonPhaseWeek);
@@ -301,6 +333,18 @@ export function calculatePaceModel(input = {}) {
   const hansonsLevel = Object.values(HansonsLevel).includes(input.hansonsLevel)
     ? input.hansonsLevel
     : HansonsLevel.BEGINNER;
+  const hansonsGoalTimeSeconds = normalizeHansonsGoalTimeSeconds(input);
+  const norwegianWeeklyRunningMinutes = normalizeNorwegianWeeklyRunningMinutes(input);
+  const norwegianRunningDays = clamp(Math.round(Number(input.norwegianRunningDays ?? 6)), 1, 7);
+  const norwegianExperience = Object.values(NorwegianExperience).includes(input.norwegianExperience)
+    ? input.norwegianExperience
+    : NorwegianExperience.INTRO;
+  const norwegianHealthStatus = Object.values(NorwegianHealth).includes(input.norwegianHealthStatus)
+    ? input.norwegianHealthStatus
+    : NorwegianHealth.HEALTHY;
+  const norwegianSpecificity = Object.values(NorwegianSpecificity).includes(input.norwegianSpecificity)
+    ? input.norwegianSpecificity
+    : NorwegianSpecificity.VANILLA;
   const temperatureC = clamp(Number(input.temperatureC ?? 22), -5, 45);
   const humidity = clamp(Number(input.humidity ?? 60), 0, 100);
   const heatAdjustment = calculateHeatAdjustment(temperatureC, humidity, vdot);
@@ -320,10 +364,26 @@ export function calculatePaceModel(input = {}) {
         unitSystem,
         zones,
         vdot,
-        heatMultiplier: heatAdjustment.multiplier
+        heatMultiplier: heatAdjustment.multiplier,
+        goalTimeSeconds: hansonsGoalTimeSeconds
       })
     : null;
-  const weeklySchedule = hansonsResult?.schedule ?? generateWeeklySchedule({
+  const norwegianResult = trainingMethod === TrainingMethod.NORWEGIAN_SINGLES
+    ? generateNorwegianSinglesWeeklySchedule({
+        targetRace,
+        weeklyRunningMinutes: norwegianWeeklyRunningMinutes,
+        weeklyMileageKm,
+        runningDays: norwegianRunningDays,
+        experience: norwegianExperience,
+        healthStatus: norwegianHealthStatus,
+        specificity: norwegianSpecificity,
+        unitSystem,
+        heatMultiplier: heatAdjustment.multiplier,
+        easySecondsPerKm: Number(zones.find((zone) => zone.id === PaceZone.EASY)?.base?.slower || 360),
+        paceAnchors: buildNorwegianPaceAnchors(vdot)
+      })
+    : null;
+  const weeklySchedule = hansonsResult?.schedule ?? norwegianResult?.schedule ?? generateWeeklySchedule({
       targetRace,
       trainingCycle,
       halfMarathonWeek,
@@ -337,11 +397,17 @@ export function calculatePaceModel(input = {}) {
     : null;
   const taperRecommendation = trainingMethod === TrainingMethod.HANSONS
     ? hansonsResult?.taperRecommendation ?? null
-    : getTaperRecommendation(
+    : trainingMethod === TrainingMethod.DANIELS
+      ? getTaperRecommendation(
         targetRace,
         trainingCycle,
         marathonPlan
-      );
+      )
+      : null;
+  const danielsQualityEligibility = trainingMethod === TrainingMethod.DANIELS
+    && targetRace !== TargetRace.MARATHON
+    ? getDanielsQualityEligibility(weeklyMileageKm, mileageClass.id, zones)
+    : null;
 
   return {
     vdot,
@@ -355,6 +421,12 @@ export function calculatePaceModel(input = {}) {
     marathonPhaseWeek,
     hansonsWeek: hansonsResult?.plan.week ?? hansonsWeek,
     hansonsLevel,
+    hansonsGoalTimeSeconds,
+    norwegianWeeklyRunningMinutes,
+    norwegianRunningDays,
+    norwegianExperience,
+    norwegianHealthStatus,
+    norwegianSpecificity,
     temperatureC,
     humidity,
     heatAdjustment,
@@ -367,9 +439,46 @@ export function calculatePaceModel(input = {}) {
     weeklySchedule,
     marathonPlan,
     hansonsPlan: hansonsResult?.plan ?? null,
+    norwegianPlan: norwegianResult?.plan ?? null,
+    danielsQualityEligibility,
     taperRecommendation,
     zones
   };
+}
+
+function normalizeNorwegianWeeklyRunningMinutes(input) {
+  const directMinutes = Number(input.norwegianWeeklyRunningMinutes);
+  if (Number.isFinite(directMinutes) && directMinutes >= 0) {
+    return Math.round(clamp(directMinutes, 0, 900));
+  }
+  const hours = clamp(Math.floor(Number(input.norwegianWeeklyHours) || 0), 0, 15);
+  const minutes = clamp(Math.floor(Number(input.norwegianWeeklyMinutes) || 0), 0, 59);
+  return Math.round(hours * 60 + minutes);
+}
+
+function buildNorwegianPaceAnchors(vdot) {
+  const paceFor = (meters) => estimateRaceSecondsFromVdot(vdot, meters) / (meters / 1000);
+  return {
+    fifteenK: paceFor(15000),
+    tenMile: paceFor(16093.44),
+    tenK: paceFor(10000),
+    halfMarathon: paceFor(21097.5),
+    twentyFiveK: paceFor(25000),
+    thirtyK: paceFor(30000)
+  };
+}
+
+function normalizeHansonsGoalTimeSeconds(input) {
+  const directSeconds = Number(input.hansonsGoalTimeSeconds);
+  if (Number.isFinite(directSeconds) && directSeconds > 0) {
+    return Math.round(directSeconds);
+  }
+
+  const hours = Math.max(0, Math.floor(Number(input.hansonsGoalHours) || 0));
+  const minutes = clamp(Math.floor(Number(input.hansonsGoalMinutes) || 0), 0, 59);
+  const seconds = clamp(Math.floor(Number(input.hansonsGoalSeconds) || 0), 0, 59);
+  const total = hours * 3600 + minutes * 60 + seconds;
+  return total > 0 ? total : null;
 }
 
 export function toKilometers(distance, unitSystem = UnitSystem.METRIC) {
@@ -454,6 +563,23 @@ export function calculateVdotFromRaceResult(distanceMeters, timeSeconds) {
     0.2989558 * Math.exp(-0.1932605 * minutes);
 
   return roundTo(oxygenCost / effortFraction, 1);
+}
+
+export function estimateRaceSecondsFromVdot(vdot, distanceMeters) {
+  const targetVdot = clamp(Number(vdot), 30, 85);
+  const distance = Math.max(1, Number(distanceMeters) || 1);
+  let fastSeconds = distance / 700 * 60;
+  let slowSeconds = distance / 50 * 60;
+
+  for (let step = 0; step < 64; step += 1) {
+    const midpoint = (fastSeconds + slowSeconds) / 2;
+    const estimatedVdot = calculateVdotFromRaceResult(distance, midpoint);
+    if (estimatedVdot === null) break;
+    if (estimatedVdot > targetVdot) fastSeconds = midpoint;
+    else slowSeconds = midpoint;
+  }
+
+  return (fastSeconds + slowSeconds) / 2;
 }
 
 function calculateHeatIndex(temperatureC, humidity) {
@@ -615,17 +741,32 @@ export function generateWeeklySchedule({
   }
 
   const mileageClass = getMileageClass(mileage);
-  const qualityCount = mileage >= 32 ? 2 : mileage > 0 ? 1 : 0;
-  const longRunDistanceKm = Math.min(
-    roundTo(mileage * 0.28, 1),
-    Math.floor(mileage * 0.3 * 10) / 10
+  const requestedQualityCount = mileage >= 32 ? 2 : mileage > 0 ? 1 : 0;
+  const qualityEligibility = getDanielsQualityEligibility(
+    mileage,
+    mileageClass.id,
+    zones
   );
+  const qualityCount = qualityEligibility.formalThresholdEligible
+    ? requestedQualityCount
+    : 0;
+  const longRunTimeLimitMinutes = 150;
+  const easySecondsPerKm = Number(zoneById[PaceZone.EASY]?.adjusted?.slower);
+  const longRunTimeCapKm = easySecondsPerKm > 0
+    ? (longRunTimeLimitMinutes * 60) / easySecondsPerKm
+    : Number.POSITIVE_INFINITY;
+  const longRunDistanceKm = Math.floor(Math.min(
+    mileage * 0.28,
+    mileage * 0.3,
+    longRunTimeCapKm
+  ) * 10) / 10;
   const qualityWorkouts = selectWeeklyQualityWorkouts(
     race,
     cycle,
     qualityCount,
     mileage,
-    weekParity
+    weekParity,
+    qualityEligibility.maximumThresholdMinutes
   );
   const qualityDistancesKm = allocateQualityMileage(
     mileage,
@@ -657,6 +798,8 @@ export function generateWeeklySchedule({
     unitSystem,
     weeklyMileageKm: mileage,
     longRunDistanceKm,
+    longRunTimeLimitMinutes,
+    easySecondsPerKm,
     qualityWorkouts,
     qualityDistancesKm,
     easyDistances
@@ -975,12 +1118,18 @@ function buildMarathonQ2({ cycle, phaseWeek, weeklyMileageKm, unitSystem }) {
     paceZoneIds = [PaceZone.INTERVAL, PaceZone.THRESHOLD];
   } else if (mode === "raceThreshold") {
     zone = PaceZone.THRESHOLD;
-    const repetitions = Math.max(3, Math.min(5, Math.floor(caps.T / 0.8)));
-    const thresholdKm = roundTo(Math.min(caps.T, repetitions * 0.8), 1);
-    zh = `Q2 賽前刺激：${repetitions} x 800 公尺 T，每趟 2 分鐘 E 慢跑恢復`;
-    en = `Q2 prerace stimulus: ${repetitions} x 800 m T with 2 min E jog recoveries`;
+    const repetitions = Math.max(0, Math.min(5, Math.floor((caps.T + 1e-9) / 0.8)));
+    const thresholdKm = roundTo(repetitions * 0.8, 1);
+    if (repetitions > 0) {
+      zh = `Q2 賽前刺激：${repetitions} x 800 公尺 T，每趟 2 分鐘 E 慢跑恢復`;
+      en = `Q2 prerace stimulus: ${repetitions} x 800 m T with 2 min E jog recoveries`;
+    } else {
+      zone = PaceZone.EASY;
+      zh = "Q2 賽前 E 跑：週量上限不足 800 公尺 T，本週不排 T 重複跑";
+      en = "Q2 prerace E run: the weekly T cap is below 800 m, so no T repetitions are scheduled";
+    }
     intensityKm = { M: 0, T: thresholdKm, I: 0, R: 0 };
-    paceZoneIds = [PaceZone.THRESHOLD];
+    paceZoneIds = repetitions > 0 ? [PaceZone.THRESHOLD] : [PaceZone.EASY];
   } else {
     zone = PaceZone.THRESHOLD;
     const thresholdKm = roundTo(
@@ -1286,7 +1435,7 @@ export function getMarathonSwapCandidates(
   }
 
   if (type === "marathon-q2-raceThreshold") {
-    return [3, 4]
+    return [2, 3, 4]
       .filter((repetitions) => repetitions * 0.8 <= thresholdKm + 0.01)
       .map((repetitions) =>
         candidate(
@@ -1302,7 +1451,14 @@ export function getMarathonSwapCandidates(
   return [];
 }
 
-function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage, weekParity) {
+function selectWeeklyQualityWorkouts(
+  race,
+  cycle,
+  qualityCount,
+  mileage,
+  weekParity,
+  maximumThresholdMinutes
+) {
   if (qualityCount <= 0) return [];
 
   const baseSequence =
@@ -1323,7 +1479,11 @@ function selectWeeklyQualityWorkouts(race, cycle, qualityCount, mileage, weekPar
   return [threshold, secondary]
     .filter(Boolean)
     .slice(0, qualityCount)
-    .map((workout) => adaptWorkoutToMileage(workout, mileage));
+    .map((workout) => adaptWorkoutToMileage(
+      workout,
+      mileage,
+      maximumThresholdMinutes
+    ));
 }
 
 function halfMarathonAlternatingSequence(cycle, weekParity) {
@@ -1333,13 +1493,26 @@ function halfMarathonAlternatingSequence(cycle, weekParity) {
   return [longRunQuality(cycle), thresholdQuality(cycle), secondary];
 }
 
-function adaptWorkoutToMileage(workout, mileage) {
-  const matchingExamples = workoutCatalog.filter(
+function adaptWorkoutToMileage(workout, mileage, maximumThresholdMinutes = null) {
+  let matchingExamples = workoutCatalog.filter(
     (example) => example.zone === workout.zone && isMileageEligible(example, mileage)
   );
+  if (workout.zone === PaceZone.THRESHOLD && Number.isFinite(maximumThresholdMinutes)) {
+    matchingExamples = matchingExamples.filter((example) => {
+      const minutes = getWorkoutQualityMinutes(example);
+      return minutes !== null
+        && minutes >= 20
+        && minutes <= maximumThresholdMinutes + 0.01;
+    });
+    matchingExamples.sort(
+      (left, right) => getWorkoutQualityMinutes(right) - getWorkoutQualityMinutes(left)
+    );
+  }
   if (matchingExamples.length === 0) return workout;
 
-  const selected = matchingExamples[Math.floor(matchingExamples.length / 2)];
+  const selected = workout.zone === PaceZone.THRESHOLD
+    ? matchingExamples[0]
+    : matchingExamples[Math.floor(matchingExamples.length / 2)];
   return {
     ...workout,
     zh: selected.zh,
@@ -1363,6 +1536,54 @@ function allocateQualityMileage(mileage, mileageClassId, qualityCount) {
   return (ratiosByClass[mileageClassId] ?? ratiosByClass.A)
     .slice(0, qualityCount)
     .map((ratio) => roundTo(mileage * ratio, 1));
+}
+
+function getDanielsQualityEligibility(weeklyMileageKm, mileageClassId, zones) {
+  const mileage = Math.max(0, Number(weeklyMileageKm) || 0);
+  const requestedQualityCount = mileage >= 32 ? 2 : mileage > 0 ? 1 : 0;
+  const thresholdSecondsPerKm = Number(
+    zones.find((zone) => zone.id === PaceZone.THRESHOLD)?.base?.faster
+  );
+  const minimumThresholdMinutes = 20;
+  const minimumWarmupCooldownKm = 2;
+  const minimumThresholdWorkKm = thresholdSecondsPerKm > 0
+    ? (minimumThresholdMinutes * 60) / thresholdSecondsPerKm
+    : Number.POSITIVE_INFINITY;
+  const thresholdCapKm = mileage * 0.1;
+  const plannedPrimarySessionKm = allocateQualityMileage(
+    mileage,
+    mileageClassId,
+    requestedQualityCount
+  )[0] ?? 0;
+  const maximumThresholdMinutes = thresholdSecondsPerKm > 0
+    ? Math.floor((thresholdCapKm * thresholdSecondsPerKm) / 60)
+    : 0;
+  const capSupportsMinimum = thresholdCapKm + 0.05 >= minimumThresholdWorkKm;
+  const sessionSupportsMinimum = plannedPrimarySessionKm + 0.05
+    >= minimumThresholdWorkKm + minimumWarmupCooldownKm;
+  const formalThresholdEligible = requestedQualityCount > 0
+    && capSupportsMinimum
+    && sessionSupportsMinimum;
+
+  return {
+    formalThresholdEligible,
+    fallback: formalThresholdEligible ? null : "easy-strides",
+    minimumThresholdMinutes,
+    minimumWarmupCooldownKm,
+    minimumThresholdWorkKm: roundTo(
+      Number.isFinite(minimumThresholdWorkKm) ? minimumThresholdWorkKm : 0,
+      1
+    ),
+    thresholdCapKm: roundTo(thresholdCapKm, 1),
+    plannedPrimarySessionKm: roundTo(plannedPrimarySessionKm, 1),
+    maximumThresholdMinutes,
+    zh: formalThresholdEligible
+      ? `本週可容納至少 ${minimumThresholdMinutes} 分鐘 T、約 ${minimumWarmupCooldownKm} km 熱身收操，且 T 不超過週量 10%。`
+      : `本週尚不足以同時容納 ${minimumThresholdMinutes} 分鐘有效 T、熱身收操與週量 10% 上限，先排 E＋strides，不把過短刺激標成正式 T。`,
+    en: formalThresholdEligible
+      ? `This week can fit at least ${minimumThresholdMinutes} minutes at T, about ${minimumWarmupCooldownKm} km of warm-up/cooldown, and the 10% weekly T cap.`
+      : `This week cannot yet fit ${minimumThresholdMinutes} effective T minutes, warm-up/cooldown, and the 10% weekly T cap together, so it uses E plus strides instead of labeling a micro-dose as a formal T session.`
+  };
 }
 
 function allocateDistanceByWeight(totalDistanceKm, weights) {
@@ -1392,6 +1613,8 @@ function buildMileageBalancedWeek({
   unitSystem,
   weeklyMileageKm,
   longRunDistanceKm,
+  longRunTimeLimitMinutes,
+  easySecondsPerKm,
   qualityWorkouts,
   qualityDistancesKm,
   easyDistances
@@ -1400,13 +1623,21 @@ function buildMileageBalancedWeek({
   const longRunPercentage = weeklyMileageKm > 0
     ? roundTo((longRunDistanceKm / weeklyMileageKm) * 100, 1)
     : 0;
+  const estimatedMaxMinutes = easySecondsPerKm > 0
+    ? roundTo((longRunDistanceKm * easySecondsPerKm) / 60, 0)
+    : null;
   const longRun = scheduleDay(
     "Sun",
     "日",
     PaceZone.EASY,
-    `Q1 長跑 ${longRunDistance}：週跑量 ${longRunPercentage}%，以 E 配速完成`,
-    `Q1 long run ${longRunDistance}: ${longRunPercentage}% of weekly mileage at E pace`,
-    plannedDistanceMetadata(longRunDistanceKm, "long")
+    `Q1 長跑 ${longRunDistance}：週跑量 ${longRunPercentage}%，以 E 配速完成；上限 ${longRunTimeLimitMinutes} 分鐘`,
+    `Q1 long run ${longRunDistance}: ${longRunPercentage}% of weekly mileage at E pace; capped at ${longRunTimeLimitMinutes} minutes`,
+    {
+      ...plannedDistanceMetadata(longRunDistanceKm, "long"),
+      longRunLimitPercentage: 30,
+      longRunTimeLimitMinutes,
+      estimatedMaxMinutes
+    }
   );
   const primaryQuality = qualityWorkouts[0]
     ? buildPlannedQualityDay(
@@ -1759,15 +1990,7 @@ function roundDistance(value) {
 }
 
 function buildZonePace(zone, vdot, heatMultiplier, unitSystem) {
-  const isRange = Array.isArray(zone.intensityRange);
-  const fasterPace = secondsPerKmForIntensity(
-    vdot,
-    isRange ? zone.intensityRange[1] : zone.targetIntensity
-  );
-  const slowerPace = secondsPerKmForIntensity(
-    vdot,
-    isRange ? zone.intensityRange[0] : zone.targetIntensity
-  );
+  const [fasterPace, slowerPace] = interpolateOfficialVdotPace(vdot, zone.id);
   const adjustedFaster = fasterPace * heatMultiplier;
   const adjustedSlower = slowerPace * heatMultiplier;
   const heatAdjusted = heatMultiplier > 1.001;
@@ -1797,13 +2020,44 @@ function buildZonePace(zone, vdot, heatMultiplier, unitSystem) {
   };
 }
 
-function secondsPerKmForIntensity(vdot, intensity) {
-  const targetVo2 = vdot * intensity;
-  const a = 0.000104;
-  const b = 0.182258;
-  const c = -4.6 - targetVo2;
-  const metersPerMinute = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
-  return 60000 / metersPerMinute;
+function getWorkoutQualityMinutes(workout) {
+  const values = `${workout?.totalTime ?? ""}`.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+function paceAnchor(vdot, easy, marathon, threshold, interval, repetition) {
+  return {
+    vdot,
+    paces: {
+      [PaceZone.EASY]: easy,
+      [PaceZone.MARATHON]: [marathon, marathon],
+      [PaceZone.THRESHOLD]: [threshold, threshold],
+      [PaceZone.INTERVAL]: [interval, interval],
+      [PaceZone.REPETITION]: [repetition, repetition]
+    }
+  };
+}
+
+function interpolateOfficialVdotPace(vdot, zoneId) {
+  const score = clamp(Number(vdot) || 30, 30, 85);
+  const upperIndex = officialVdotPaceAnchors.findIndex((anchor) => anchor.vdot >= score);
+
+  if (upperIndex <= 0) {
+    return [...officialVdotPaceAnchors[0].paces[zoneId]];
+  }
+
+  if (upperIndex === -1) {
+    return [...officialVdotPaceAnchors[officialVdotPaceAnchors.length - 1].paces[zoneId]];
+  }
+
+  const lower = officialVdotPaceAnchors[upperIndex - 1];
+  const upper = officialVdotPaceAnchors[upperIndex];
+  if (Math.abs(score - upper.vdot) < 1e-9) return [...upper.paces[zoneId]];
+
+  const fraction = (score - lower.vdot) / (upper.vdot - lower.vdot);
+  return lower.paces[zoneId].map((value, index) =>
+    value + (upper.paces[zoneId][index] - value) * fraction
+  );
 }
 
 function formatPaceRange(fasterSeconds, slowerSeconds, unitSystem = UnitSystem.METRIC) {

@@ -64,20 +64,35 @@ These are weights, not rigid templates. The scoring engine may rotate the second
 
 The planner exposes Hansons as a separate training system rather than mixing Hansons workouts into the Daniels phase engine.
 
-- 5K and 10K plans span 12 weeks; half-marathon and marathon plans span 18 weeks.
+- Hansons mode offers only the half-marathon and marathon 18-week plans that can be checked week by week against the free official Classic schedules.
 - Half-marathon and marathon Beginner/Advanced plans reproduce the official Luke Humphrey Running schedule structure, weekly totals, long-run progression, Speed-to-Strength transition, goal-pace tempo progression, taper, and race week.
 - After the official introductory weeks, every formal quality week follows the Hansons SOS pattern: Tuesday Speed or Strength intervals, Thursday goal-pace Tempo, Sunday long run, with easy or rest days between them. Beginner half marathon adds Tempo in week 5 and the Tuesday interval in week 6; Beginner marathon adds both in week 6. Advanced half marathon starts both in week 2, while Advanced marathon adds Tuesday Speed in week 2 and Thursday Tempo in week 3.
 - Tuesday Speed follows the exact distance-specific Classic sequence instead of cycling one generic five-workout list. Half-marathon 1,000 m and 1,200 m workouts use the longer recoveries shown in its PDFs; Advanced half-marathon and marathon each use their own nine-week Speed progression.
 - Tuesday changes at week 11 from 5K-10K Speed to Strength pace: Beginner half marathon uses HMP minus 10 seconds per mile, Advanced half marathon uses 10K pace, and marathon uses MP minus 10 seconds per mile. Thursday remains goal HMP or MP Tempo and grows according to the published table.
 - Workout totals include every prescribed recovery jog plus the full published warm-up and cooldown: three miles total around interval/Strength sessions, three miles around half-marathon Tempo, and two miles around marathon Tempo.
 - At the published Classic peak, each Monday, Tuesday, Thursday, Friday, Saturday, and Sunday distance follows the official daily table instead of evenly redistributing the weekly remainder. Wednesday remains Rest/Cross-Train, and the planner does not add strides that are absent from the Classic PDFs.
-- The mileage input is the athlete's peak weekly mileage. From 75% of the published Classic peak upward, quality work uses a conservative nonlinear reduction while preserving prescribed pace. Below 75%, a separate generated low-volume adaptation replaces direct table scaling. Speed weeks reduce repetitions while retaining pace. In Strength weeks at or below 42 km peak mileage, late-cycle weeks use the selected peak where possible, the long run is held near 30%, Tempo retains roughly 4-6 km of work, and a distance progression preserves roughly 3-6 km of Strength work. At 32-35 km per week the central Strength session is `3 x 1.5 km`; recovery is counted between repetitions only, and compact warm-up/cooldown prevents session totals from being padded. Remaining mileage is distributed to Easy days. This adaptation is explicitly labeled as generated logic rather than an official Hansons table.
+- The mileage input is the athlete's peak weekly mileage. At or above 75% of the published Classic peak, the official week structure is retained with conservative volume handling. Below 75%, the planner switches to a clearly labeled foundation / finish route with Easy running, strides, and a long run capped at 30%; it does not proportionally shrink Speed, Strength, and Tempo and call the result Classic SOS.
 - A zero-mile peak produces rest days outside race week; it no longer leaves an artificial minimum long run behind.
-- 5K and 10K use the official Hansons short-distance principles publicly described by Luke Humphrey Running: accumulated fatigue, easy volume, race-specific work, and a final taper. These are distance-specific generated plans, not a claimed transcription of a published Classic table.
-- Hansons mode intentionally offers only 5K, 10K, half marathon, and marathon. It does not include the Daniels-style 10K completion plan.
-- Hansons paces are exposed as session-specific rows, including 5K/10K race pace, goal HMP/MP, Strength pace, and long-run pace where applicable.
+- Hansons 5K and performance 10K are not exposed because the available first-party material provides philosophy and paid-plan descriptions rather than a free official week-by-week Classic schedule that this project can reproduce and verify.
+- Hansons paces are exposed as session-specific rows, including the 5K-10K Speed anchor used inside the official half/marathon plans, goal HMP/MP, Strength pace, and long-run pace where applicable.
 
 Official source links, checksums, and implementation notes are stored under `docs/research/hansons-official/`. Downloaded PDFs remain local research files and are not redistributed through the repository.
+
+## Norwegian Singles / LetsRun Sub-T
+
+Norwegian Singles is exposed as a third, independent system. Its primary load input is average weekly running time rather than weekly distance.
+
+- Under 4.5 hours is explicitly labeled a Low-volume adaptation and capped at two quality sessions. The 4.5-to-under-6-hour Gateway range allows progression toward a third exposure; six to 8.5 hours is Full Singles eligibility; above 8.5 hours remains at three and is labeled Advanced instead of automatically adding a fourth.
+- The weekly Sub-T target is 20% for new use or recently increased volume, 22.5% after 4-6 stable weeks, and 25% for long-term stable use. Thirty percent is a warning ceiling and is never an automatic target.
+- The engine calculates weekly Sub-T minutes first. Under 40 budget minutes yields one session, 40-59 yields two, and 60 or more permits a third only when running days and adaptation allow it. New/recently increased volume remains at two; 4-6 stable weeks uses two full sessions plus a 10-15 minute T-lite; long-term stable use may run three full sessions.
+- Adding frequency redistributes the same weekly budget. Full sessions normally target 20-30 Sub-T minutes and are capped at 35 automatic minutes, so there is no hard 299-to-300-minute frequency cliff and no forced 40-50-minute session.
+- Each full session defaults to medium repetitions (6-8 minutes) and exposes short (3-4 minutes) and long (8-12 minutes) runner-selected alternatives with 60-second jogs. Alternatives keep approximately the same work minutes and preserve the planned session time; they are not automatically tied to target event or phase. The stable transition uses a controlled T-lite exposure without forcing an invalid long-rep option into its 10-15 minute budget.
+- Ability determines the starting pace anchors: roughly 15K-10-mile effort for short reps, half-marathon effort for medium reps, and 25K-30K effort for long reps. These are controllers, not a claim that threshold is one fixed pace.
+- Vanilla mode contains Sub-T, Easy, and an Easy Long run. After the `2 + 1 T-lite` transition, 5K, 10K, and half-marathon specificity may replace one existing quality session; it never adds an extra quality day. Marathon specificity is intentionally outside the automatic generator.
+- Easy running has no mandatory minimum pace. The UI displays conversational effort and `<=70% HRmax` as method-specific guidance instead of reusing a Daniels E pace target.
+- Available days and return-to-running state form an explicitly labeled application safety layer. Three days cap quality at one, four or five cap it at two, and six or seven permit three; limited time capacity reduces it further; returning runners are capped at one and cannot enable specificity.
+
+The detailed maintenance contract and source-boundary rules live in `AGENT.md`. The core generator is `src/training-planner/norwegianSinglesPlanner.mjs`.
 
 ## Localization
 

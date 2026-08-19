@@ -1,6 +1,7 @@
 export const TrainingMethod = Object.freeze({
   DANIELS: "daniels",
-  HANSONS: "hansons"
+  HANSONS: "hansons",
+  NORWEGIAN_SINGLES: "norwegian-singles"
 });
 
 export const HansonsLevel = Object.freeze({
@@ -9,15 +10,11 @@ export const HansonsLevel = Object.freeze({
 });
 
 export const HansonsRace = Object.freeze({
-  FIVE_K: "5K",
-  TEN_K: "10K",
   HALF_MARATHON: "Half Marathon",
   MARATHON: "Marathon"
 });
 
 export const HANSONS_PLAN_LENGTHS = Object.freeze({
-  [HansonsRace.FIVE_K]: 12,
-  [HansonsRace.TEN_K]: 12,
   [HansonsRace.HALF_MARATHON]: 18,
   [HansonsRace.MARATHON]: 18
 });
@@ -25,26 +22,13 @@ export const HANSONS_PLAN_LENGTHS = Object.freeze({
 const KM_PER_MILE = 1.609344;
 const TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM = 10 / KM_PER_MILE;
 const CLASSIC_LOW_VOLUME_THRESHOLD = 0.75;
-const LOW_VOLUME_EASY_RESERVE = 0.2;
-const LOW_VOLUME_LONG_RUN_SHARE = 0.38;
-const COMPACT_STRENGTH_MAX_PEAK_KM = 42;
-const COMPACT_STRENGTH_LONG_RUN_SHARE = 0.3;
-
-const lowVolumeLongRunFloorKm = Object.freeze({
-  [HansonsRace.HALF_MARATHON]: 8,
-  [HansonsRace.MARATHON]: 10
-});
 
 const raceDistanceKm = Object.freeze({
-  [HansonsRace.FIVE_K]: 5,
-  [HansonsRace.TEN_K]: 10,
   [HansonsRace.HALF_MARATHON]: 21.0975,
   [HansonsRace.MARATHON]: 42.195
 });
 
 const recommendedPeakKm = Object.freeze({
-  [HansonsRace.FIVE_K]: { beginner: 35, advanced: 55 },
-  [HansonsRace.TEN_K]: { beginner: 45, advanced: 65 },
   [HansonsRace.HALF_MARATHON]: {
     beginner: 47 * KM_PER_MILE,
     advanced: 50 * KM_PER_MILE
@@ -53,11 +37,6 @@ const recommendedPeakKm = Object.freeze({
     beginner: 57.5 * KM_PER_MILE,
     advanced: 61.5 * KM_PER_MILE
   }
-});
-
-const shortPlanFractions = Object.freeze({
-  beginner: [0.68, 0.74, 0.8, 0.85, 0.9, 0.95, 1, 0.96, 0.91, 0.86, 0.78, 0.62],
-  advanced: [0.8, 0.84, 0.88, 0.92, 0.96, 1, 0.96, 1, 0.92, 0.88, 0.8, 0.65]
 });
 
 const classicWeeklyMiles = Object.freeze({
@@ -186,107 +165,71 @@ const strengthProgression = Object.freeze([
   { reps: 6, distanceKm: KM_PER_MILE, recoveryKm: 0.4 }
 ]);
 
-const compactStrengthProgressions = Object.freeze({
-  reduced: [
-    { reps: 3, distanceKm: 1, recoveryKm: 0.4 },
-    { reps: 3, distanceKm: 1.2, recoveryKm: 0.5 },
-    { reps: 2, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 3, distanceKm: 1.2, recoveryKm: 0.5 },
-    { reps: 2, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 3, distanceKm: 1.2, recoveryKm: 0.5 },
-    { reps: 3, distanceKm: 1, recoveryKm: 0.4 }
-  ],
-  standard: [
-    { reps: 4, distanceKm: 1.2, recoveryKm: 0.4 },
-    { reps: 3, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 2, distanceKm: 2, recoveryKm: 0.8 },
-    { reps: 3, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 2, distanceKm: 2, recoveryKm: 0.8 },
-    { reps: 3, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 4, distanceKm: 1.2, recoveryKm: 0.4 }
-  ],
-  expanded: [
-    { reps: 5, distanceKm: 1.2, recoveryKm: 0.4 },
-    { reps: 4, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 3, distanceKm: 2, recoveryKm: 0.8 },
-    { reps: 4, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 3, distanceKm: 2, recoveryKm: 0.8 },
-    { reps: 4, distanceKm: 1.5, recoveryKm: 0.6 },
-    { reps: 5, distanceKm: 1.2, recoveryKm: 0.4 }
-  ]
-});
-
 export function getHansonsPlanLength(targetRace) {
-  return HANSONS_PLAN_LENGTHS[normalizeRace(targetRace)] ?? 12;
+  return HANSONS_PLAN_LENGTHS[normalizeRace(targetRace)] ?? 18;
 }
 
 export function getHansonsDefaultWeek(targetRace, level = HansonsLevel.BEGINNER) {
   const race = normalizeRace(targetRace);
   const normalizedLevel = normalizeLevel(level);
-  if (race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K) return 2;
   if (normalizedLevel === HansonsLevel.BEGINNER) return 6;
   return race === HansonsRace.MARATHON ? 3 : 2;
 }
 
 export function generateHansonsWeeklySchedule({
-  targetRace = HansonsRace.FIVE_K,
+  targetRace = HansonsRace.HALF_MARATHON,
   planWeek = 1,
   level = HansonsLevel.BEGINNER,
   peakMileageKm = 55,
   unitSystem = "metric",
   zones = [],
   vdot = 45,
-  heatMultiplier = 1
+  heatMultiplier = 1,
+  goalTimeSeconds = null
 } = {}) {
   const race = normalizeRace(targetRace);
   const normalizedLevel = normalizeLevel(level);
   const totalWeeks = getHansonsPlanLength(race);
   const week = clamp(Math.round(Number(planWeek) || 1), 1, totalWeeks);
   const peak = roundTo(clamp(Number(peakMileageKm) || 0, 0, 180), 1);
-  const phase = getHansonsPhase(race, week, normalizedLevel);
-  const minimumPeak = recommendedPeakKm[race][normalizedLevel];
-  const isShortPlan = race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K;
+  const classicPhase = getHansonsPhase(race, week, normalizedLevel);
+  const minimumPeak = roundTo(recommendedPeakKm[race][normalizedLevel], 1);
   const rawPlanScale = minimumPeak > 0 ? peak / minimumPeak : 0;
   const raceWeek = week === totalWeeks;
-  const classicLowVolume = !isShortPlan && !raceWeek && peak > 0 && rawPlanScale < CLASSIC_LOW_VOLUME_THRESHOLD;
-  const compactStrengthWeek = classicLowVolume
-    && peak <= COMPACT_STRENGTH_MAX_PEAK_KM
-    && week >= 11
-    && week <= 16;
+  const foundationFinishRoute = !raceWeek
+    && peak > 0
+    && rawPlanScale < CLASSIC_LOW_VOLUME_THRESHOLD;
+  const phase = foundationFinishRoute
+    ? { id: "foundation-finish", zh: "基礎／完賽路線", en: "Foundation / finish route" }
+    : classicPhase;
   const plannedFromProfile = getPlannedMileageKm(race, normalizedLevel, week, peak);
   const minimumRaceWeekKm = raceWeek ? raceDistanceKm[race] + (race === HansonsRace.MARATHON ? 4 : 2) : 0;
   const plannedWeeklyMileageKm = roundTo(
-    Math.max(plannedFromProfile, minimumRaceWeekKm, compactStrengthWeek ? peak : 0),
+    Math.max(plannedFromProfile, minimumRaceWeekKm),
     1
   );
-  const lowVolumeTargets = classicLowVolume
-    ? getClassicLowVolumeTargets(race, normalizedLevel, week, plannedWeeklyMileageKm, rawPlanScale, peak)
-    : null;
-  const qualityScale = peak <= 0
-    ? 0
-    : isShortPlan
-      ? clamp(rawPlanScale, 0.55, 1.15)
-      : clamp(rawPlanScale, 0, 1);
+  const qualityScale = peak <= 0 ? 0 : clamp(rawPlanScale, 0, 1);
   const classicWorkoutScale = peak <= 0
     ? 0
-    : classicLowVolume
-      ? clamp(Math.sqrt(rawPlanScale), 0.35, 1)
-      : clamp(0.5 + 0.5 * Math.min(rawPlanScale, 1), 0.5, 1);
+    : clamp(0.5 + 0.5 * Math.min(rawPlanScale, 1), 0.5, 1);
   const zoneById = Object.fromEntries(zones.map((zone) => [zone.id, zone]));
-  const paces = buildHansonsPaces(vdot, heatMultiplier, unitSystem, zoneById);
-  const allowPrimaryQuality = peak >= minimumPeak * 0.6;
-  const allowSecondaryQuality = peak >= minimumPeak * 0.8;
-
-  const workouts = race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K
-    ? buildShortRaceWorkouts({
-        race,
-        week,
-        qualityScale,
-        unitSystem,
-        paces,
-        allowPrimaryQuality,
-        allowSecondaryQuality
-      })
+  const specificPacePlan = buildHansonsSpecificPacePlan({
+    race,
+    level: normalizedLevel,
+    week,
+    vdot,
+    goalTimeSeconds
+  });
+  const paces = buildHansonsPaces(
+    vdot,
+    heatMultiplier,
+    unitSystem,
+    zoneById,
+    race,
+    specificPacePlan
+  );
+  const workouts = foundationFinishRoute
+    ? { primary: null, secondary: null }
     : buildClassicWorkouts({
         race,
         level: normalizedLevel,
@@ -295,8 +238,6 @@ export function generateHansonsWeeklySchedule({
         unitSystem,
         paces,
         publishedDayMiles: classicDailyMiles[race][normalizedLevel][week - 1],
-        lowVolumeTargets,
-        rawPlanScale,
         allowPrimaryQuality: peak > 0,
         allowSecondaryQuality: peak > 0
       });
@@ -310,7 +251,10 @@ export function generateHansonsWeeklySchedule({
     unitSystem,
     paces,
     zoneById,
-    distanceOverrideKm: lowVolumeTargets?.longRunKm ?? null
+    distanceOverrideKm: foundationFinishRoute
+      ? Math.floor(plannedWeeklyMileageKm * 0.3 * 10) / 10
+      : null,
+    foundationFinishRoute
   });
   const schedule = buildHansonsWeek({
     race,
@@ -343,21 +287,29 @@ export function generateHansonsWeeklySchedule({
       peakWeeklyMileageKm: peak,
       fraction: peak > 0 ? roundTo(scheduledWeeklyMileageKm / peak, 3) : 0,
       qualityPriorityExpansion: scheduledWeeklyMileageKm > plannedWeeklyMileageKm + 0.05,
-      lowVolumeAdaptation: classicLowVolume,
+      lowVolumeAdaptation: false,
+      foundationFinishRoute,
       recommendedMinimumPeakKm: minimumPeak,
       belowRecommendedVolume: peak > 0 && peak < minimumPeak,
-      qualityNoteZh: isShortPlan
-        ? null
-        : getClassicQualityNote(race, normalizedLevel, week, workouts, "zh"),
-      qualityNoteEn: isShortPlan
-        ? null
-        : getClassicQualityNote(race, normalizedLevel, week, workouts, "en"),
-      sourceKind:
-        race === HansonsRace.HALF_MARATHON || race === HansonsRace.MARATHON
-          ? classicLowVolume
-            ? "classic-low-volume-adaptation"
-            : "classic-free-plan"
-          : "public-training-philosophy"
+      qualityNoteZh: foundationFinishRoute
+          ? "本週使用基礎／完賽路線：保留 E、strides 與不超過 30% 的長跑；目前不把縮短後的 Speed、Strength 或 Tempo 標成 Hansons Classic SOS。"
+          : getClassicQualityNote(race, normalizedLevel, week, workouts, "zh"),
+      qualityNoteEn: foundationFinishRoute
+          ? "This week uses the foundation / finish route: E running, strides, and a long run capped at 30%; shortened Speed, Strength, and Tempo sessions are not labeled as Hansons Classic SOS."
+          : getClassicQualityNote(race, normalizedLevel, week, workouts, "en"),
+      goalTimeSeconds: specificPacePlan.goalTimeSeconds,
+      hasExplicitGoalTime: specificPacePlan.hasExplicitGoalTime,
+      currentEquivalentTimeSeconds: specificPacePlan.currentEquivalentTimeSeconds,
+      currentEquivalentPaceSecondsPerKm: roundTo(specificPacePlan.currentPaceSecondsPerKm, 1),
+      goalPaceSecondsPerKm: roundTo(specificPacePlan.goalPaceSecondsPerKm, 1),
+      specificPaceSecondsPerKm: roundTo(specificPacePlan.specificPaceSecondsPerKm, 1),
+      goalGapSecondsPerKm: roundTo(specificPacePlan.goalGapSecondsPerKm, 1),
+      goalGapTooLarge: specificPacePlan.goalGapTooLarge,
+      goalProgressionApplied: specificPacePlan.goalProgressionApplied,
+      goalProgressFraction: roundTo(specificPacePlan.goalProgressFraction, 3),
+      sourceKind: foundationFinishRoute
+        ? "foundation-finish-route"
+        : "classic-free-plan"
     },
     taperRecommendation: raceWeek
       ? {
@@ -370,90 +322,12 @@ export function generateHansonsWeeklySchedule({
 }
 
 function getPlannedMileageKm(race, level, week, peakMileageKm) {
-  if (race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K) {
-    return roundTo(peakMileageKm * shortPlanFractions[level][week - 1], 1);
-  }
-
   const profile = classicWeeklyMiles[race][level];
   const profilePeak = Math.max(...profile);
   return roundTo(peakMileageKm * (profile[week - 1] / profilePeak), 1);
 }
 
-function getClassicLowVolumeTargets(race, level, week, plannedWeeklyMileageKm, rawPlanScale, peakMileageKm) {
-  const publishedDays = classicDailyMiles[race][level][week - 1];
-  const officialLongRunKm = classicLongRunMiles[race][level][week - 1] * KM_PER_MILE;
-  const compactStrength = peakMileageKm <= COMPACT_STRENGTH_MAX_PEAK_KM && week >= 11 && week <= 17;
-  const longRunShare = compactStrength ? COMPACT_STRENGTH_LONG_RUN_SHARE : LOW_VOLUME_LONG_RUN_SHARE;
-  const longRunFloorKm = Math.min(
-    lowVolumeLongRunFloorKm[race],
-    plannedWeeklyMileageKm * longRunShare
-  );
-  const longRunKm = roundTo(
-    Math.min(
-      plannedWeeklyMileageKm * (compactStrength ? COMPACT_STRENGTH_LONG_RUN_SHARE : 0.42),
-      Math.max(officialLongRunKm * rawPlanScale, longRunFloorKm)
-    ),
-    1
-  );
-  const qualityBudgetKm = Math.max(
-    0,
-    plannedWeeklyMileageKm * (1 - LOW_VOLUME_EASY_RESERVE) - longRunKm
-  );
-  const speedStartWeek = level === HansonsLevel.ADVANCED ? 2 : 6;
-  const hasPrimary = week >= speedStartWeek && week <= 17;
-  const hasSecondary = classicTempoMiles[race][level][week - 1] > 0;
-  const primaryWeight = hasPrimary ? Number(publishedDays?.[1] || 0) : 0;
-  const secondaryWeight = hasSecondary ? Number(publishedDays?.[2] || 0) : 0;
-  const qualityWeight = primaryWeight + secondaryWeight;
-
-  if (compactStrength && hasPrimary) {
-    const strengthBand = peakMileageKm <= 31
-      ? "reduced"
-      : peakMileageKm <= 35
-        ? "standard"
-        : "expanded";
-    const primaryTemplate = compactStrengthProgressions[strengthBand][week - 11];
-    const primaryWarmupCooldownKm = strengthBand === "reduced" ? 1.6 : strengthBand === "standard" ? 1.8 : 2;
-    const primaryRecoveryKm = Math.max(0, primaryTemplate.reps - 1) * primaryTemplate.recoveryKm;
-    const primaryKm = roundTo(
-      primaryTemplate.reps * primaryTemplate.distanceKm + primaryRecoveryKm + primaryWarmupCooldownKm,
-      1
-    );
-    const tempoWarmupCooldownKm = 1.6;
-    const officialTempoKm = classicTempoMiles[race][level][week - 1] * KM_PER_MILE;
-    const desiredTempoWorkKm = race === HansonsRace.MARATHON
-      ? clamp(plannedWeeklyMileageKm * 0.16, 5, 6)
-      : clamp(plannedWeeklyMileageKm * 0.14, 4, 5);
-    const secondaryKm = hasSecondary
-      ? roundTo(Math.min(officialTempoKm, desiredTempoWorkKm) + tempoWarmupCooldownKm, 1)
-      : null;
-
-    return {
-      longRunKm,
-      primaryKm,
-      secondaryKm,
-      primaryTemplate,
-      primaryWarmupCooldownKm,
-      tempoWarmupCooldownKm,
-      compactStrength: true
-    };
-  }
-
-  return {
-    longRunKm,
-    primaryKm: qualityWeight > 0 ? roundTo(qualityBudgetKm * (primaryWeight / qualityWeight), 1) : null,
-    secondaryKm: qualityWeight > 0 ? roundTo(qualityBudgetKm * (secondaryWeight / qualityWeight), 1) : null
-  };
-}
-
 function getHansonsPhase(race, week, level) {
-  if (race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K) {
-    if (week <= 2) return { id: "foundation", zh: "基礎與導入", en: "Foundation" };
-    if (week <= 8) return { id: "development", zh: "速度與閾值發展", en: "Speed + threshold development" };
-    if (week <= 11) return { id: "sharpening", zh: "比賽專項銳化", en: "Race-specific sharpening" };
-    return { id: "race", zh: "比賽週", en: "Race week" };
-  }
-
   const speedStartWeek = level === HansonsLevel.ADVANCED ? 2 : 6;
   if (week < speedStartWeek) return { id: "foundation", zh: "基礎跑量", en: "Foundation mileage" };
   if (week <= 10) return { id: "speed", zh: "Speed 速度期", en: "Speed phase" };
@@ -508,18 +382,11 @@ function buildClassicWorkouts({
   unitSystem,
   paces,
   publishedDayMiles,
-  lowVolumeTargets,
-  rawPlanScale,
   allowPrimaryQuality,
   allowSecondaryQuality
 }) {
-  const lowVolume = Boolean(lowVolumeTargets);
-  const primaryWarmupCooldownKm = lowVolumeTargets?.primaryWarmupCooldownKm
-    ?? (lowVolume ? clamp(3 * KM_PER_MILE * rawPlanScale, 1.6, 3.2) : 3 * KM_PER_MILE);
-  const tempoWarmupCooldownKm = lowVolumeTargets?.tempoWarmupCooldownKm
-    ?? (lowVolume
-      ? clamp((race === HansonsRace.HALF_MARATHON ? 3 : 2) * KM_PER_MILE * rawPlanScale, 1.6, 2.4)
-      : (race === HansonsRace.HALF_MARATHON ? 3 : 2) * KM_PER_MILE);
+  const primaryWarmupCooldownKm = 3 * KM_PER_MILE;
+  const tempoWarmupCooldownKm = (race === HansonsRace.HALF_MARATHON ? 3 : 2) * KM_PER_MILE;
   const speedStartWeek = level === HansonsLevel.ADVANCED
     ? 2
     : race === HansonsRace.HALF_MARATHON
@@ -538,7 +405,6 @@ function buildClassicWorkouts({
       qualityScale,
       unitSystem,
       warmupCooldownKm: primaryWarmupCooldownKm,
-      targetTotalKm: lowVolumeTargets?.primaryKm ?? null,
       adaptRepDistance: false,
       paceRows: [paces.fiveToTenK],
       zone: "I",
@@ -546,17 +412,15 @@ function buildClassicWorkouts({
       nameEn: "Speed: 5K-10K pace intervals"
     });
   } else if (allowPrimaryQuality && week >= 11 && week <= 17) {
-    const template = lowVolumeTargets?.primaryTemplate ?? strengthProgression[week - 11];
+    const template = strengthProgression[week - 11];
     const paceRows = race === HansonsRace.HALF_MARATHON
       ? [level === HansonsLevel.ADVANCED ? paces.tenK : paces.hmpMinus]
       : [paces.mpMinus];
     primary = repeatWorkout({
       template,
-      qualityScale: lowVolumeTargets?.primaryTemplate ? 1 : qualityScale,
+      qualityScale,
       unitSystem,
       warmupCooldownKm: primaryWarmupCooldownKm,
-      targetTotalKm: lowVolumeTargets?.primaryKm ?? null,
-      adaptRepDistance: lowVolume && !lowVolumeTargets?.primaryTemplate,
       paceRows,
       zone: "I",
       nameZh: race === HansonsRace.HALF_MARATHON
@@ -577,7 +441,6 @@ function buildClassicWorkouts({
     ? distanceTempoWorkout({
         workDistanceKm: officialTempoMiles * KM_PER_MILE * qualityScale,
         warmupCooldownKm: tempoWarmupCooldownKm,
-        targetTotalKm: lowVolumeTargets?.secondaryKm ?? null,
         unitSystem,
         paceRow: race === HansonsRace.HALF_MARATHON ? paces.hmp : paces.mp,
         zone: race === HansonsRace.HALF_MARATHON ? "T" : "M",
@@ -595,139 +458,6 @@ function buildClassicWorkouts({
   }
 
   return { primary, secondary };
-}
-
-function buildShortRaceWorkouts({
-  race,
-  week,
-  qualityScale,
-  unitSystem,
-  paces,
-  allowPrimaryQuality,
-  allowSecondaryQuality
-}) {
-  if (week === 12) {
-    return {
-      primary: allowPrimaryQuality
-        ? repeatWorkout({
-            template: { reps: 3, distanceKm: 0.4, recoveryKm: 0.4 },
-            qualityScale: 1,
-            unitSystem,
-            paceRows: [race === HansonsRace.FIVE_K ? paces.fiveK : paces.tenK],
-            zone: "I",
-            nameZh: "賽前短量喚醒",
-            nameEn: "Short prerace tune-up"
-          })
-        : null,
-      secondary: null
-    };
-  }
-
-  if (!allowPrimaryQuality) return { primary: null, secondary: null };
-
-  if (week === 1) {
-    return {
-      primary: timeTempoWorkout({
-        minutes: 15,
-        unitSystem,
-        paceRow: paces.lt,
-        zone: "T",
-        nameZh: "導入 LT：可控制的短節奏跑",
-        nameEn: "Intro LT: controlled short tempo"
-      }),
-      secondary: null
-    };
-  }
-
-  const primary = buildShortPrimary(race, week, qualityScale, unitSystem, paces);
-  if (!allowSecondaryQuality) return { primary, secondary: null };
-
-  let secondary;
-  if (race === HansonsRace.FIVE_K) {
-    secondary = week % 2 === 0
-      ? repeatWorkout({
-          template: { reps: week >= 9 ? 4 : 5, distanceKm: 1, recoveryKm: 0.2 },
-          qualityScale,
-          unitSystem,
-          paceRows: [paces.tenK],
-          zone: "T",
-          nameZh: "10K 配速支撐：長間歇",
-          nameEn: "10K support: long repeats"
-        })
-      : timeTempoWorkout({
-          minutes: week >= 9 ? 15 : 20,
-          unitSystem,
-          paceRow: paces.lt,
-          zone: "T",
-          nameZh: "LT 維持：不追求力竭",
-          nameEn: "LT maintenance: stop short of exhaustion"
-        });
-  } else {
-    secondary = week <= 2
-      ? timeTempoWorkout({
-          minutes: 20,
-          unitSystem,
-          paceRow: paces.hmp,
-          zone: "T",
-          nameZh: "有氧導入：半馬配速穩定跑",
-          nameEn: "Aerobic introduction: HMP steady run"
-        })
-      : week % 2 === 0
-        ? repeatWorkout({
-            template: { reps: week >= 9 ? 4 : 5, distanceKm: week >= 9 ? 1.2 : 1, recoveryKm: 0.2 },
-            qualityScale,
-            unitSystem,
-            paceRows: [paces.eightToTenK],
-            zone: "T",
-            nameZh: "CV：8K–10K 配速長間歇",
-            nameEn: "CV: 8K-10K pace long repeats"
-          })
-        : timeTempoWorkout({
-            minutes: week >= 9 ? 20 : 25,
-            unitSystem,
-            paceRow: paces.lt,
-            zone: "T",
-            nameZh: "LT：20–25 分鐘乳酸閾值",
-            nameEn: "LT: 20-25 minute threshold"
-          });
-  }
-
-  return { primary, secondary };
-}
-
-function buildShortPrimary(race, week, qualityScale, unitSystem, paces) {
-  if (race === HansonsRace.FIVE_K) {
-    const templates = {
-      2: [{ reps: 6, distanceKm: 0.4, recoveryKm: 0.4 }, paces.tenK, "10K 配速導入", "10K pace introduction"],
-      3: [{ reps: 5, distanceKm: 1, recoveryKm: 0.4 }, paces.tenK, "10K 配速長間歇", "10K pace long repeats"],
-      4: [{ reps: 6, distanceKm: 0.8, recoveryKm: 0.4 }, paces.fiveK, "5K 配速發展", "5K pace development"],
-      5: [{ reps: 5, distanceKm: 1, recoveryKm: 0.4 }, paces.fiveK, "5K 配速發展", "5K pace development"],
-      6: [{ reps: 4, distanceKm: 1.2, recoveryKm: 0.4 }, paces.fiveK, "5K 配速延長", "Longer 5K pace repeats"],
-      7: [{ reps: 6, distanceKm: 0.8, recoveryKm: 0.4 }, paces.fiveK, "5K 配速發展", "5K pace development"],
-      8: [{ reps: 5, distanceKm: 1, recoveryKm: 0.4 }, paces.fiveK, "5K 專項", "5K specific"],
-      9: [{ reps: 6, distanceKm: 0.6, recoveryKm: 0.6 }, paces.threeK, "3K 配速銳化", "3K pace sharpening"],
-      10: [{ reps: 5, distanceKm: 0.8, recoveryKm: 0.8 }, paces.threeK, "3K 配速銳化", "3K pace sharpening"],
-      11: [{ reps: 8, distanceKm: 0.4, recoveryKm: 0.4 }, paces.mileToThreeK, "Mile–3K 快速銳化", "Mile-3K speed sharpening"]
-    };
-    const [template, paceRow, zh, en] = templates[week];
-    return repeatWorkout({ template, qualityScale, unitSystem, paceRows: [paceRow], zone: "I", nameZh: zh, nameEn: en });
-  }
-
-  const faster = week >= 9;
-  const template = faster
-    ? { reps: week === 11 ? 5 : 4, distanceKm: week === 9 ? 0.8 : 1, recoveryKm: week === 9 ? 0.8 : 1 }
-    : week <= 3
-      ? { reps: 6, distanceKm: 0.4, recoveryKm: 0.4 }
-      : { reps: week % 2 === 0 ? 6 : 5, distanceKm: week % 2 === 0 ? 0.8 : 1, recoveryKm: 0.4 };
-  return repeatWorkout({
-    template,
-    qualityScale,
-    unitSystem,
-    paceRows: [faster ? paces.mileToThreeK : paces.fiveK],
-    zone: "I",
-    nameZh: faster ? "有氧動力：Mile–3K 配速" : "5K 配速有氧動力",
-    nameEn: faster ? "Aerobic power: mile-3K pace" : "5K pace aerobic power"
-  });
 }
 
 function repeatWorkout({
@@ -850,21 +580,6 @@ function distanceTempoWorkout({
   });
 }
 
-function timeTempoWorkout({ minutes, unitSystem, paceRow, zone, nameZh, nameEn }) {
-  const workKm = (minutes * 60) / paceRow.baseSecondsPerKm;
-  const totalKm = roundTo(workKm + 2, 1);
-  return qualityDay({
-    zone,
-    totalKm,
-    workKm: roundTo(workKm, 1),
-    recoveryKm: 0,
-    warmupCooldownKm: 2,
-    paceRows: [paceRow],
-    zh: `${nameZh} ${minutes} 分鐘；另含 E 熱身與收操`,
-    en: `${nameEn} for ${minutes} minutes, plus E warm-up and cooldown`
-  });
-}
-
 function qualityDay({
   zone,
   totalKm,
@@ -897,53 +612,44 @@ function buildHansonsLongRun({
   unitSystem,
   paces,
   zoneById,
-  distanceOverrideKm = null
+  distanceOverrideKm = null,
+  foundationFinishRoute = false
 }) {
   const isRaceWeek = week === getHansonsPlanLength(race);
   const eventKm = raceDistanceKm[race];
-  const longRunLimit = race === HansonsRace.FIVE_K || race === HansonsRace.TEN_K ? 0.25 : 0.3;
+  const longRunLimit = 0.3;
   let distanceKm;
 
   if (Number.isFinite(distanceOverrideKm)) {
     distanceKm = distanceOverrideKm;
   } else if (isRaceWeek) {
     distanceKm = eventKm;
-  } else if (race === HansonsRace.HALF_MARATHON || race === HansonsRace.MARATHON) {
+  } else {
     const officialKm = classicLongRunMiles[race][level][week - 1] * KM_PER_MILE;
     distanceKm = officialKm * qualityScale;
-  } else {
-    const alternatingShare = week % 2 === 0 ? 0.18 : 0.22;
-    const sharpeningReduction = week >= 9 ? 0.8 : 1;
-    distanceKm = plannedWeeklyMileageKm * alternatingShare * sharpeningReduction;
   }
 
   distanceKm = roundTo(distanceKm, 1);
   const distance = formatDistanceValue(distanceKm, unitSystem);
-  const racePaceRow = race === HansonsRace.FIVE_K
-    ? paces.fiveK
-    : race === HansonsRace.TEN_K
-      ? paces.tenK
-      : race === HansonsRace.HALF_MARATHON
-        ? paces.hmp
-        : paces.mp;
+  const racePaceRow = race === HansonsRace.HALF_MARATHON
+    ? paces.goalHmp
+    : paces.goalMp;
   const easySeconds = Number(zoneById.E?.adjusted?.slower || 0);
 
   return {
     enDay: "Sun",
     zhDay: "日",
-    zone: isRaceWeek
-      ? race === HansonsRace.MARATHON
-        ? "M"
-        : race === HansonsRace.HALF_MARATHON
-          ? "T"
-          : "I"
-      : "E",
+    zone: isRaceWeek ? (race === HansonsRace.MARATHON ? "M" : "T") : "E",
     zh: isRaceWeek
       ? `目標 ${race} 比賽 ${distance}`
-      : `累積疲勞長跑 ${distance}：以可恢復的 E 強度完成，不把它跑成測驗`,
+      : foundationFinishRoute
+        ? `基礎長跑 ${distance}：以可交談的 E 強度完成，不追求累積疲勞`
+        : `累積疲勞長跑 ${distance}：以可恢復的 E 強度完成，不把它跑成測驗`,
     en: isRaceWeek
       ? `Goal ${race} race ${distance}`
-      : `Cumulative-fatigue long run ${distance}: stay at recoverable E effort, not race effort`,
+      : foundationFinishRoute
+        ? `Foundation long run ${distance}: stay at conversational E effort without chasing cumulative fatigue`
+        : `Cumulative-fatigue long run ${distance}: stay at recoverable E effort, not race effort`,
     plannedDistanceKm: distanceKm,
     distanceRangeKm: { min: distanceKm, max: distanceKm },
     scheduleRole: "long",
@@ -974,6 +680,7 @@ function buildHansonsWeek({
   phase
 }) {
   const isClassic = race === HansonsRace.HALF_MARATHON || race === HansonsRace.MARATHON;
+  const foundationFinishRoute = phase.id === "foundation-finish";
   const fixedKm = longRun.plannedDistanceKm + Number(primary?.plannedDistanceKm || 0) + Number(secondary?.plannedDistanceKm || 0);
   const adjustedWeeklyTotal = roundTo(Math.max(plannedWeeklyMileageKm, fixedKm), 1);
   const remainingKm = roundTo(Math.max(0, adjustedWeeklyTotal - fixedKm), 1);
@@ -993,7 +700,7 @@ function buildHansonsWeek({
   );
   const primaryDay = primary
     ? attachDay(primary, "Tue", "二", unitSystem)
-    : easyDay("Tue", "二", easyDistances.tue || 0, unitSystem, false);
+    : easyDay("Tue", "二", easyDistances.tue || 0, unitSystem, foundationFinishRoute);
   const secondaryDayName = isClassic ? ["Thu", "四"] : ["Fri", "五"];
   const secondaryDay = secondary
     ? attachDay(secondary, secondaryDayName[0], secondaryDayName[1], unitSystem)
@@ -1018,7 +725,13 @@ function buildHansonsWeek({
     isClassic
       ? easyDay("Fri", "五", easyDistances.fri || 0, unitSystem, false)
       : secondaryDay,
-    easyDay("Sat", "六", easyDistances.sat || 0, unitSystem, !isClassic && phase.id === "foundation")
+    easyDay(
+      "Sat",
+      "六",
+      easyDistances.sat || 0,
+      unitSystem,
+      foundationFinishRoute || (!isClassic && phase.id === "foundation")
+    )
   ];
 
   const actualTotal = days.reduce((sum, day) => sum + Number(day.plannedDistanceKm || 0), 0);
@@ -1099,7 +812,58 @@ function updateEasyDistance(day, distanceKm, unitSystem) {
   day.enDistanceLabel = `Session total ${label}`;
 }
 
-function buildHansonsPaces(vdot, heatMultiplier, unitSystem, zoneById) {
+function buildHansonsSpecificPacePlan({ race, level, week, vdot, goalTimeSeconds }) {
+  const eventDistanceKm = raceDistanceKm[race];
+  const eventDistanceMeters = eventDistanceKm * 1000;
+  const currentPaceSecondsPerKm = estimateRacePaceSecondsPerKm(vdot, eventDistanceMeters);
+  const currentEquivalentTimeSeconds = Math.round(currentPaceSecondsPerKm * eventDistanceKm);
+  const explicitGoalSeconds = Number(goalTimeSeconds);
+  const hasExplicitGoalTime = Number.isFinite(explicitGoalSeconds) && explicitGoalSeconds > 0;
+  const normalizedGoalTimeSeconds = hasExplicitGoalTime
+    ? Math.round(explicitGoalSeconds)
+    : currentEquivalentTimeSeconds;
+  const goalPaceSecondsPerKm = normalizedGoalTimeSeconds / eventDistanceKm;
+  const goalGapSecondsPerKm = currentPaceSecondsPerKm - goalPaceSecondsPerKm;
+  const isClassicRace = race === HansonsRace.HALF_MARATHON || race === HansonsRace.MARATHON;
+  const goalGapTooLarge = isClassicRace
+    && hasExplicitGoalTime
+    && goalGapSecondsPerKm > TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM;
+  const tempoStartIndex = isClassicRace
+    ? classicTempoMiles[race][level].findIndex((miles) => miles > 0)
+    : -1;
+  const tempoStartWeek = tempoStartIndex >= 0 ? tempoStartIndex + 1 : 1;
+  const goalProgressFraction = goalGapTooLarge
+    ? week >= HANSONS_PLAN_LENGTHS[race]
+      ? 1
+      : clamp((week - tempoStartWeek) / Math.max(1, 17 - tempoStartWeek), 0, 1)
+    : 1;
+  const specificPaceSecondsPerKm = goalGapTooLarge
+    ? currentPaceSecondsPerKm
+      - goalGapSecondsPerKm * goalProgressFraction
+    : goalPaceSecondsPerKm;
+
+  return {
+    hasExplicitGoalTime,
+    goalTimeSeconds: normalizedGoalTimeSeconds,
+    currentEquivalentTimeSeconds,
+    currentPaceSecondsPerKm,
+    goalPaceSecondsPerKm,
+    goalGapSecondsPerKm,
+    goalGapTooLarge,
+    goalProgressFraction,
+    goalProgressionApplied: goalGapTooLarge && goalProgressFraction < 1,
+    specificPaceSecondsPerKm
+  };
+}
+
+function buildHansonsPaces(
+  vdot,
+  heatMultiplier,
+  unitSystem,
+  zoneById,
+  race,
+  specificPacePlan
+) {
   const seconds = {
     mile: estimateRacePaceSecondsPerKm(vdot, 1609.344),
     threeK: estimateRacePaceSecondsPerKm(vdot, 3000),
@@ -1113,14 +877,38 @@ function buildHansonsPaces(vdot, heatMultiplier, unitSystem, zoneById) {
     paceRow(id, zh, en, baseSecondsPerKm, baseSecondsPerKm, adjust ? heatMultiplier : 1, unitSystem);
   const range = (id, zh, en, faster, slower, adjust = true) =>
     paceRow(id, zh, en, faster, slower, adjust ? heatMultiplier : 1, unitSystem);
+  const hmpSeconds = race === HansonsRace.HALF_MARATHON
+    ? specificPacePlan.specificPaceSecondsPerKm
+    : seconds.hmp;
+  const mpSeconds = race === HansonsRace.MARATHON
+    ? specificPacePlan.specificPaceSecondsPerKm
+    : seconds.mp;
+  const hmpLabelZh = race === HansonsRace.HALF_MARATHON
+    && specificPacePlan.goalProgressionApplied
+    ? "本週漸進半馬配速"
+    : "目標半馬配速";
+  const hmpLabelEn = race === HansonsRace.HALF_MARATHON
+    && specificPacePlan.goalProgressionApplied
+    ? "This-week progressive HMP"
+    : "Goal HMP";
+  const mpLabelZh = race === HansonsRace.MARATHON
+    && specificPacePlan.goalProgressionApplied
+    ? "本週漸進馬拉松配速"
+    : "目標馬拉松配速";
+  const mpLabelEn = race === HansonsRace.MARATHON
+    && specificPacePlan.goalProgressionApplied
+    ? "This-week progressive MP"
+    : "Goal MP";
 
   return {
     fiveK: point("5K", "5K 配速", "5K pace", seconds.fiveK),
     tenK: point("10K", "10K 配速", "10K pace", seconds.tenK),
-    hmp: point("HMP", "目標半馬配速", "Goal HMP", seconds.hmp),
-    mp: point("MP", "目標馬拉松配速", "Goal MP", seconds.mp),
-    hmpMinus: point("HMP−10", "HMP 每英里快 10 秒", "HMP minus 10 sec/mi", seconds.hmp - TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM),
-    mpMinus: point("MP−10", "MP 每英里快 10 秒", "MP minus 10 sec/mi", seconds.mp - TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM),
+    hmp: point("HMP", hmpLabelZh, hmpLabelEn, hmpSeconds),
+    mp: point("MP", mpLabelZh, mpLabelEn, mpSeconds),
+    goalHmp: point("HMP", "目標半馬配速", "Goal HMP", race === HansonsRace.HALF_MARATHON ? specificPacePlan.goalPaceSecondsPerKm : seconds.hmp),
+    goalMp: point("MP", "目標馬拉松配速", "Goal MP", race === HansonsRace.MARATHON ? specificPacePlan.goalPaceSecondsPerKm : seconds.mp),
+    hmpMinus: point("HMP−10", `${hmpLabelZh}每英里快 10 秒`, `${hmpLabelEn} minus 10 sec/mi`, hmpSeconds - TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM),
+    mpMinus: point("MP−10", `${mpLabelZh}每英里快 10 秒`, `${mpLabelEn} minus 10 sec/mi`, mpSeconds - TEN_SECONDS_PER_MILE_IN_SECONDS_PER_KM),
     threeK: point("3K", "3K 配速", "3K pace", seconds.threeK, false),
     fiveToTenK: range("5K–10K", "5K–10K 配速", "5K-10K pace", seconds.fiveK, seconds.tenK),
     eightToTenK: range("8K–10K", "8K–10K／CV 配速", "8K-10K / CV pace", seconds.eightK, seconds.tenK),
@@ -1222,9 +1010,10 @@ function allocateByWeights(totalKm, weights) {
 }
 
 function normalizeRace(race) {
-  if (race === "5K-10K") return HansonsRace.FIVE_K;
   if (race === "15K-30K") return HansonsRace.HALF_MARATHON;
-  return Object.values(HansonsRace).includes(race) ? race : HansonsRace.FIVE_K;
+  return race === HansonsRace.MARATHON
+    ? HansonsRace.MARATHON
+    : HansonsRace.HALF_MARATHON;
 }
 
 function normalizeLevel(level) {
